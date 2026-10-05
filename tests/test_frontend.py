@@ -64,4 +64,4 @@ def test_beta_versions_are_synchronized():
         (root / "custom_components" / DOMAIN / "manifest.json").read_text()
     )
     package = json.loads((root / "frontend" / "package.json").read_text())
-    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.2.0"
+    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.3.0-beta.1"

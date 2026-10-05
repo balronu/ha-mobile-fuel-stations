@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.0-beta.1 — First v0.3.0 beta
+
+### Deutsch
+
+- Dashboard-Karte wird nach HACS-Installation und Home-Assistant-Neustart
+  automatisch durch die Integration geladen.
+- Neue Installationen benötigen keinen manuellen Lovelace-Resource-Eintrag.
+- Schutz gegen doppeltes Laden der Karte und des visuellen Editors ergänzt.
+- Nutzer von v0.2.0 oder älter sollen den bisherigen manuellen Resource-Eintrag
+  erst nach erfolgreichem Update, Neustart und Funktionstest entfernen.
+- Navigation bleibt auf Automatisch, Apple Karten, Google Maps und Waze begrenzt;
+  Sygic und visuelles Branding sind nicht Bestandteil dieser Beta.
+
+### English
+
+- The dashboard card is automatically loaded by the integration after HACS
+  installation and a Home Assistant restart.
+- New installations no longer require a manual Lovelace resource entry.
+- Added duplicate-load protection for the card and visual editor.
+- Users upgrading from v0.2.0 or earlier should remove the existing manual
+  resource only after a successful update, restart, and functional test.
+- Navigation remains limited to Automatic, Apple Maps, Google Maps, and Waze;
+  Sygic and visual branding are not part of this beta.
+
 ## 0.2.0 — Stable release
 
 ### Deutsch

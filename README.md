@@ -25,12 +25,12 @@ Objekte.
 - Diagnostics ohne API-Key und ohne exakte Koordinaten.
 - Englische und deutsche UI-Übersetzungen.
 
-## Dashboard-Karte (`v0.2.0`)
+## Dashboard-Karte (`v0.3.0-beta.1`)
 
-Version 0.2.0 ergänzt die native Lovelace-Karte
-`custom:mobile-fuel-stations-card` in derselben HACS-Integration. Das Bundle wird
-mit der Integration ausgeliefert. Nach
-Installation und Neustart die Lovelace-Resource einmalig registrieren:
+Version 0.3.0-beta.1 lädt die native Lovelace-Karte
+`custom:mobile-fuel-stations-card` nach HACS-Installation und Home-Assistant-
+Neustart automatisch über die Integration. Für neue Installationen ist kein
+manueller Lovelace-Resource-Eintrag erforderlich. Der kanonische Pfad lautet:
 
 ```text
 /mobile_fuel_stations/mobile-fuel-stations-card.js
@@ -73,18 +73,9 @@ navigation: true
 navigation_provider: waze
 ```
 
-Sygic ist nicht Bestandteil von v0.2.0.
+Sygic ist nicht Bestandteil dieser Beta.
 
-### Geplant für v0.3.0: automatische Kartenregistrierung
-
-Für eine Neuinstallation ab v0.3.0 soll die Integration das Karten-Bundle nach
-Installation über HACS und einem Home-Assistant-Neustart automatisch laden. Ein
-manueller Eintrag unter **Einstellungen → Dashboards → Ressourcen** ist dann
-nicht mehr erforderlich. Der kanonische Pfad bleibt unverändert:
-
-```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js
-```
+### Upgrade-Hinweis für Nutzer von v0.2.0 oder älter
 
 Wer von v0.2.0 oder älter aktualisiert und diesen Pfad bereits manuell als
 Lovelace-Resource eingetragen hat, sollte nach dem Update und Neustart zunächst
@@ -93,9 +84,8 @@ dieser alte manuelle Resource-Eintrag entfernt werden; der statische
 Integrationspfad selbst wird nicht entfernt. Bei Bedarf die Home-Assistant-
 Oberfläche beziehungsweise die Companion-App vollständig neu laden.
 
-Sygic ist auch für die geplante v0.3.0 nicht als unterstützter Anbieter
-vorgesehen; die verfügbaren Anbieter bleiben Automatisch, Apple Karten, Google
-Maps und Waze.
+Die verfügbaren Anbieter bleiben Automatisch, Apple Karten, Google Maps und
+Waze. Sygic ist nicht Bestandteil dieser Beta.
 
 ## Voraussetzungen
 
