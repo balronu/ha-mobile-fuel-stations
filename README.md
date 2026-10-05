@@ -32,7 +32,7 @@ Integration. Das Bundle wird mit der Integration ausgeliefert. Nach
 Installation und Neustart die Lovelace-Resource einmalig registrieren:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2
+/mobile_fuel_stations/mobile-fuel-stations-card.js
 ```
 
 Minimale Karte:
@@ -48,6 +48,12 @@ aktiviert und kann mit `navigation: false` ausgeblendet werden. Der
 Stationsblock öffnet weiterhin `more-info`; der Navigationsbutton verwendet
 einen HTTPS-Maps-Link. Die Übergabe an Browser oder Karten-App ist
 clientabhängig und garantiert keine bestimmte Karten-App.
+Im visuellen Editor kann der Anbieter auf **Automatisch**, **Apple Karten** oder
+**Google Maps** gestellt werden; `navigation_provider: auto|apple|google` ist
+auch per YAML möglich. Die versionslose Resource-URL bleibt bei HACS-Updates
+gleich. Ein Browser-/Companion-Cache kann trotzdem einen Neuladevorgang
+erfordern. Der Anzeigename eines Stations-Slots folgt dem aktuellen
+Tankstellenname, während Entity-ID und Unique-ID stabil bleiben.
 
 ## Voraussetzungen
 
@@ -238,16 +244,13 @@ ohne Navigation.
 
 ## Navigation
 
-Mobile Fuel Stations ist bewusst plattformneutral und hängt nicht von Apple
-Karten, Google Maps, Sygic, Waze oder einem anderen Anbieter ab. Jede
-Stations-Entity stellt dynamisch `latitude` und `longitude` für individuelle
-Dashboards, Automationen oder Client-Lösungen bereit.
-
-Die standardisierte `geo:`-URI ist in [RFC 5870](https://datatracker.ietf.org/doc/html/rfc5870.html)
-definiert. Ob ein Client sie verarbeitet, hängt von Frontend, Companion App,
-Betriebssystem und installierten Apps ab. Die Integration behauptet daher
-nicht, dass `geo:` auf jedem Home-Assistant-Client einheitlich funktioniert,
-und stellt keinen automatischen App-Chooser bereit.
+Die Karte zeigt standardmäßig einen separaten Navigationsbutton, sofern gültige
+Koordinaten vorhanden sind. Im visuellen Editor oder per YAML stehen
+`navigation_provider: auto`, `apple` und `google` zur Verfügung. `auto` wählt
+für iOS/iPadOS Apple Maps und verwendet für Android sowie Desktop den
+Google-HTTPS-Weblink. Apple- und Google-Maps-Links können je nach Browser,
+Companion-App und installierten Apps unterschiedlich behandelt werden; eine
+bestimmte App wird nicht garantiert. `navigation: false` blendet den Button aus.
 
 ## Fehlerbehebung
 

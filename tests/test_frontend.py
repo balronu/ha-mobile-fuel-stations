@@ -25,7 +25,7 @@ def test_frontend_static_path_is_registered_once():
     config = register.await_args.args[0][0]
     assert config.url_path == f"/{DOMAIN}"
     assert config.path.endswith(f"custom_components/{DOMAIN}/frontend")
-    assert config.cache_headers is True
+    assert config.cache_headers is False
 
 
 def test_frontend_bundle_and_versioned_resource_url():
@@ -33,11 +33,11 @@ def test_frontend_bundle_and_versioned_resource_url():
     assert bundle.is_file()
     assert bundle.stat().st_size > 1000
     assert FRONTEND_URL == f"/{DOMAIN}/{FRONTEND_FILENAME}"
-    assert FRONTEND_RESOURCE_URL == f"{FRONTEND_URL}?v={FRONTEND_VERSION}"
+    assert FRONTEND_RESOURCE_URL == FRONTEND_URL
 
 
-def test_frontend_resource_url_is_deterministic():
-    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2"
+def test_frontend_resource_url_is_stable_across_updates():
+    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js"
 
 
 def test_beta_versions_are_synchronized():

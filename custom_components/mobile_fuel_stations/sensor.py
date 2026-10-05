@@ -109,6 +109,11 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
         return data[self.index] if self.index < len(data) else None
 
     @property
+    def name(self) -> str:
+        """Expose the current station name without changing the stable entity identity."""
+        return self.station.name if self.station and self.station.name else f"Station {self.index + 1}"
+
+    @property
     def native_value(self) -> float | None:
         return self.station.price if self.station else None
 

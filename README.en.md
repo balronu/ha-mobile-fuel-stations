@@ -26,7 +26,7 @@ The bundle is delivered with the integration. After installation and restart,
 register this Lovelace resource once:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2
+/mobile_fuel_stations/mobile-fuel-stations-card.js
 ```
 
 Then use:
@@ -41,6 +41,11 @@ separate navigation button per station. Navigation is enabled by default and
 can be disabled with `navigation: false`. The station block still opens
 `more-info`; the navigation button uses an HTTPS maps link. Browser/app
 handling is client-dependent and no specific maps app is guaranteed.
+The visual editor offers **Automatic**, **Apple Maps**, and **Google Maps**;
+YAML can use `navigation_provider: auto|apple|google`. The versionless resource
+URL remains unchanged across HACS updates. A browser/Companion cache may still
+need a reload. A station slot's displayed name follows the current station,
+while its entity ID and unique ID remain stable.
 
 ## Requirements
 
@@ -177,16 +182,12 @@ example is display-only and works without navigation.
 
 ## Navigation
 
-Mobile Fuel Stations intentionally does not depend on Apple Maps, Google Maps,
-Sygic, Waze, or another navigation provider. Each station exposes dynamic
-`latitude` and `longitude` attributes for dashboards, automations, and
-client-specific navigation solutions.
-
-The standardized `geo:` URI is defined by [RFC 5870](https://datatracker.ietf.org/doc/html/rfc5870.html).
-Clients that support it may use it, but support depends on the frontend,
-Companion App, operating system, and installed applications. The integration
-does not claim uniform `geo:` behavior on every Home Assistant client and does
-not provide an installed-app chooser.
+The card shows a separate navigation button by default when valid coordinates
+are available. The visual editor and YAML support `navigation_provider: auto`,
+`apple`, and `google`. `auto` selects Apple Maps for iOS/iPadOS and the Google
+HTTPS web link for Android and desktop. Apple and Google links may be handled
+differently by the browser, Companion App, and installed apps; no specific app
+is guaranteed. Set `navigation: false` to hide the button.
 
 ## Troubleshooting
 

@@ -23,7 +23,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     domain_data = hass.data.setdefault(DOMAIN, {})
     if not domain_data.get("frontend_registered"):
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(f"/{DOMAIN}", str(_FRONTEND_DIR), True)]
+            [StaticPathConfig(f"/{DOMAIN}", str(_FRONTEND_DIR), False)]
         )
         domain_data["frontend_registered"] = True
     return True

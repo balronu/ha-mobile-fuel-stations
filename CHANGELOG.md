@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — Runde 4
+
+### English
+
+- Added automatic, Apple Maps, and Google Maps navigation providers with
+  coordinate validation and a visual-editor selector.
+- Switched the recommended Lovelace resource to the stable versionless URL.
+- Improved Unicode/punctuation-aware brand de-duplication.
+- Station-slot display names now follow the current station without changing
+  entity IDs or unique IDs.
+
+### Deutsch
+
+- Automatische, Apple-Karten- und Google-Maps-Navigationsanbieter mit
+  Koordinatenvalidierung und Auswahl im visuellen Editor ergänzt.
+- Versionslose Lovelace-Resource-URL als dauerhafte Empfehlung eingeführt.
+- Unicode-/satzzeichenfeste Brand-Deduplizierung verbessert.
+- Anzeigenamen der Stations-Slots folgen nun der aktuellen Tankstelle, ohne
+  Entity-IDs oder Unique-IDs zu ändern.
+
 ## 0.2.0-beta.2 — Second beta
 
 ### English

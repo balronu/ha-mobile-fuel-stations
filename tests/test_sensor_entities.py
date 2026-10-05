@@ -125,3 +125,18 @@ def test_station_slot_state_and_attributes_remain_unchanged():
         "latitude": 50.0,
         "longitude": 8.0,
     }
+
+
+def test_station_slot_name_follows_station_without_changing_unique_id():
+    first = Station("first", "First Station", "Brand", 1.7, 1.0, True, "Street", "1", "1", "Town", 50.0, 8.0)
+    second = Station("second", "Second Station", "Brand", 1.8, 2.0, True, "Street", "2", "2", "Town", 50.1, 8.1)
+    slot = object.__new__(sensor.StationSlotSensor)
+    slot.index = 0
+    slot._attr_unique_id = "entry-a_station_slot_1"
+    slot.coordinator = SimpleNamespace(data=[first])
+
+    assert slot.name == "First Station"
+    assert slot._attr_unique_id == "entry-a_station_slot_1"
+    slot.coordinator.data = [second]
+    assert slot.name == "Second Station"
+    assert slot._attr_unique_id == "entry-a_station_slot_1"

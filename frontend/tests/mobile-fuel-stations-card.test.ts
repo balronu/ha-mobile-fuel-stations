@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { buildNavigationUrl, discoverStationEntities, formatDistance, formatPrice, MobileFuelStationsCard, shouldShowBrand } from "../src/mobile-fuel-stations-card";
+import { buildNavigationUrl, detectNavigationProvider, discoverStationEntities, formatDistance, formatPrice, MobileFuelStationsCard, shouldShowBrand } from "../src/mobile-fuel-stations-card";
 
 const overviewId = "sensor.vehicle_nearby_stations";
 const state = (value: string, attributes: Record<string, unknown> = {}) => ({ state: value, attributes });
@@ -23,9 +23,16 @@ describe("formatting and discovery", () => {
     expect(shouldShowBrand("Tankstelle Winkler", "Winkler")).toBe(false);
     expect(shouldShowBrand("Auto Wahl Sport Illingen", "Auto Wahl Sport")).toBe(false);
     expect(shouldShowBrand("Tankstelle", "Shell")).toBe(true);
+    expect(shouldShowBrand("Winkler-St. Ingbert", "Winkler 24h")).toBe(true);
+    expect(shouldShowBrand("OEL Schneider GmbH Rodenhof", "OEL")).toBe(false);
   });
-  it("validates coordinates and URL-encodes the navigation target", () => {
+  it("selects navigation providers defensively and URL-encodes targets", () => {
     expect(buildNavigationUrl(49.123, 8.456)).toBe("https://www.google.com/maps/search/?api=1&query=49.123%2C8.456");
+    expect(buildNavigationUrl(49.123, 8.456, "apple", "Tankstelle Ä")).toBe("https://maps.apple.com/?ll=49.123,8.456&q=Tankstelle%20%C3%84");
+    expect(buildNavigationUrl(49.123, 8.456, "google", "Tankstelle Ä")).toContain("google.com/maps/search");
+    expect(detectNavigationProvider("auto", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")).toBe("apple");
+    expect(detectNavigationProvider("auto", "Mozilla/5.0 (Linux; Android 14; Pixel)")).toBe("google");
+    expect(detectNavigationProvider("auto", "Mozilla/5.0 (X11; Linux x86_64)")).toBe("google");
     expect(buildNavigationUrl(91, 8)).toBeNull();
     expect(buildNavigationUrl(49, -181)).toBeNull();
   });
@@ -55,6 +62,10 @@ describe("card", () => {
     hass.states["sensor.vehicle_station_1"]!.attributes.latitude = 91; card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.querySelector(".navigate")).toBeNull();
   });
   it("renders English labels from the HA locale", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(1, { fuel_type: "diesel" }) as ReturnType<typeof hassFor> & { locale?: { language: string } }; hass.locale = { language: "en" }; card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Nearby fuel stations"); expect(card.shadowRoot?.textContent).toContain("Open"); });
+  it("renders the configured navigation provider", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId, navigation_provider: "apple" }); card.hass = hassFor(1, {}, { latitude: 49, longitude: 8 }); await card.updateComplete;
+    expect((card.shadowRoot?.querySelector(".navigate") as HTMLAnchorElement).href).toContain("maps.apple.com");
+  });
   it("provides a visual editor that emits config-changed", async () => {
     expect(MobileFuelStationsCard.getConfigElement().localName).toBe("mobile-fuel-stations-card-editor");
     const editor = MobileFuelStationsCard.getConfigElement() as HTMLElement & { hass: unknown; setConfig: (config: unknown) => void; updateComplete: Promise<unknown> };
@@ -62,5 +73,6 @@ describe("card", () => {
     let changed: CustomEvent | undefined; editor.addEventListener("config-changed", (event) => { changed = event as CustomEvent; });
     const select = editor.shadowRoot?.querySelector("select") as HTMLSelectElement; select.value = overviewId; select.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.entity).toBe(overviewId);
     const checkbox = editor.shadowRoot?.querySelector("input[type=checkbox]") as HTMLInputElement; checkbox.checked = false; checkbox.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation).toBe(false);
+    const provider = editor.shadowRoot?.querySelectorAll("select")[1] as HTMLSelectElement; provider.value = "apple"; provider.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation_provider).toBe("apple");
   });
 });
