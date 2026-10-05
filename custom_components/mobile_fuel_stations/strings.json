@@ -1,0 +1,8 @@
+{
+  "config": {
+    "step": {"user": {"title": "Mobile Fuel Stations", "description": "Configure a Tankerkönig nearby-stations search.", "data": {"api_key": "Tankerkönig API key", "location_entity": "Location entity", "radius": "Radius (km)", "fuel_type": "Fuel type", "station_count": "Station slots", "update_interval": "Regular update interval (minutes)", "movement_updates": "Enable movement updates", "movement_threshold": "Movement threshold (km)", "cooldown": "Movement cooldown (minutes)"}}},
+    "error": {"api_key_required": "Enter an API key.", "invalid_location": "The selected entity has no valid latitude/longitude."}
+  },
+  "options": {"step": {"init": {"title": "Mobile Fuel Stations options", "data": {"location_entity": "Location entity", "radius": "Radius (km)", "fuel_type": "Fuel type", "station_count": "Station slots", "update_interval": "Regular update interval (minutes)", "movement_updates": "Enable movement updates", "movement_threshold": "Movement threshold (km)", "cooldown": "Movement cooldown (minutes)"}}}},
+  "entity": {"sensor": {"nearby_stations": {"name": "Nearby stations"}, "station_slot": {"name": "Station {slot}"}}}
+}
