@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from mobile_fuel_stations.api import Station
 from mobile_fuel_stations import sensor
 
 
@@ -89,3 +90,38 @@ def test_overview_attributes_keep_existing_fields_and_add_station_entities(monke
         "sensor.vehicle_station_1",
         "sensor.vehicle_station_2",
     ]
+
+
+def test_station_slot_state_and_attributes_remain_unchanged():
+    station = Station(
+        "Demo Station",
+        "Demo Brand",
+        "1 Example Street",
+        1.799,
+        2.4,
+        True,
+        "Example Street",
+        "1",
+        "12345",
+        "Demo Town",
+        50.0,
+        8.0,
+    )
+    slot = object.__new__(sensor.StationSlotSensor)
+    slot.index = 0
+    slot.coordinator = SimpleNamespace(data=[station])
+
+    assert slot.native_value == 1.799
+    assert slot.extra_state_attributes == {
+        "station_id": "Demo Station",
+        "station_name": "Demo Station",
+        "brand": "Demo Brand",
+        "distance": 2.4,
+        "is_open": True,
+        "street": "Example Street",
+        "house_number": "1",
+        "postcode": "12345",
+        "place": "Demo Town",
+        "latitude": 50.0,
+        "longitude": 8.0,
+    }
