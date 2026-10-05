@@ -113,7 +113,7 @@ def test_station_slot_state_and_attributes_remain_unchanged():
 
     assert slot.native_value == 1.799
     assert slot.extra_state_attributes == {
-        "station_id": "Demo Station",
+        "station_id": "demo-id",
         "station_name": "Demo Station",
         "brand": "Demo Brand",
         "distance": 2.4,
