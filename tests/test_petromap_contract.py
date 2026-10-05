@@ -1,5 +1,7 @@
 import asyncio
+import json
 
+import aiohttp
 import pytest
 
 from mobile_fuel_stations.api import cheapest_station, nearest_station
@@ -8,19 +10,61 @@ from mobile_fuel_stations.providers.base import (
     ProviderDailyBudgetError,
     ProviderDisabledError,
     ProviderInsufficientCreditsError,
+    ProviderNetworkError,
     ProviderPermissionError,
     ProviderRateLimitError,
     ProviderResponseError,
     ProviderUnavailableError,
     ProviderUnsupportedFuelError,
+    ProviderTimeoutError,
     StationSearchQuery,
 )
+from mobile_fuel_stations.providers import create_provider
 from mobile_fuel_stations.providers.petromap import (
     PetromapProvider,
     build_search_request,
     map_error,
     parse_search_response,
 )
+
+
+class _FakeResponse:
+    def __init__(self, status=200, payload=None, headers=None, json_error=None):
+        self.status = status
+        self._payload = payload
+        self.headers = headers or {}
+        self._json_error = json_error
+
+    async def json(self, *, content_type=None):
+        del content_type
+        if self._json_error:
+            raise self._json_error
+        return self._payload
+
+
+class _FakeRequest:
+    def __init__(self, response=None, enter_error=None):
+        self.response = response
+        self.enter_error = enter_error
+
+    async def __aenter__(self):
+        if self.enter_error:
+            raise self.enter_error
+        return self.response
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+
+class _FakeSession:
+    def __init__(self, response=None, enter_error=None):
+        self.response = response
+        self.enter_error = enter_error
+        self.calls = []
+
+    def get(self, url, **kwargs):
+        self.calls.append((url, kwargs))
+        return _FakeRequest(self.response, self.enter_error)
 
 
 def _place(**overrides):
@@ -169,6 +213,150 @@ def test_documented_errors_map_to_provider_errors(status, code, exception):
     assert isinstance(map_error(status, {"error": code}), exception)
 
 
-def test_disabled_provider_contract_has_no_network_path():
+def _query(fuel_type="diesel"):
+    return StationSearchQuery(49.24, 6.99, 25.0, fuel_type)
+
+
+def test_transport_diesel_uses_one_request_and_injected_key_without_pagination():
+    session = _FakeSession(
+        _FakeResponse(
+            payload={"places": [_place()], "nextCursor": "next", "credits": 1},
+            headers={
+                "X-Credits-Charged": "1",
+                "X-Credits-Remaining": "249",
+                "X-RateLimit-Limit": "1000",
+            },
+        )
+    )
+    provider = PetromapProvider(session, "dummy-r2e2-key")
+
+    stations = asyncio.run(provider.async_search(_query()))
+
+    assert len(stations) == 1
+    assert len(session.calls) == 1
+    url, kwargs = session.calls[0]
+    assert url == "https://api.petromap.eu/v2/places"
+    assert kwargs["headers"] == {"x-api-key": "dummy-r2e2-key"}
+    assert kwargs["params"] == {
+        "filter": "circle:6.99,49.24,25000",
+        "fuelFamily": "diesel",
+    }
+    assert "sort" not in kwargs["params"]
+    assert "cursor" not in kwargs["params"]
+    assert provider.last_response_metadata is not None
+    assert provider.last_response_metadata.next_cursor == "next"
+    assert provider.last_response_metadata.body_credits == 1
+    assert provider.last_response_metadata.credits_charged == 1
+    assert provider.last_response_metadata.credits_remaining == 249
+    assert provider.last_response_metadata.rate_limit == 1000
+
+
+def test_transport_e5_uses_super_95_token():
+    session = _FakeSession(_FakeResponse(payload={"places": []}))
+    provider = PetromapProvider(session, "dummy-key")
+
+    asyncio.run(provider.async_search(_query("e5")))
+
+    assert len(session.calls) == 1
+    assert session.calls[0][1]["params"]["fuel"] == "petrol_95_e5"
+    assert "petrol_98_e5" not in session.calls[0][1]["params"].values()
+    assert "fuelFamily" not in session.calls[0][1]["params"]
+
+
+def test_transport_rejects_e10_before_network():
+    session = _FakeSession(_FakeResponse(payload={"places": []}))
+    provider = PetromapProvider(session, "dummy-key")
+
+    with pytest.raises(ProviderUnsupportedFuelError):
+        asyncio.run(provider.async_search(_query("e10")))
+    assert session.calls == []
+
+
+@pytest.mark.parametrize(
+    ("status", "code", "exception"),
+    [
+        (400, "INVALID_QUERY", ProviderResponseError),
+        (401, "INVALID_CREDENTIAL", ProviderAuthError),
+        (403, "SCOPE_NOT_PERMITTED", ProviderPermissionError),
+        (404, "PLACE_NOT_FOUND", ProviderResponseError),
+        (429, "RATE_LIMITED", ProviderRateLimitError),
+        (429, "DAILY_BUDGET_EXHAUSTED", ProviderDailyBudgetError),
+        (429, "INSUFFICIENT_CREDITS", ProviderInsufficientCreditsError),
+        (503, "ROUTING_UNAVAILABLE", ProviderUnavailableError),
+        (503, "CURRENCY_UNAVAILABLE", ProviderUnavailableError),
+    ],
+)
+def test_transport_maps_http_errors_without_retry(status, code, exception):
+    session = _FakeSession(_FakeResponse(status=status, payload={"error": code}))
+    provider = PetromapProvider(session, "dummy-secret-key")
+
+    with pytest.raises(exception) as caught:
+        asyncio.run(provider.async_search(_query()))
+
+    assert len(session.calls) == 1
+    assert "dummy-secret-key" not in str(caught.value)
+
+
+def test_transport_records_retry_after_without_sleep_or_retry():
+    session = _FakeSession(
+        _FakeResponse(
+            status=429,
+            payload={"error": "RATE_LIMITED"},
+            headers={"Retry-After": "7"},
+        )
+    )
+    provider = PetromapProvider(session, "dummy-key")
+
+    with pytest.raises(ProviderRateLimitError):
+        asyncio.run(provider.async_search(_query()))
+
+    assert len(session.calls) == 1
+    assert provider.last_response_metadata is not None
+    assert provider.last_response_metadata.retry_after == 7
+
+
+def test_transport_maps_timeout_and_connection_errors_without_retry():
+    timeout_session = _FakeSession(enter_error=asyncio.TimeoutError())
+    with pytest.raises(ProviderTimeoutError):
+        asyncio.run(PetromapProvider(timeout_session, "dummy").async_search(_query()))
+    assert len(timeout_session.calls) == 1
+
+    connection_session = _FakeSession(enter_error=aiohttp.ClientConnectionError())
+    with pytest.raises(ProviderNetworkError):
+        asyncio.run(PetromapProvider(connection_session, "dummy").async_search(_query()))
+    assert len(connection_session.calls) == 1
+
+
+def test_transport_maps_invalid_json_to_response_error():
+    session = _FakeSession(
+        _FakeResponse(json_error=json.JSONDecodeError("bad", "{}", 0))
+    )
+    with pytest.raises(ProviderResponseError):
+        asyncio.run(PetromapProvider(session, "dummy").async_search(_query()))
+    assert len(session.calls) == 1
+
+
+def test_transport_does_not_swallow_unexpected_programming_error():
+    session = _FakeSession(_FakeResponse(json_error=RuntimeError("programming bug")))
+    with pytest.raises(RuntimeError, match="programming bug"):
+        asyncio.run(PetromapProvider(session, "dummy").async_search(_query()))
+
+
+def test_transport_allows_optional_headers_to_be_missing_or_invalid():
+    session = _FakeSession(
+        _FakeResponse(
+            payload={"places": []},
+            headers={"X-Credits-Charged": "not-a-number", "Retry-After": "-1"},
+        )
+    )
+    provider = PetromapProvider(session, "dummy")
+
+    assert asyncio.run(provider.async_search(_query())) == []
+    assert provider.last_response_metadata is not None
+    assert provider.last_response_metadata.credits_charged is None
+    assert provider.last_response_metadata.retry_after is None
+
+
+def test_registry_keeps_petromap_disabled_before_network():
     with pytest.raises(ProviderDisabledError):
-        asyncio.run(PetromapProvider().async_search(StationSearchQuery(1, 1, 1, "diesel")))
+        create_provider(object(), {"provider_mode": "petromap", "api_key": "dummy"})

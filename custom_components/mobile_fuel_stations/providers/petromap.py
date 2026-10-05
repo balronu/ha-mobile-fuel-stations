@@ -7,20 +7,24 @@ the registry until credentials, licensing, and budget policy are approved.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
 from typing import Any
 
-from ..const import MAX_API_RADIUS_KM
+from aiohttp import ClientConnectionError, ClientError, ClientSession, ClientTimeout
+
+from ..const import DEFAULT_TIMEOUT, MAX_API_RADIUS_KM
 from .base import (
     ProviderAuthError,
     ProviderDailyBudgetError,
-    ProviderDisabledError,
     ProviderInsufficientCreditsError,
+    ProviderNetworkError,
     ProviderPermissionError,
     ProviderRateLimitError,
     ProviderResponseError,
+    ProviderTimeoutError,
     ProviderUnavailableError,
     ProviderUnsupportedFuelError,
     Station,
@@ -52,6 +56,20 @@ class PetromapSearchResult:
     stations: list[Station]
     next_cursor: str | None
     credits: int | None
+
+
+@dataclass(slots=True, frozen=True)
+class PetromapResponseMetadata:
+    """Documented response accounting metadata kept out of HA entities."""
+
+    credits_charged: int | None = None
+    payg_credits_charged: int | None = None
+    credits_remaining: int | None = None
+    payg_credits_remaining: int | None = None
+    rate_limit: int | None = None
+    retry_after: int | None = None
+    body_credits: int | None = None
+    next_cursor: str | None = None
 
 
 def _finite_number(value: Any, field: str) -> float:
@@ -197,8 +215,82 @@ def parse_search_response(payload: object) -> PetromapSearchResult:
 
 
 class PetromapProvider:
-    """Disabled contract marker; deliberately has no network transport."""
+    """Petromap v2 one-page transport using an injected aiohttp session."""
+
+    def __init__(
+        self,
+        session: ClientSession,
+        api_key: str,
+        *,
+        timeout: ClientTimeout | None = None,
+    ) -> None:
+        self._session = session
+        self._api_key = api_key
+        self._timeout = timeout or ClientTimeout(total=DEFAULT_TIMEOUT.total_seconds())
+        self.last_response_metadata: PetromapResponseMetadata | None = None
 
     async def async_search(self, query: StationSearchQuery) -> list[Station]:
-        del query
-        raise ProviderDisabledError("Petromap is disabled until R2C approval")
+        self.last_response_metadata = None
+        request = build_search_request(query)
+        try:
+            async with self._session.get(
+                request.url,
+                params=request.params,
+                headers={"x-api-key": self._api_key},
+                timeout=self._timeout,
+            ) as response:
+                status = response.status
+                if not 200 <= status < 300:
+                    try:
+                        payload = await response.json(content_type=None)
+                    except (TypeError, ValueError):
+                        payload = {}
+                    self.last_response_metadata = PetromapResponseMetadata(
+                        rate_limit=_optional_header_int(response.headers, "X-RateLimit-Limit"),
+                        retry_after=_optional_header_int(response.headers, "Retry-After"),
+                    )
+                    raise map_error(status, payload)
+                try:
+                    payload = await response.json(content_type=None)
+                except (TypeError, ValueError) as err:
+                    raise ProviderResponseError("Petromap response is not valid JSON") from err
+                result = parse_search_response(payload)
+                self.last_response_metadata = PetromapResponseMetadata(
+                    credits_charged=_optional_header_int(response.headers, "X-Credits-Charged"),
+                    payg_credits_charged=_optional_header_int(
+                        response.headers, "X-PAYG-Credits-Charged"
+                    ),
+                    credits_remaining=_optional_header_int(
+                        response.headers, "X-Credits-Remaining"
+                    ),
+                    payg_credits_remaining=_optional_header_int(
+                        response.headers, "X-PAYG-Credits-Remaining"
+                    ),
+                    rate_limit=_optional_header_int(response.headers, "X-RateLimit-Limit"),
+                    retry_after=_optional_header_int(response.headers, "Retry-After"),
+                    body_credits=result.credits,
+                    next_cursor=result.next_cursor,
+                )
+                return result.stations
+        except asyncio.TimeoutError as err:
+            raise ProviderTimeoutError("Petromap request timed out") from err
+        except ClientConnectionError as err:
+            raise ProviderNetworkError("Petromap connection failed") from err
+        except ClientError as err:
+            raise ProviderNetworkError("Petromap network request failed") from err
+
+
+def _optional_header_int(headers: Any, name: str) -> int | None:
+    """Read an optional documented integer header without breaking a response."""
+
+    try:
+        value = headers.get(name)
+    except AttributeError:
+        return None
+    if value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
