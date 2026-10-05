@@ -75,9 +75,13 @@ def test_invalid_coordinates_return_none(latitude, longitude):
     assert resolve(latitude, longitude) is None
 
 
-@pytest.mark.parametrize("latitude,longitude", [(40.7, -74.0), (0.0, 0.0), (45.0, 45.0)])
+@pytest.mark.parametrize("latitude,longitude", [(40.7, -74.0), (0.0, 0.0), (-30.0, -150.0)])
 def test_outside_embedded_europe_returns_none(latitude, longitude):
     assert resolve(latitude, longitude) is None
+
+
+def test_russia_point_is_inside_embedded_europe():
+    assert resolve(45.0, 45.0) == "RU"
 
 
 def test_dataset_integrity():
