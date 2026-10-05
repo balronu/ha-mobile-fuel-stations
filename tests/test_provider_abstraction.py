@@ -9,6 +9,7 @@ from mobile_fuel_stations.providers.base import (
     StationSearchQuery,
     UnknownProviderError,
 )
+from mobile_fuel_stations.providers.petromap import PetromapProvider
 from mobile_fuel_stations.providers.tankerkoenig import TankerkoenigProvider
 
 
@@ -37,6 +38,15 @@ class FakeSession:
         return FakeResponse()
 
 
+class SessionWithCloseGuard(FakeSession):
+    def __init__(self):
+        super().__init__()
+        self.close_calls = 0
+
+    async def close(self):
+        self.close_calls += 1
+
+
 def test_legacy_config_defaults_to_tankerkoenig_provider():
     provider = create_provider(object(), {"api_key": "legacy-secret"})
 
@@ -49,6 +59,19 @@ def test_explicit_tankerkoenig_mode_uses_same_provider():
     )
 
     assert isinstance(provider, TankerkoenigProvider)
+
+
+def test_petromap_construction_injects_shared_session_without_io_or_close():
+    session = SessionWithCloseGuard()
+    secret = "TEST_SECRET_DO_NOT_LEAK"
+
+    provider = PetromapProvider(session, secret)
+
+    assert provider._session is session
+    assert session.calls == []
+    assert session.close_calls == 0
+    assert secret not in repr(provider)
+    assert secret not in repr(provider.last_response_metadata)
 
 
 def test_unactivated_provider_mode_fails_without_network_access():
