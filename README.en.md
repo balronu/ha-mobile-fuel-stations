@@ -21,9 +21,10 @@ moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.
 
 ## Dashboard card (`v0.2.0`)
 
-This beta adds `custom:mobile-fuel-stations-card` to the same HACS integration.
-The bundle is delivered with the integration. After installation and restart,
-register this Lovelace resource once:
+Version 0.2.0 adds the native Lovelace card
+`custom:mobile-fuel-stations-card` to the same HACS integration. The bundle is
+shipped with the integration. After installation and restart, register this
+Lovelace resource once:
 
 ```text
 /mobile_fuel_stations/mobile-fuel-stations-card.js
@@ -53,11 +54,6 @@ The visual editor offers **Automatic**, **Apple Maps**, **Google Maps**, and
 URL remains unchanged across HACS updates. A browser/Companion cache may still
 need a reload. A station slot's displayed name follows the current station,
 while its entity ID and unique ID remain stable.
-
-Existing beta-2 testers should change their resource once from
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2` to the
-versionless URL above. Future HACS updates are not expected to require another
-resource change.
 
 Waze example:
 
@@ -207,10 +203,11 @@ example is display-only and works without navigation.
 
 The card shows a separate navigation button by default when valid coordinates
 are available. The visual editor and YAML support `navigation_provider: auto`,
-`apple`, and `google`. `auto` selects Apple Maps for iOS/iPadOS and the Google
-HTTPS web link for Android and desktop. Apple and Google links may be handled
-differently by the browser, Companion App, and installed apps; no specific app
-is guaranteed. Set `navigation: false` to hide the button.
+`apple`, `google`, and `waze`. `auto` selects Apple Maps for iOS/iPadOS and the
+Google HTTPS web link for Android and desktop. Apple, Google, and Waze links
+may be handled differently by the browser, Companion App, and installed apps;
+no specific app is guaranteed. Waze is used only when explicitly selected.
+Set `navigation: false` to hide the button.
 
 ## Troubleshooting
 
@@ -255,15 +252,14 @@ be posted in issues, logs, screenshots, fixtures, or pull requests.
 - Version 0.1.0 supports Tankerkönig only.
 - A station slot is not a permanent station identity; it is a ranked slot.
 - Provider availability, price freshness, and rate limits are external.
-- Navigation is intentionally platform-agnostic. The integration does not
-  require or depend on Apple Maps, Google Maps, Sygic, Waze, or another
-  navigation provider.
+- Navigation is intentionally platform-agnostic. The card creates HTTPS links
+  for Apple Maps, Google Maps, and explicitly selected Waze; app handoff
+  remains client-dependent. Sygic is not included.
 - Dashboard authors may use the station coordinates with a client-specific
   navigation mechanism. The standardized `geo:` URI is documented by RFC
   5870, but support and app selection depend on the receiving platform; this
   project does not claim that `geo:` works uniformly in every Home Assistant
   frontend or Companion App.
-- The integration does not create map or navigation links.
 
 ## Development
 

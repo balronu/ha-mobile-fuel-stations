@@ -27,8 +27,9 @@ Objekte.
 
 ## Dashboard-Karte (`v0.2.0`)
 
-Diese Beta ergänzt `custom:mobile-fuel-stations-card` in derselben HACS-
-Integration. Das Bundle wird mit der Integration ausgeliefert. Nach
+Version 0.2.0 ergänzt die native Lovelace-Karte
+`custom:mobile-fuel-stations-card` dieselbe HACS-Integration. Das Bundle wird
+mit der Integration ausgeliefert. Nach
 Installation und Neustart die Lovelace-Resource einmalig registrieren:
 
 ```text
@@ -62,11 +63,6 @@ auch per YAML möglich. Die versionslose Resource-URL bleibt bei HACS-Updates
 gleich. Ein Browser-/Companion-Cache kann trotzdem einen Neuladevorgang
 erfordern. Der Anzeigename eines Stations-Slots folgt dem aktuellen
 Tankstellenname, während Entity-ID und Unique-ID stabil bleiben.
-
-Bestehende Beta-2-Tester ändern ihre bisherige Resource einmalig von
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2` auf die
-versionslose URL oben. Danach sind bei HACS-Updates keine Resource-Änderungen
-mehr vorgesehen.
 
 Waze-Beispiel:
 
@@ -270,11 +266,12 @@ ohne Navigation.
 
 Die Karte zeigt standardmäßig einen separaten Navigationsbutton, sofern gültige
 Koordinaten vorhanden sind. Im visuellen Editor oder per YAML stehen
-`navigation_provider: auto`, `apple` und `google` zur Verfügung. `auto` wählt
+`navigation_provider: auto`, `apple`, `google` und `waze` zur Verfügung. `auto` wählt
 für iOS/iPadOS Apple Maps und verwendet für Android sowie Desktop den
 Google-HTTPS-Weblink. Apple- und Google-Maps-Links können je nach Browser,
 Companion-App und installierten Apps unterschiedlich behandelt werden; eine
-bestimmte App wird nicht garantiert. `navigation: false` blendet den Button aus.
+bestimmte App wird nicht garantiert. Waze wird nur bei expliziter Auswahl
+verwendet. `navigation: false` blendet den Button aus.
 
 ## Fehlerbehebung
 
