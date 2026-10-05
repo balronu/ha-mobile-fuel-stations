@@ -46,7 +46,17 @@ describe("formatting and discovery", () => {
 
 describe("card", () => {
   beforeEach(() => { document.body.innerHTML = ""; });
-  it("rejects missing entity configuration", () => { const card = new MobileFuelStationsCard(); expect(() => card.setConfig({ type: "custom:mobile-fuel-stations-card" })).toThrow(/entity/); });
+  it("renders a controlled state for missing entity configuration", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ type: "custom:mobile-fuel-stations-card" }); await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Overview-Entity auswählen"); });
+  it("selects a deterministic overview stub and ignores foreign sensors", () => {
+    const hass = { states: {
+      "sensor.foreign_nearby_stations": state("2", { station_count: 2 }),
+      "sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations": state("1", { station_count: 1, station_entities: [] }),
+      "sensor.mobile_fuel_stations_device_tracker_auto_nearby_stations": state("1", { station_count: 1, location_entity: "device_tracker.auto" }),
+    } };
+    expect(MobileFuelStationsCard.getStubConfig(hass).entity).toBe("sensor.mobile_fuel_stations_device_tracker_auto_nearby_stations");
+    expect(MobileFuelStationsCard.getStubConfig(hass, ["sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations"]).entity).toBe("sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations");
+    expect(MobileFuelStationsCard.getStubConfig({ states: {} })).toEqual({ navigation: true });
+  });
   it("renders overview, one, five and ten stations in order", async () => {
     for (const count of [1, 5, 10]) { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ type: "custom:mobile-fuel-stations-card", entity: overviewId }); card.hass = hassFor(count); await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(count); expect(card.shadowRoot?.textContent).toContain("Station 1"); }
   });
@@ -80,5 +90,12 @@ describe("card", () => {
     const select = editor.shadowRoot?.querySelector("select") as HTMLSelectElement; select.value = overviewId; select.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.entity).toBe(overviewId);
     const checkbox = editor.shadowRoot?.querySelector("input[type=checkbox]") as HTMLInputElement; checkbox.checked = false; checkbox.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation).toBe(false);
     const provider = editor.shadowRoot?.querySelectorAll("select")[1] as HTMLSelectElement; expect(Array.from(provider.options).map((option) => option.value)).toEqual(["auto", "apple", "google", "waze"]); provider.value = "waze"; provider.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation_provider).toBe("waze"); expect(changed?.detail.config.entity).toBe(overviewId); expect(changed?.detail.config.navigation).toBe(false);
+  });
+  it("registers exactly one matching custom card suggestion", () => {
+    const entry = window.customCards?.filter((card) => card.type === "mobile-fuel-stations-card");
+    const suggestion = entry?.[0] as unknown as { getEntitySuggestion: (hass: unknown, entityId: string) => unknown };
+    expect(entry).toHaveLength(1);
+    expect(suggestion.getEntitySuggestion({ states: { [overviewId]: state("1", { station_entities: [] }) } }, overviewId)).toEqual({ config: { type: "custom:mobile-fuel-stations-card", entity: overviewId } });
+    expect(suggestion.getEntitySuggestion({ states: { "sensor.foreign": state("1", { station_count: 1 }) } }, "sensor.foreign")).toBeNull();
   });
 });

@@ -89,6 +89,24 @@ function isUsableStation(state: HassState | undefined): boolean {
   return Boolean(state && !unavailable.has(state.state));
 }
 
+function isOverviewEntity(entityId: string, state: HassState | undefined): boolean {
+  if (!entityId.startsWith("sensor.") || !state) return false;
+  if (Array.isArray(state.attributes.station_entities)) return true;
+  const mobileFuelMarkers = ["location_entity", "radius", "fuel_type", "station_count"]
+    .filter((key) => state.attributes[key] !== undefined).length;
+  return entityId.endsWith("_nearby_stations") && mobileFuelMarkers >= 2;
+}
+
+export function findOverviewEntity(hass: Hass | undefined, entities: string[] = [], entitiesFallback: string[] = []): string | undefined {
+  const suggested = [...new Set([...entities, ...entitiesFallback])]
+    .filter((entityId) => isOverviewEntity(entityId, hass?.states[entityId]))
+    .sort();
+  if (suggested.length) return suggested[0];
+  return Object.keys(hass?.states ?? {})
+    .filter((entityId) => isOverviewEntity(entityId, hass?.states[entityId]))
+    .sort()[0];
+}
+
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
@@ -124,7 +142,10 @@ export class MobileFuelStationsCard extends LitElement {
 
   setConfig(config: Partial<CardConfig>): void {
     if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
-      throw new Error("Mobile Fuel Stations Card benötigt eine entity-Konfiguration.");
+      this._config = { ...(config ?? {}), type: config?.type ?? "custom:mobile-fuel-stations-card", navigation: config?.navigation !== false, navigation_provider: config?.navigation_provider ?? "auto" };
+      this._configError = this._text("selectEntity");
+      this.requestUpdate();
+      return;
     }
     this._config = { ...config, type: config.type ?? "custom:mobile-fuel-stations-card", entity: config.entity, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto" };
     this._configError = undefined;
@@ -135,7 +156,10 @@ export class MobileFuelStationsCard extends LitElement {
   get hass(): Hass | undefined { return this._hass; }
 
   static getConfigElement(): HTMLElement { return document.createElement("mobile-fuel-stations-card-editor"); }
-  static getStubConfig(): CardConfig { return { navigation: true }; }
+  static getStubConfig(hass?: Hass, entities: string[] = [], entitiesFallback: string[] = []): CardConfig {
+    const entity = findOverviewEntity(hass, entities, entitiesFallback);
+    return entity ? { entity, navigation: true } : { navigation: true };
+  }
 
   protected render() {
     if (this._configError) return this._message(this._configError);
@@ -193,9 +217,9 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _message(message: string) { return html`<ha-card><div class="message">${message}</div></ha-card>`; }
   private _locale(): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? "en-US" : "de-DE"; }
-  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound"): string {
+  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity"): string {
     const english = this._locale() === "en-US";
-    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Zur Tankstelle navigieren", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found" };
+    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigate to station", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen" };
     return values[key];
   }
   private _keyActivate(event: KeyboardEvent, id: string) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this._moreInfo(id); } }
@@ -222,7 +246,7 @@ class MobileFuelStationsCardEditor extends LitElement {
   private _changeNavigation(event: Event) { this._configChanged({ ...this._config, navigation: (event.target as HTMLInputElement).checked }); }
   private _changeProvider(event: Event) { this._configChanged({ ...this._config, navigation_provider: (event.target as HTMLSelectElement).value as NavigationProvider }); }
   private _configChanged(config: CardConfig) { this._config = config; this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config } })); }
-  private _text(key: "entity" | "choose" | "none" | "navigation" | "provider" | "auto" | "apple" | "google" | "waze"): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? { entity: "Overview entity", choose: "Select an entity", none: "No overview sensors found", navigation: "Show navigation", provider: "Navigation provider", auto: "Automatic", apple: "Apple Maps", google: "Google Maps", waze: "Waze" }[key] : { entity: "Overview-Entity", choose: "Bitte auswählen", none: "Keine Overview-Sensoren gefunden", navigation: "Navigation anzeigen", provider: "Navigationsanbieter", auto: "Automatisch", apple: "Apple Karten", google: "Google Maps", waze: "Waze" }[key]; }
+  private _text(key: "entity" | "choose" | "none" | "navigation" | "provider" | "auto" | "apple" | "google" | "waze" | "selectEntity"): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? { entity: "Overview entity", choose: "Select an entity", none: "No overview sensors found", navigation: "Show navigation", provider: "Navigation provider", auto: "Automatic", apple: "Apple Maps", google: "Google Maps", waze: "Waze", selectEntity: "Select an overview entity" }[key] : { entity: "Overview-Entity", choose: "Bitte auswählen", none: "Keine Overview-Sensoren gefunden", navigation: "Navigation anzeigen", provider: "Navigationsanbieter", auto: "Automatisch", apple: "Apple Karten", google: "Google Maps", waze: "Waze", selectEntity: "Bitte eine Overview-Entity auswählen" }[key]; }
 }
 
 if (!customElements.get("mobile-fuel-stations-card")) {
@@ -235,5 +259,5 @@ if (!customElements.get("mobile-fuel-stations-card-editor")) {
 declare global { interface Window { customCards?: Array<Record<string, unknown>>; } }
 window.customCards = window.customCards ?? [];
 if (!window.customCards.some((card) => card.type === "mobile-fuel-stations-card")) {
-  window.customCards.push({ type: "mobile-fuel-stations-card", name: "Mobile Fuel Stations", description: "Nearby fuel stations from the Mobile Fuel Stations integration", getEntitySuggestion: (hass: Hass, entityId: string) => hass.states[entityId] && (Array.isArray(hass.states[entityId]?.attributes.station_entities) || entityId.endsWith("_nearby_stations")) ? { config: { type: "custom:mobile-fuel-stations-card", entity: entityId } } : null });
+  window.customCards.push({ type: "mobile-fuel-stations-card", name: "Mobile Fuel Stations", description: "Nearby fuel stations from the Mobile Fuel Stations integration", getEntitySuggestion: (hass: Hass, entityId: string) => isOverviewEntity(entityId, hass.states[entityId]) ? { config: { type: "custom:mobile-fuel-stations-card", entity: entityId } } : null });
 }
