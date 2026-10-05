@@ -19,7 +19,7 @@ moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.
   connect it to the navigation mechanism supported by their client/device.
 - Diagnostics that exclude API keys and exact coordinates.
 
-## Dashboard card — beta preview (`v0.2.0-beta.2`)
+## Dashboard card — beta preview (`v0.2.0-beta.3`)
 
 This beta adds `custom:mobile-fuel-stations-card` to the same HACS integration.
 The bundle is delivered with the integration. After installation and restart,
@@ -46,6 +46,11 @@ YAML can use `navigation_provider: auto|apple|google`. The versionless resource
 URL remains unchanged across HACS updates. A browser/Companion cache may still
 need a reload. A station slot's displayed name follows the current station,
 while its entity ID and unique ID remain stable.
+
+Existing beta-2 testers should change their resource once from
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2` to the
+versionless URL above. Future HACS updates are not expected to require another
+resource change.
 
 ## Requirements
 

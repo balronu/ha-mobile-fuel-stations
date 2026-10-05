@@ -25,7 +25,7 @@ Objekte.
 - Diagnostics ohne API-Key und ohne exakte Koordinaten.
 - Englische und deutsche UI-Übersetzungen.
 
-## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.2`)
+## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.3`)
 
 Diese Beta ergänzt `custom:mobile-fuel-stations-card` in derselben HACS-
 Integration. Das Bundle wird mit der Integration ausgeliefert. Nach
@@ -54,6 +54,11 @@ auch per YAML möglich. Die versionslose Resource-URL bleibt bei HACS-Updates
 gleich. Ein Browser-/Companion-Cache kann trotzdem einen Neuladevorgang
 erfordern. Der Anzeigename eines Stations-Slots folgt dem aktuellen
 Tankstellenname, während Entity-ID und Unique-ID stabil bleiben.
+
+Bestehende Beta-2-Tester ändern ihre bisherige Resource einmalig von
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2` auf die
+versionslose URL oben. Danach sind bei HACS-Updates keine Resource-Änderungen
+mehr vorgesehen.
 
 ## Voraussetzungen
 

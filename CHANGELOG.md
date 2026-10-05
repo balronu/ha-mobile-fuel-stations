@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.0-beta.3 — Dritter Beta-Stand
+
+### Deutsch
+
+- Apple-Karten-, Google-Maps- und automatische Navigation ergänzt.
+- Verbesserte iOS-Navigation sowie dauerhafte versionslose Lovelace-Resource.
+- Beta-2-Tester müssen die Resource einmalig auf
+  `/mobile_fuel_stations/mobile-fuel-stations-card.js` umstellen.
+- Brand-Deduplizierung und sichtbare aktuelle Tankstellennamen verbessert.
+- Visuellen Editor um den Navigationsanbieter erweitert.
+- Zusätzliche Frontend-/Backend-Tests sowie reproduzierbares Bundle ergänzt.
+
+### English
+
+- Added Apple Maps, Google Maps, and automatic navigation.
+- Improved iOS navigation and introduced a durable versionless Lovelace resource.
+- Beta-2 testers must change the resource once to
+  `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
+- Improved brand de-duplication and current visible station names.
+- Extended the visual editor with navigation-provider selection.
+- Added frontend/backend coverage and a reproducible runtime bundle.
+
+This remains a beta release. Client handling of map links and browser/Companion
+caching can still vary by platform.
+
 ## Unreleased — Runde 4
 
 ### English
