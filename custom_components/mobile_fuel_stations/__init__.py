@@ -6,11 +6,13 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN
 from .coordinator import MobileFuelStationsCoordinator
 
 PLATFORMS = [Platform.SENSOR]
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 type MobileFuelStationsConfigEntry = ConfigEntry[MobileFuelStationsCoordinator]
 
 _FRONTEND_DIR = Path(__file__).parent / "frontend"

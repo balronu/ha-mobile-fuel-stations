@@ -3,6 +3,7 @@
   "name": "Mobile Fuel Stations",
   "codeowners": ["@balronu"],
   "config_flow": true,
+  "dependencies": ["http"],
   "documentation": "https://github.com/balronu/ha-mobile-fuel-stations",
   "integration_type": "service",
   "iot_class": "cloud_polling",
