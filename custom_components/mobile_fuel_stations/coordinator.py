@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import json
 import logging
 from math import asin, cos, radians, sin, sqrt
-from typing import Any
+from typing import Any, Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
@@ -26,11 +27,16 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     DOMAIN,
     MAX_API_RADIUS_KM,
+    PROVIDER_PETROMAP,
+    PROVIDER_TANKERKOENIG,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
 from .providers import create_provider
 from .providers.base import ProviderAuthError, ProviderError, ProviderRateLimitError, StationSearchQuery
+from .providers import PROVIDER_REGISTRY
+from .providers.policy import AutoProviderDecision, CountryHysteresis, choose_auto_provider
+from .country_resolver import resolve
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,6 +65,43 @@ def haversine_km(first: tuple[float, float], second: tuple[float, float]) -> flo
     return 6371.0088 * 2 * asin(sqrt(a))
 
 
+class CountryAutoContext:
+    """Prepare country/provider context without changing the active provider."""
+
+    def __init__(
+        self,
+        fuel_type: str,
+        resolver: Callable[[float, float], str | None] = resolve,
+    ) -> None:
+        self.fuel_type = fuel_type
+        self._resolver = resolver
+        self._hysteresis = CountryHysteresis()
+        self.raw_country: str | None = None
+        self.confirmed_country: str | None = None
+        self.auto_provider_decision: AutoProviderDecision | None = None
+
+    def observe_position(self, position: tuple[float, float]) -> AutoProviderDecision:
+        """Resolve one relevant GPS position and evaluate the offline policy."""
+
+        try:
+            self.raw_country = self._resolver(position[0], position[1])
+        except (OSError, json.JSONDecodeError, KeyError) as err:
+            _LOGGER.warning("Offline country resolver unavailable (%s)", type(err).__name__)
+            self.raw_country = None
+        self.confirmed_country = self._hysteresis.observe(self.raw_country)
+        tankerkoenig = PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG]
+        petromap = PROVIDER_REGISTRY[PROVIDER_PETROMAP]
+        self.auto_provider_decision = choose_auto_provider(
+            self.confirmed_country,
+            self.fuel_type,
+            tankerkoenig_enabled=tankerkoenig.enabled,
+            tankerkoenig_capabilities=tankerkoenig.capabilities,
+            petromap_enabled=petromap.enabled,
+            petromap_capabilities=petromap.capabilities,
+        )
+        return self.auto_provider_decision
+
+
 class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
     """Fetch and retain nearby stations."""
 
@@ -83,6 +126,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._unsub_position = None
         self._movement_refresh_scheduled = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
+        self.country_auto_context = CountryAutoContext(self.options[CONF_FUEL_TYPE])
 
     async def async_setup(self) -> None:
         stored = await self._store.async_load()
@@ -116,6 +160,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             if self.stations:
                 return self.stations
             raise UpdateFailed("Location entity has no valid GPS coordinates")
+        self.country_auto_context.observe_position(position)
         now = datetime.now().astimezone()
         self.last_request = now
         try:

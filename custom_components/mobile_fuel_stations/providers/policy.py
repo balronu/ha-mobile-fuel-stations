@@ -1,8 +1,8 @@
-"""Pure, offline provider-selection policy for a future auto mode.
+"""Pure, offline provider-selection primitives for the future auto mode.
 
-This module is intentionally not imported by the coordinator or registry.
-R2C-3 only prepares deterministic policy primitives; it does not resolve
-coordinates to countries and does not activate ``auto`` or Petromap.
+The coordinator may evaluate these primitives to prepare internal context,
+but the registry still controls the active provider. This module performs no
+I/O, does not resolve coordinates, and does not activate ``auto`` or Petromap.
 """
 
 from __future__ import annotations
