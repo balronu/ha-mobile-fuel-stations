@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && vite build && node scripts/clean-bundle.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/clean-bundle.mjs && node scripts/copy-bundle.mjs",
     "test": "vitest run"
   },
   "dependencies": {

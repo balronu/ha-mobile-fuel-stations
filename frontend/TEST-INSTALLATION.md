@@ -1,34 +1,27 @@
-# Testinstallation der Karte
+# Testinstallation der Karte über HACS
 
-Die gebaute Datei liegt nach `npm run build` unter:
+HACS installiert die Integration einschließlich des produktiven Bundles unter
+`custom_components/mobile_fuel_stations/frontend/mobile-fuel-stations-card.js`.
+Die Build-Quelle liegt unter `frontend/`; das Bundle wird beim Build automatisch
+in die Integration kopiert. Eine manuelle Kopie nach `/config/www` ist nicht
+erforderlich.
 
-`frontend/dist/mobile-fuel-stations-card.js`
+Die stabile URL nach dem Home-Assistant-Neustart ist:
 
-## Testweise nach Home Assistant kopieren
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.1.0`
 
-Die Datei kann für einen isolierten Test als statische Lovelace-Ressource in das
-`/config/www/`-Verzeichnis der Home-Assistant-Testinstanz kopiert werden, zum
-Beispiel:
+## Einmalige Lovelace-Ressource
 
-```sh
-scp frontend/dist/mobile-fuel-stations-card.js \
-  <ha-host>:/config/www/mobile-fuel-stations-card.js
-```
+Die Integration stellt den statischen Pfad automatisch bereit. Home Assistant
+bietet für Custom Integrations jedoch keine öffentliche, robuste API zur
+automatischen Änderung der Lovelace-Resource-Registry. Deshalb einmalig unter
+**Einstellungen → Dashboards → Ressourcen** anlegen:
 
-Alternativ kann sie über den Datei-Editor oder die vorhandene
-Home-Assistant-Dateiübertragung nach `/config/www/mobile-fuel-stations-card.js`
-übertragen werden. Diese Anleitung führt die Installation nicht automatisch aus.
+- URL: `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.1.0`
+- Ressourcentyp: `JavaScript-Modul` bzw. `module`
 
-## Lovelace-Ressource
-
-Unter **Einstellungen → Dashboards → Ressourcen** eine JavaScript-Ressource
-anlegen:
-
-- URL: `/local/mobile-fuel-stations-card.js`
-- Ressourcentyp: `JavaScript-Modul`
-
-Nach dem Laden der Ressource den Browser-Cache für den Test-Dashboard-Tab
-aktualisieren.
+Bei einem späteren Release wird die Versionsnummer im URL-Query deterministisch
+erhöht; den eigenen Resource-Eintrag dann einmal auf die neue URL aktualisieren.
 
 ## Minimales Karten-YAML
 

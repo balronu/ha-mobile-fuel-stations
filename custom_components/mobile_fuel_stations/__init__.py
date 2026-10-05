@@ -1,5 +1,8 @@
 """Mobile Fuel Stations integration."""
 
+from pathlib import Path
+
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -9,6 +12,19 @@ from .coordinator import MobileFuelStationsCoordinator
 
 PLATFORMS = [Platform.SENSOR]
 type MobileFuelStationsConfigEntry = ConfigEntry[MobileFuelStationsCoordinator]
+
+_FRONTEND_DIR = Path(__file__).parent / "frontend"
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the integration-wide frontend path once per HA instance."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get("frontend_registered"):
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(f"/{DOMAIN}", str(_FRONTEND_DIR), True)]
+        )
+        domain_data["frontend_registered"] = True
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfigEntry) -> bool:
