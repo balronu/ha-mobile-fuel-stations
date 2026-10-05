@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -13,6 +15,24 @@ from .coordinator import MobileFuelStationsCoordinator
 
 
 type MobileFuelStationsEntry = ConfigEntry[MobileFuelStationsCoordinator]
+
+
+def _registered_station_entity_ids(hass, entry: ConfigEntry, station_count: int) -> list[str]:
+    """Return this entry's registered station-slot entity IDs in slot order.
+
+    The station entity IDs are allocated by Home Assistant.  Resolve them from
+    the entity registry using the slots' stable unique IDs instead of
+    reconstructing entity IDs from a slug or an assumed naming convention.
+    """
+
+    registry = er.async_get(hass)
+    entity_ids: list[str] = []
+    for index in range(station_count):
+        unique_id = f"{entry.entry_id}_station_slot_{index + 1}"
+        entity_id = registry.async_get_entity_id(SENSOR_DOMAIN, DOMAIN, unique_id)
+        if entity_id is not None:
+            entity_ids.append(entity_id)
+    return entity_ids
 
 
 def _device_info(entry: ConfigEntry) -> DeviceInfo:
@@ -42,6 +62,7 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
 
     def __init__(self, coordinator, entry) -> None:
         super().__init__(coordinator)
+        self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_nearby_stations"
         self._attr_device_info = _device_info(entry)
 
@@ -56,7 +77,10 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "radius": self.coordinator.config["radius"],
             "fuel_type": self.coordinator.config["fuel_type"],
             "location_entity": self.coordinator.config["location_entity"],
-            "station_count": self.coordinator.config["station_count"],
+            "station_count": len(self.coordinator.data or []),
+            "station_entities": _registered_station_entity_ids(
+                self.hass, self._entry, int(self.coordinator.config[CONF_STATION_COUNT])
+            ),
             "last_successful_update": self.coordinator.last_successful_update.isoformat()
             if self.coordinator.last_successful_update
             else None,
