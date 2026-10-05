@@ -66,6 +66,26 @@ navigation_provider: waze
 
 Sygic is not included in v0.2.0.
 
+### Planned for v0.3.0: automatic card registration
+
+For a new installation from v0.3.0 onward, the integration is planned to load
+the card bundle automatically after HACS installation and a Home Assistant
+restart. A manual entry under **Settings → Dashboards → Resources** will then
+no longer be required. The canonical path remains unchanged:
+
+```text
+/mobile_fuel_stations/mobile-fuel-stations-card.js
+```
+
+Users upgrading from v0.2.0 or earlier who already have this path registered
+manually should first update and restart Home Assistant, then verify that the
+card and card editor work. Afterwards, that old manual resource entry can be
+removed; the integration's static path must not be removed. Fully reload the
+Home Assistant frontend or Companion App if needed.
+
+Sygic is not planned as a supported provider for v0.3.0 either; the available
+providers remain Automatic, Apple Maps, Google Maps, and Waze.
+
 ## Requirements
 
 - Home Assistant 2026.2 or newer.

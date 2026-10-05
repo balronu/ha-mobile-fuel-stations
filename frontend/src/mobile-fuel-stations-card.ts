@@ -225,8 +225,12 @@ class MobileFuelStationsCardEditor extends LitElement {
   private _text(key: "entity" | "choose" | "none" | "navigation" | "provider" | "auto" | "apple" | "google" | "waze"): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? { entity: "Overview entity", choose: "Select an entity", none: "No overview sensors found", navigation: "Show navigation", provider: "Navigation provider", auto: "Automatic", apple: "Apple Maps", google: "Google Maps", waze: "Waze" }[key] : { entity: "Overview-Entity", choose: "Bitte auswählen", none: "Keine Overview-Sensoren gefunden", navigation: "Navigation anzeigen", provider: "Navigationsanbieter", auto: "Automatisch", apple: "Apple Karten", google: "Google Maps", waze: "Waze" }[key]; }
 }
 
-customElements.define("mobile-fuel-stations-card", MobileFuelStationsCard);
-customElements.define("mobile-fuel-stations-card-editor", MobileFuelStationsCardEditor);
+if (!customElements.get("mobile-fuel-stations-card")) {
+  customElements.define("mobile-fuel-stations-card", MobileFuelStationsCard);
+}
+if (!customElements.get("mobile-fuel-stations-card-editor")) {
+  customElements.define("mobile-fuel-stations-card-editor", MobileFuelStationsCardEditor);
+}
 
 declare global { interface Window { customCards?: Array<Record<string, unknown>>; } }
 window.customCards = window.customCards ?? [];

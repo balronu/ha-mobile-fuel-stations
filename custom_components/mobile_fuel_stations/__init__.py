@@ -2,13 +2,14 @@
 
 from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN
+from .const import DOMAIN, FRONTEND_URL
 from .coordinator import MobileFuelStationsCoordinator
 
 PLATFORMS = [Platform.SENSOR]
@@ -25,6 +26,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         await hass.http.async_register_static_paths(
             [StaticPathConfig(f"/{DOMAIN}", str(_FRONTEND_DIR), False)]
         )
+        add_extra_js_url(hass, FRONTEND_URL)
         domain_data["frontend_registered"] = True
     return True
 
