@@ -19,7 +19,7 @@ moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.
   connect it to the navigation mechanism supported by their client/device.
 - Diagnostics that exclude API keys and exact coordinates.
 
-## Dashboard card — beta preview (`v0.2.0-beta.3`)
+## Dashboard card — beta preview (`v0.2.0-beta.4`)
 
 This beta adds `custom:mobile-fuel-stations-card` to the same HACS integration.
 The bundle is delivered with the integration. After installation and restart,
@@ -35,6 +35,10 @@ Then use:
 type: custom:mobile-fuel-stations-card
 entity: <OVERVIEW_ENTITY>
 ```
+
+Beta 4 also fixes the HTTP 500 when opening integration options and uses the
+current Home Assistant OptionsFlow API. Existing config entries require no
+migration, and the API key remains protected in the config-entry data.
 
 The beta includes a visual editor for selecting the overview entity and a
 separate navigation button per station. Navigation is enabled by default and

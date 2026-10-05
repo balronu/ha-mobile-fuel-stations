@@ -25,7 +25,7 @@ Objekte.
 - Diagnostics ohne API-Key und ohne exakte Koordinaten.
 - Englische und deutsche UI-Übersetzungen.
 
-## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.3`)
+## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.4`)
 
 Diese Beta ergänzt `custom:mobile-fuel-stations-card` in derselben HACS-
 Integration. Das Bundle wird mit der Integration ausgeliefert. Nach
@@ -41,6 +41,11 @@ Minimale Karte:
 type: custom:mobile-fuel-stations-card
 entity: <OVERVIEW_ENTITY>
 ```
+
+Beta 4 behebt außerdem den HTTP-500-Fehler beim Öffnen der Integrationsoptionen
+über das Zahnrad und verwendet die aktuelle Home-Assistant-OptionsFlow-API.
+Bestehende Config Entries benötigen keine Migration; der API-Key bleibt in den
+Config-Entry-Daten geschützt.
 
 Die Beta enthält einen visuellen Editor zur Auswahl des Overview-Sensors und
 einen separaten Navigationsbutton pro Station. Navigation ist standardmäßig

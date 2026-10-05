@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.2.0-beta.4 — Vierter Beta-Stand
+
+### Deutsch
+
+- HTTP-500-Fehler beim Öffnen der Integrationsoptionen über das Zahnrad behoben.
+- Options-Flow an die aktuelle Home-Assistant-API angepasst; bestehende
+  Config-Entries benötigen keine Migration.
+- Neue Regressionstests für bestehende Config-Entries, leere Optionen,
+  Defaultwerte und geschützte API-Key-Daten ergänzt.
+- Apple Maps Directions und Google Maps Directions statt einfacher Ortssuche.
+- AUTO-Plattformerkennung sowie explizite Auswahl Automatisch / Apple Karten /
+  Google Maps verbessert.
+- Entity-IDs und Unique-IDs bleiben unverändert; bestehende YAML-Karten bleiben
+  kompatibel.
+- Der kanonische versionslose Resource-Pfad bleibt unverändert.
+
+### English
+
+- Fixed the HTTP 500 when opening integration options from the gear icon.
+- Updated the options flow for the current Home Assistant OptionsFlow API;
+  existing config entries require no migration.
+- Added regression coverage for legacy entries, empty options, defaults, and
+  protected API-key data.
+- Switched Apple Maps and Google Maps navigation from place search to directions.
+- Improved automatic platform detection and explicit Automatic / Apple Maps /
+  Google Maps provider selection.
+- Entity IDs and unique IDs remain unchanged; existing YAML cards stay
+  compatible.
+- The canonical versionless resource path remains unchanged.
+
+This remains a beta release for controlled HACS/Home Assistant testing.
+
 ## 0.2.0-beta.3 — Dritter Beta-Stand
 
 ### Deutsch
