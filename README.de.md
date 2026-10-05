@@ -25,6 +25,25 @@ Objekte.
 - Diagnostics ohne API-Key und ohne exakte Koordinaten.
 - Englische und deutsche UI-Übersetzungen.
 
+## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.1`)
+
+Diese Beta ergänzt `custom:mobile-fuel-stations-card` in derselben HACS-
+Integration. Das Bundle wird mit der Integration ausgeliefert. Nach
+Installation und Neustart die Lovelace-Resource einmalig registrieren:
+
+```text
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.1
+```
+
+Minimale Karte:
+
+```yaml
+type: custom:mobile-fuel-stations-card
+entity: <OVERVIEW_ENTITY>
+```
+
+Die Beta enthält noch keine Navigation und keinen visuellen Karteneditor.
+
 ## Voraussetzungen
 
 - Home Assistant 2026.2 oder neuer.

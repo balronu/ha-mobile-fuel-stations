@@ -8,7 +8,7 @@ erforderlich.
 
 Die stabile URL nach dem Home-Assistant-Neustart ist:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.1.0`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.1`
 
 ## Einmalige Lovelace-Ressource
 
@@ -17,7 +17,7 @@ bietet für Custom Integrations jedoch keine öffentliche, robuste API zur
 automatischen Änderung der Lovelace-Resource-Registry. Deshalb einmalig unter
 **Einstellungen → Dashboards → Ressourcen** anlegen:
 
-- URL: `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.1.0`
+- URL: `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.1`
 - Ressourcentyp: `JavaScript-Modul` bzw. `module`
 
 Bei einem späteren Release wird die Versionsnummer im URL-Query deterministisch

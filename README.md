@@ -19,6 +19,25 @@ moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.
   connect it to the navigation mechanism supported by their client/device.
 - Diagnostics that exclude API keys and exact coordinates.
 
+## Dashboard card — beta preview (`v0.2.0-beta.1`)
+
+This beta adds `custom:mobile-fuel-stations-card` to the same HACS integration.
+The bundle is delivered with the integration. After installation and restart,
+register this Lovelace resource once:
+
+```text
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.1
+```
+
+Then use:
+
+```yaml
+type: custom:mobile-fuel-stations-card
+entity: <OVERVIEW_ENTITY>
+```
+
+The beta has no navigation or visual card editor yet.
+
 ## Requirements
 
 - Home Assistant 2026.2 or newer.

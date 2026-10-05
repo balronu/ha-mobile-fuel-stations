@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -36,4 +37,13 @@ def test_frontend_bundle_and_versioned_resource_url():
 
 
 def test_frontend_resource_url_is_deterministic():
-    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.1.0"
+    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.1"
+
+
+def test_beta_versions_are_synchronized():
+    root = Path(__file__).parents[1]
+    manifest = json.loads(
+        (root / "custom_components" / DOMAIN / "manifest.json").read_text()
+    )
+    package = json.loads((root / "frontend" / "package.json").read_text())
+    assert manifest["version"] == FRONTEND_VERSION == package["version"]
