@@ -31,6 +31,9 @@ describe("formatting and discovery", () => {
     expect(buildNavigationUrl(49.123, 8.456, "apple", "Tankstelle Ä")).toBe("https://maps.apple.com/directions?destination=49.123%2C8.456&mode=driving");
     expect(buildNavigationUrl(49.123, 8.456, "google", "Tankstelle Ä")).toContain("google.com/maps/dir/");
     expect(buildNavigationUrl(49.123, 8.456, "google")).not.toContain("origin=");
+    expect(buildNavigationUrl(49.123, 8.456, "waze")).toBe("https://www.waze.com/ul?ll=49.123%2C8.456&navigate=yes");
+    expect(buildNavigationUrl(49.123, 8.456, "waze")).not.toContain("waze://");
+    expect(buildNavigationUrl(49.123, 8.456, "waze")).not.toContain("origin=");
     expect(detectNavigationProvider("auto", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")).toBe("apple");
     expect(detectNavigationProvider("auto", "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)")).toBe("apple");
     expect(detectNavigationProvider("auto", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", 5)).toBe("apple");
@@ -76,6 +79,6 @@ describe("card", () => {
     let changed: CustomEvent | undefined; editor.addEventListener("config-changed", (event) => { changed = event as CustomEvent; });
     const select = editor.shadowRoot?.querySelector("select") as HTMLSelectElement; select.value = overviewId; select.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.entity).toBe(overviewId);
     const checkbox = editor.shadowRoot?.querySelector("input[type=checkbox]") as HTMLInputElement; checkbox.checked = false; checkbox.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation).toBe(false);
-    const provider = editor.shadowRoot?.querySelectorAll("select")[1] as HTMLSelectElement; provider.value = "apple"; provider.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation_provider).toBe("apple");
+    const provider = editor.shadowRoot?.querySelectorAll("select")[1] as HTMLSelectElement; expect(Array.from(provider.options).map((option) => option.value)).toEqual(["auto", "apple", "google", "waze"]); provider.value = "waze"; provider.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation_provider).toBe("waze"); expect(changed?.detail.config.entity).toBe(overviewId); expect(changed?.detail.config.navigation).toBe(false);
   });
 });

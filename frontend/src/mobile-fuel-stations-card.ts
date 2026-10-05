@@ -10,7 +10,7 @@ type Hass = {
   locale?: { language?: string };
 };
 
-export type NavigationProvider = "auto" | "apple" | "google";
+export type NavigationProvider = "auto" | "apple" | "google" | "waze";
 type CardConfig = { type?: string; entity?: string; navigation?: boolean; navigation_provider?: NavigationProvider };
 
 const unavailable = new Set(["unknown", "unavailable"]);
@@ -51,7 +51,7 @@ export function validCoordinate(value: unknown, minimum: number, maximum: number
 }
 
 export function detectNavigationProvider(provider: NavigationProvider = "auto", userAgent = globalThis.navigator?.userAgent ?? "", maxTouchPoints = globalThis.navigator?.maxTouchPoints ?? 0): Exclude<NavigationProvider, "auto"> {
-  if (provider === "apple" || provider === "google") return provider;
+  if (provider === "apple" || provider === "google" || provider === "waze") return provider;
   const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || (/Macintosh/i.test(userAgent) && /Mac OS X/i.test(userAgent) && maxTouchPoints > 1);
   return isIOS ? "apple" : "google";
 }
@@ -60,8 +60,12 @@ export function buildNavigationUrl(latitude: unknown, longitude: unknown, provid
   const lat = validCoordinate(latitude, -90, 90);
   const lon = validCoordinate(longitude, -180, 180);
   if (lat === null || lon === null) return null;
-  if (detectNavigationProvider(provider, userAgent) === "apple") {
+  const resolvedProvider = detectNavigationProvider(provider, userAgent);
+  if (resolvedProvider === "apple") {
     return `https://maps.apple.com/directions?destination=${encodeURIComponent(`${lat},${lon}`)}&mode=driving`;
+  }
+  if (resolvedProvider === "waze") {
+    return `https://www.waze.com/ul?ll=${encodeURIComponent(`${lat},${lon}`)}&navigate=yes`;
   }
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lon}`)}&travelmode=driving&dir_action=navigate`;
 }
@@ -211,14 +215,14 @@ class MobileFuelStationsCardEditor extends LitElement {
   set hass(value: Hass) { this._hass = value; this.requestUpdate(); }
   protected render() {
     const entities = Object.entries(this._hass?.states ?? {}).filter(([id, value]) => this._isOverview(id, value));
-    return html`<label>${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label><div class="row"><label><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}> ${this._text("navigation")}</label></div><div class="row"><label>${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option></select></label></div>`;
+    return html`<label>${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label><div class="row"><label><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}> ${this._text("navigation")}</label></div><div class="row"><label>${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option><option value="waze">${this._text("waze")}</option></select></label></div>`;
   }
   private _isOverview(id: string, value: HassState | undefined): boolean { return Boolean(id.startsWith("sensor.") && value && (Array.isArray(value.attributes.station_entities) || (id.endsWith("_nearby_stations") && value.attributes.station_count !== undefined))); }
   private _changeEntity(event: Event) { this._configChanged({ ...this._config, entity: (event.target as HTMLSelectElement).value }); }
   private _changeNavigation(event: Event) { this._configChanged({ ...this._config, navigation: (event.target as HTMLInputElement).checked }); }
   private _changeProvider(event: Event) { this._configChanged({ ...this._config, navigation_provider: (event.target as HTMLSelectElement).value as NavigationProvider }); }
   private _configChanged(config: CardConfig) { this._config = config; this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config } })); }
-  private _text(key: "entity" | "choose" | "none" | "navigation" | "provider" | "auto" | "apple" | "google"): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? { entity: "Overview entity", choose: "Select an entity", none: "No overview sensors found", navigation: "Show navigation", provider: "Navigation provider", auto: "Automatic", apple: "Apple Maps", google: "Google Maps" }[key] : { entity: "Overview-Entity", choose: "Bitte auswählen", none: "Keine Overview-Sensoren gefunden", navigation: "Navigation anzeigen", provider: "Navigationsanbieter", auto: "Automatisch", apple: "Apple Karten", google: "Google Maps" }[key]; }
+  private _text(key: "entity" | "choose" | "none" | "navigation" | "provider" | "auto" | "apple" | "google" | "waze"): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? { entity: "Overview entity", choose: "Select an entity", none: "No overview sensors found", navigation: "Show navigation", provider: "Navigation provider", auto: "Automatic", apple: "Apple Maps", google: "Google Maps", waze: "Waze" }[key] : { entity: "Overview-Entity", choose: "Bitte auswählen", none: "Keine Overview-Sensoren gefunden", navigation: "Navigation anzeigen", provider: "Navigationsanbieter", auto: "Automatisch", apple: "Apple Karten", google: "Google Maps", waze: "Waze" }[key]; }
 }
 
 customElements.define("mobile-fuel-stations-card", MobileFuelStationsCard);
