@@ -12,5 +12,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: python -m pip install --upgrade pip pytest aiohttp
+      - run: python -m pip install --upgrade pip pytest aiohttp homeassistant==2026.9.4
       - run: pytest -q
