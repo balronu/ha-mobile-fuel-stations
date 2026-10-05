@@ -125,3 +125,11 @@ def test_legacy_entry_with_empty_options_gets_a_complete_form():
     assert values[CONF_RADIUS] == DEFAULT_RADIUS
     assert values[CONF_FUEL_TYPE] == "diesel"
     assert values[CONF_STATION_COUNT] == DEFAULT_STATION_COUNT
+
+
+def test_legacy_radius_above_provider_limit_is_loaded_defensively():
+    entry = _entry({**_data(), CONF_RADIUS: 50.0}, {})
+    flow = _flow(entry)
+    result = asyncio.run(flow.async_step_init())
+    values = result["data_schema"]({})
+    assert values[CONF_RADIUS] == 25.0

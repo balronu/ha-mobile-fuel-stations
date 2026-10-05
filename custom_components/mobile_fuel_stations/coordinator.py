@@ -20,6 +20,8 @@ from .api import (
     MobileFuelStationsRateLimitError,
     Station,
     TankerkoenigClient,
+    cheapest_station,
+    nearest_station,
     sort_stations,
 )
 from .const import (
@@ -32,6 +34,7 @@ from .const import (
     CONF_STATION_COUNT,
     CONF_UPDATE_INTERVAL,
     DOMAIN,
+    MAX_API_RADIUS_KM,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
@@ -79,6 +82,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         )
         self.client = TankerkoenigClient(async_get_clientsession(hass), entry.data["api_key"])
         self.stations: list[Station] = []
+        self.nearest_station: Station | None = None
+        self.cheapest_station: Station | None = None
         self.last_successful_update: datetime | None = None
         self.reference_position: tuple[float, float] | None = None
         self.last_request: datetime | None = None
@@ -122,7 +127,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self.last_request = now
         try:
             result = await self.client.async_search(
-                position[0], position[1], float(self.options[CONF_RADIUS]), self.options[CONF_FUEL_TYPE]
+                position[0],
+                position[1],
+                min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
+                self.options[CONF_FUEL_TYPE],
             )
         except MobileFuelStationsAuthError as err:
             raise UpdateFailed("API authentication failed") from err
@@ -130,6 +138,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             raise UpdateFailed("API rate limit reached") from err
         except MobileFuelStationsError as err:
             raise UpdateFailed("Tankerkönig request failed") from err
+        self.nearest_station = nearest_station(result)
+        self.cheapest_station = cheapest_station(result)
         self.stations = sort_stations(result, int(self.options[CONF_STATION_COUNT]))
         self.last_successful_update = now
         self.reference_position = position

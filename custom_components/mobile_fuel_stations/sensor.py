@@ -9,7 +9,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import Station
+from .api import Station, station_attributes
 from .const import CONF_STATION_COUNT, DOMAIN
 from .coordinator import MobileFuelStationsCoordinator
 
@@ -87,6 +87,8 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "reference_latitude": ref[0] if ref else None,
             "reference_longitude": ref[1] if ref else None,
             "distance_since_last_search": self.coordinator.current_distance_km,
+            "nearest_station": station_attributes(self.coordinator.nearest_station),
+            "cheapest_station": station_attributes(self.coordinator.cheapest_station),
         }
 
 

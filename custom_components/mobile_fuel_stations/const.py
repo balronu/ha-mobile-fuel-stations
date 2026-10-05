@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 DOMAIN = "mobile_fuel_stations"
-FRONTEND_VERSION = "0.3.1"
+FRONTEND_VERSION = "0.4.0-beta.1"
 FRONTEND_FILENAME = "mobile-fuel-stations-card.js"
 FRONTEND_URL = f"/{DOMAIN}/{FRONTEND_FILENAME}"
 FRONTEND_RESOURCE_URL = FRONTEND_URL
@@ -31,3 +31,4 @@ STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}.state"
 
 DEFAULT_TIMEOUT = timedelta(seconds=15)
+MAX_API_RADIUS_KM = 25.0

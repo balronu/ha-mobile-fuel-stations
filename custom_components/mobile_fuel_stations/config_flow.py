@@ -28,11 +28,13 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     MIN_UPDATE_INTERVAL,
+    MAX_API_RADIUS_KM,
 )
 
 
 def _schema(defaults: dict[str, Any], include_key: bool) -> vol.Schema:
     schema: dict[Any, Any] = {}
+    radius_default = min(float(defaults.get(CONF_RADIUS, DEFAULT_RADIUS)), MAX_API_RADIUS_KM)
     if include_key:
         schema[vol.Required(CONF_API_KEY, default=defaults.get(CONF_API_KEY, ""))] = selector.TextSelector(
             selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
@@ -42,8 +44,8 @@ def _schema(defaults: dict[str, Any], include_key: bool) -> vol.Schema:
             vol.Required(CONF_LOCATION_ENTITY, default=defaults.get(CONF_LOCATION_ENTITY, "")): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["device_tracker", "sensor"])
             ),
-            vol.Required(CONF_RADIUS, default=defaults.get(CONF_RADIUS, DEFAULT_RADIUS)): vol.All(
-                vol.Coerce(float), vol.Range(min=1, max=100)
+            vol.Required(CONF_RADIUS, default=radius_default): vol.All(
+                vol.Coerce(float), vol.Range(min=1, max=MAX_API_RADIUS_KM)
             ),
             vol.Required(CONF_FUEL_TYPE, default=defaults.get(CONF_FUEL_TYPE, DEFAULT_FUEL_TYPE)): vol.In(
                 ["diesel", "e5", "e10"]

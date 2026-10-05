@@ -10,18 +10,35 @@ type Hass = {
   locale?: { language?: string };
 };
 
+type HighlightStation = {
+  station_id?: string;
+  station_name?: string;
+  brand?: string;
+  price?: number | null;
+  distance?: number | null;
+  is_open?: boolean;
+  street?: string;
+  house_number?: string;
+  postcode?: string | number;
+  place?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
 export type NavigationProvider = "auto" | "apple" | "google" | "waze";
 type CardConfig = { type?: string; entity?: string; navigation?: boolean; navigation_provider?: NavigationProvider };
 
 const unavailable = new Set(["unknown", "unavailable"]);
 
 export function formatPrice(value: unknown, locale = "de-DE"): string | null {
+  if (value === null || value === undefined || value === "") return null;
   const number = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(number)) return null;
   return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(number)} €/l`;
 }
 
 export function formatDistance(value: unknown, locale = "de-DE"): string | null {
+  if (value === null || value === undefined || value === "") return null;
   const number = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(number)) return null;
   return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(number)} km`;
@@ -133,6 +150,14 @@ export class MobileFuelStationsCard extends LitElement {
     .open { color: var(--success-color, var(--primary-color)); }
     .closed { color: var(--secondary-text-color); }
     .message { color: var(--secondary-text-color); }
+    .highlights { display: grid; gap: 8px; margin-bottom: 12px; }
+    .highlight { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; border: 1px solid var(--divider-color); border-radius: var(--ha-card-border-radius, 12px); padding: 12px; }
+    .highlight.is-link { cursor: pointer; }
+    .highlight.is-link:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+    .highlight-label { color: var(--secondary-text-color); font-size: .82rem; font-weight: 600; text-transform: uppercase; }
+    .highlight-name { font-weight: 600; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .highlight-meta { color: var(--secondary-text-color); font-size: .9rem; margin-top: 3px; }
+    @media (min-width: 700px) { .highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (min-width: 700px) { .header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; } .summary { margin-top: 0; } .stations { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; } .station { min-width: 0; } }
   `;
 
@@ -175,9 +200,35 @@ export class MobileFuelStationsCard extends LitElement {
     return html`
       <ha-card>
         <div class="header"><h2>${this._text("title")}</h2><span class="summary">${this._summary(overview)}</span></div>
+        ${this._highlights(overview, ids)}
         ${stations.length ? html`<div class="stations">${stations.map(({ id, state }) => this._station(id, state))}</div>` : html`<div class="message">${this._text("none")}</div>`}
       </ha-card>
     `;
+  }
+
+  private _highlights(overview: HassState, visibleIds: string[]) {
+    const highlights: Array<[string, HighlightStation]> = [];
+    for (const [label, value] of [[this._text("nearest"), overview.attributes.nearest_station], [this._text("cheapest"), overview.attributes.cheapest_station]]) {
+      if (value && typeof value === "object") highlights.push([String(label), value as HighlightStation]);
+    }
+    if (!highlights.length) return nothing;
+    return html`<div class="highlights">${highlights.map(([label, station]) => this._highlight(label, station, visibleIds))}</div>`;
+  }
+
+  private _highlight(label: string, station: HighlightStation, visibleIds: string[]) {
+    const stationId = text(station.station_id);
+    const entityId = stationId ? visibleIds.find((id) => this._hass?.states[id]?.attributes.station_id === stationId) : undefined;
+    const name = text(station.station_name) ?? text(station.brand) ?? stationId ?? this._text("notFound");
+    const brand = text(station.brand);
+    const price = formatPrice(station.price, this._locale()) ?? this._text("noPrice");
+    const distance = formatDistance(station.distance, this._locale());
+    const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(station.latitude, station.longitude, this._config?.navigation_provider ?? "auto") : null;
+    const address = [station.street && station.house_number ? `${station.street} ${station.house_number}` : text(station.street), [station.postcode, station.place].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    return html`<div class="highlight${entityId ? " is-link" : ""}" role=${entityId ? "button" : nothing} tabindex=${entityId ? "0" : nothing} aria-label="${name}" @click=${entityId ? () => this._moreInfo(entityId) : undefined} @keydown=${entityId ? (event: KeyboardEvent) => this._keyActivate(event, entityId) : undefined}>
+      <div><div class="highlight-label">${label}</div><div class="highlight-name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}</div>
+      <div><div class="price">${price}</div>${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
+      ${navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing}
+    </div>`;
   }
 
   private _summary(overview: HassState): string {
@@ -217,9 +268,9 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _message(message: string) { return html`<ha-card><div class="message">${message}</div></ha-card>`; }
   private _locale(): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? "en-US" : "de-DE"; }
-  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity"): string {
+  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest"): string {
     const english = this._locale() === "en-US";
-    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigate to station", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen" };
+    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigate to station", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste" };
     return values[key];
   }
   private _keyActivate(event: KeyboardEvent, id: string) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this._moreInfo(id); } }

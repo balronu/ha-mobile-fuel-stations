@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
@@ -117,3 +118,46 @@ def sort_stations(stations: list[Station], limit: int) -> list[Station]:
             station.price if station.price is not None else float("inf"),
         ),
     )[:limit]
+
+
+def nearest_station(stations: list[Station]) -> Station | None:
+    """Return the nearest open station with a valid distance."""
+
+    candidates = [
+        station
+        for station in stations
+        if station.is_open and station.distance is not None and isfinite(station.distance)
+    ]
+    return min(candidates, key=lambda station: (station.distance, station.station_id)) if candidates else None
+
+
+def cheapest_station(stations: list[Station]) -> Station | None:
+    """Return the cheapest open station with a valid price."""
+
+    candidates = [
+        station
+        for station in stations
+        if station.is_open and station.price is not None and isfinite(station.price)
+    ]
+    return min(candidates, key=lambda station: (station.price, station.station_id)) if candidates else None
+
+
+def station_attributes(station: Station | None) -> dict[str, object] | None:
+    """Serialize a station for structured Home Assistant attributes."""
+
+    if station is None:
+        return None
+    return {
+        "station_id": station.station_id,
+        "station_name": station.name,
+        "brand": station.brand,
+        "price": station.price,
+        "distance": station.distance,
+        "is_open": station.is_open,
+        "street": station.street,
+        "house_number": station.house_number,
+        "postcode": station.postcode,
+        "place": station.place,
+        "latitude": station.latitude,
+        "longitude": station.longitude,
+    }

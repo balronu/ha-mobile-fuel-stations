@@ -74,6 +74,8 @@ def test_overview_attributes_keep_existing_fields_and_add_station_entities(monke
         reference_position=None,
         last_successful_update=None,
         current_distance_km=None,
+        nearest_station=None,
+        cheapest_station=None,
     )
     overview = object.__new__(sensor.OverviewSensor)
     overview.coordinator = coordinator
@@ -90,6 +92,8 @@ def test_overview_attributes_keep_existing_fields_and_add_station_entities(monke
         "sensor.vehicle_station_1",
         "sensor.vehicle_station_2",
     ]
+    assert attributes["nearest_station"] is None
+    assert attributes["cheapest_station"] is None
 
 
 def test_station_slot_state_and_attributes_remain_unchanged():

@@ -10,7 +10,7 @@ const hassFor = (count: number, attrs: Record<string, unknown> = {}, stationAttr
 };
 
 describe("formatting and discovery", () => {
-  it("formats prices and distances with stable units", () => { expect(formatPrice("1.659")).toBe("1,659 €/l"); expect(formatDistance(1.25)).toBe("1,3 km"); });
+  it("formats prices and distances with stable units", () => { expect(formatPrice("1.659")).toBe("1,659 €/l"); expect(formatDistance(1.25)).toBe("1,3 km"); expect(formatPrice(null)).toBeNull(); expect(formatDistance(null)).toBeNull(); });
   it("keeps station_entities order and ignores unavailable slots", () => {
     const hass = { states: { a: state("1"), b: state("unavailable"), c: state("3") } };
     expect(discoverStationEntities(overviewId, state("3", { station_entities: ["a", "b", "c"] }), hass)).toEqual(["a", "c"]);
@@ -59,6 +59,25 @@ describe("card", () => {
   });
   it("renders overview, one, five and ten stations in order", async () => {
     for (const count of [1, 5, 10]) { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ type: "custom:mobile-fuel-stations-card", entity: overviewId }); card.hass = hassFor(count); await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(count); expect(card.shadowRoot?.textContent).toContain("Station 1"); }
+  });
+  it("renders nearest and cheapest highlights from the overview", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, {
+      nearest_station: { station_id: "outside", station_name: "Nearest", brand: "ARAL", price: null, distance: 1.2, is_open: true, latitude: 49, longitude: 8 },
+      cheapest_station: { station_id: "slot-1", station_name: "Cheapest", brand: "JET", price: 1.649, distance: 5.8, is_open: true, latitude: 49.1, longitude: 8.1 },
+    }, { station_id: "slot-1", latitude: 49.1, longitude: 8.1 });
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelectorAll(".highlight")).toHaveLength(2);
+    expect(card.shadowRoot?.textContent).toContain("Nächste");
+    expect(card.shadowRoot?.textContent).toContain("Günstigste");
+    expect(card.shadowRoot?.textContent).toContain("Preis nicht verfügbar");
+    let entityId: string | undefined;
+    card.addEventListener("hass-more-info", (event) => { entityId = (event as CustomEvent).detail.entityId; });
+    (card.shadowRoot?.querySelectorAll(".highlight")[0] as HTMLElement).click();
+    expect(entityId).toBeUndefined();
+    (card.shadowRoot?.querySelectorAll(".highlight")[1] as HTMLElement).click();
+    expect(entityId).toBe("sensor.vehicle_station_1");
+    expect(card.shadowRoot?.querySelectorAll(".highlight .navigate")).toHaveLength(2);
   });
   it("renders unavailable slots and all-unavailable states safely", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(2); hass.states["sensor.vehicle_station_1"]!.state = "unavailable"; card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(1);

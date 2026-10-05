@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.0-beta.1 — Nearest and cheapest station
+
+### Deutsch
+
+- Übersichtssensor stellt strukturierte Kandidaten für die nächste und
+  günstigste offene Tankstelle bereit.
+- Die Auswahl erfolgt aus der vollständigen Tankerkönig-Ergebnismenge vor der
+  Begrenzung auf Stations-Slots.
+- Die Dashboard-Karte zeigt beide Kandidaten oberhalb der bestehenden Liste.
+- Der API-Radius wird auf die dokumentierten 25 km begrenzt; bestehende höhere
+  Werte werden beim Request defensiv begrenzt.
+
+### English
+
+- The overview sensor provides structured candidates for the nearest and
+  cheapest open station.
+- Selection is performed on the complete Tankerkönig result set before station
+  slots are limited.
+- The dashboard card shows both candidates above the existing list.
+- API requests are capped at the documented 25 km radius; existing higher
+  values are handled defensively.
+
 ## 0.3.1 — Stable release
 
 ### Deutsch

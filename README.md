@@ -11,7 +11,7 @@ Der aktuell unterstützte Tankstellenanbieter ist **Tankerkönig**.
 - Einrichtung und Optionen über die Home-Assistant-Oberfläche
 - frei wählbare Standort-Entity mit `latitude`- und `longitude`-Attributen
 - Diesel, E5 und E10
-- Suchradius von 1 bis 100 km
+- Suchradius von 1 bis 25 km
 - 1 bis 10 stabile Stations-Slots
 - regelmäßige Aktualisierung und optionale Bewegungsupdates
 - Bewegungsschwelle und Cooldown
@@ -22,6 +22,7 @@ Der aktuell unterstützte Tankstellenanbieter ist **Tankerkönig**.
 - native Dashboard-Karte mit Visual Editor
 - automatische Frontend-Registrierung
 - Navigation mit Apple Maps, Google Maps oder Waze
+- Highlights für die nächste und günstigste offene Tankstelle
 
 ## Voraussetzungen
 
@@ -79,6 +80,12 @@ entity: sensor.<overview_entity>
 
 Der Stationsblock öffnet weiterhin More Info. Navigation wird ausschließlich über den separaten Button gestartet.
 
+### Nächste und günstigste Tankstelle
+
+Die Karte zeigt oberhalb der Stationsliste zwei optionale Highlights: **Nächste** und **Günstigste**. Beide werden aus der vollständigen Tankerkönig-Ergebnismenge bestimmt, bevor die Liste auf die konfigurierten Stations-Slots begrenzt wird. Die nächste Station benötigt keinen gültigen Preis; bei fehlendem Preis wird „Preis nicht verfügbar“ angezeigt. Wenn keine passende offene Station vorhanden ist, wird das jeweilige Highlight nicht angezeigt.
+
+Die bestehenden Stations-Slots und ihre Entity-IDs bleiben unverändert. Wenn ein Highlight nicht in den sichtbaren Slots enthalten ist, bleibt die Navigation verfügbar; More Info wird nur geöffnet, wenn eine sichere Zuordnung zu einer sichtbaren Stations-Entity existiert.
+
 ### Navigation
 
 Bei `navigation_provider: auto` gilt:
@@ -102,7 +109,7 @@ navigation_provider: waze
 
 ## Upgrade von älteren Versionen
 
-Für das Upgrade von v0.3.0 auf v0.3.1 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Eine Migration ist nicht erforderlich.
+Für das Upgrade von v0.3.1 auf v0.4.0 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Eine Migration ist nicht erforderlich. Der Tankerkönig-Radius ist auf 25 km begrenzt; bestehende Konfigurationen mit einem höheren gespeicherten Wert werden beim API-Aufruf defensiv auf 25 km begrenzt.
 
 Bei älteren v0.2.x-Installationen kann noch der frühere manuelle Lovelace-Resource-Eintrag `/mobile_fuel_stations/mobile-fuel-stations-card.js` vorhanden sein. Aktualisiere zuerst die Integration, starte Home Assistant neu und prüfe Karte und Card Picker. Entferne den alten Eintrag anschließend über die Home-Assistant-Oberfläche und lade Browser oder Companion-App vollständig neu. Bearbeite `.storage` niemals manuell.
 

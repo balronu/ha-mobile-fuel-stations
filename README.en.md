@@ -11,7 +11,7 @@ The currently supported fuel-station provider is **Tankerkönig**.
 - setup and options through the Home Assistant UI
 - configurable location entity with `latitude` and `longitude` attributes
 - diesel, E5, and E10
-- search radius from 1 to 100 km
+- search radius from 1 to 25 km
 - 1 to 10 stable station slots
 - regular refreshes and optional movement-triggered updates
 - movement threshold and cooldown
@@ -22,6 +22,7 @@ The currently supported fuel-station provider is **Tankerkönig**.
 - native dashboard card with visual editor
 - automatic frontend registration
 - navigation with Apple Maps, Google Maps, or Waze
+- highlights for the nearest and cheapest open station
 
 ## Requirements
 
@@ -79,6 +80,12 @@ entity: sensor.<overview_entity>
 
 The station block still opens More Info. Navigation is started through the separate button.
 
+### Nearest and cheapest station
+
+The card optionally shows two highlights above the station list: **Nearest** and **Cheapest**. Both are selected from the complete Tankerkönig result set before the list is limited to the configured station slots. The nearest station does not require a valid price; when its price is missing, the card displays “Price unavailable”. If no suitable open station exists, the corresponding highlight is omitted.
+
+Existing station slots and their entity IDs remain unchanged. If a highlight is not part of the visible slots, navigation remains available; More Info is opened only when the station can be safely mapped to a visible station entity.
+
 ### Navigation
 
 With `navigation_provider: auto`:
@@ -102,7 +109,7 @@ navigation_provider: waze
 
 ## Upgrading from older versions
 
-For an upgrade from v0.3.0 to v0.3.1, update through HACS and restart Home Assistant completely. No migration is required.
+For an upgrade from v0.3.1 to v0.4.0, update through HACS and restart Home Assistant completely. No migration is required. The Tankerkönig radius is limited to 25 km; existing configurations with a higher stored value are defensively capped at 25 km for the API request.
 
 Older v0.2.x installations may still contain the former manual Lovelace resource `/mobile_fuel_stations/mobile-fuel-stations-card.js`. Update the integration first, restart Home Assistant, and verify the card and card picker. Then remove the old entry through the Home Assistant UI and fully reload the browser or companion app. Never edit `.storage` manually.
 
