@@ -14,16 +14,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import (
-    MobileFuelStationsAuthError,
-    MobileFuelStationsError,
-    MobileFuelStationsRateLimitError,
-    Station,
-    TankerkoenigClient,
-    cheapest_station,
-    nearest_station,
-    sort_stations,
-)
+from .api import Station, cheapest_station, nearest_station, sort_stations
 from .const import (
     CONF_COOLDOWN,
     CONF_FUEL_TYPE,
@@ -38,6 +29,8 @@ from .const import (
     STORAGE_KEY,
     STORAGE_VERSION,
 )
+from .providers import create_provider
+from .providers.base import ProviderAuthError, ProviderError, ProviderRateLimitError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -80,7 +73,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             update_interval=timedelta(minutes=interval),
             config_entry=entry,
         )
-        self.client = TankerkoenigClient(async_get_clientsession(hass), entry.data["api_key"])
+        self.client = create_provider(async_get_clientsession(hass), self.options)
         self.stations: list[Station] = []
         self.nearest_station: Station | None = None
         self.cheapest_station: Station | None = None
@@ -132,11 +125,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                 min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
                 self.options[CONF_FUEL_TYPE],
             )
-        except MobileFuelStationsAuthError as err:
+        except ProviderAuthError as err:
             raise UpdateFailed("API authentication failed") from err
-        except MobileFuelStationsRateLimitError as err:
+        except ProviderRateLimitError as err:
             raise UpdateFailed("API rate limit reached") from err
-        except MobileFuelStationsError as err:
+        except ProviderError as err:
             raise UpdateFailed("Tankerkönig request failed") from err
         self.nearest_station = nearest_station(result)
         self.cheapest_station = cheapest_station(result)
