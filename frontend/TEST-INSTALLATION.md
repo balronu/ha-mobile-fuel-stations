@@ -10,24 +10,23 @@ Die versionslose URL nach dem Home-Assistant-Neustart ist:
 
 `/mobile_fuel_stations/mobile-fuel-stations-card.js`
 
-## Einmalige Lovelace-Ressource
+## Automatische Registrierung
 
-Die Integration stellt den statischen Pfad automatisch bereit. Home Assistant
-bietet für Custom Integrations jedoch keine öffentliche, robuste API zur
-automatischen Änderung der Lovelace-Resource-Registry. Deshalb einmalig unter
-**Einstellungen → Dashboards → Ressourcen** anlegen:
+Die Integration registriert die Karte automatisch über die unterstützte
+Home-Assistant-Frontend-API. Bei einer Neuinstallation ist kein manueller
+Lovelace-Resource-Eintrag erforderlich. Die URL bleibt bei späteren HACS-Updates
+unverändert. Browser oder Companion-Clients können bei Bedarf trotzdem einen
+Frontend-Neuladen bzw. Cache-Refresh benötigen.
 
-- URL: `/mobile_fuel_stations/mobile-fuel-stations-card.js`
-- Ressourcentyp: `JavaScript-Modul` bzw. `module`
+Bei einem Upgrade von v0.2.x darf ein bereits vorhandener manueller Resource-
+Eintrag erst nach erfolgreichem Update, vollständigem Neustart und Funktionstest
+über die Home-Assistant-Oberfläche entfernt werden. `.storage` niemals manuell
+bearbeiten.
 
-Die URL bleibt bei späteren HACS-Updates unverändert. Der statische HA-Pfad wird
-ohne zusätzliche Cache-Header registriert; Browser oder Companion-Clients können
-bei Bedarf trotzdem einen Frontend-Neuladen bzw. Cache-Refresh benötigen. Alte
-versionierte Beta-URLs bleiben als Query-Varianten des gleichen Pfads erreichbar.
-
-Navigation kann im visuellen Editor zwischen Automatisch, Apple Karten und Google
-Maps gewählt werden. Automatisch nutzt iOS/iPadOS Apple Maps und Android bzw.
-Desktop den Google-Weblink; die konkrete Übergabe ist clientabhängig.
+Navigation kann im visuellen Editor zwischen Automatisch, Apple Karten, Google
+Maps und Waze gewählt werden. Automatisch nutzt iOS/iPadOS Apple Maps und
+Android bzw. Desktop den Google-Weblink; die konkrete Übergabe ist
+clientabhängig. Waze wird nur bei expliziter Auswahl verwendet.
 
 ## Minimales Karten-YAML
 

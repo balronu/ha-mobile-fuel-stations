@@ -58,10 +58,10 @@ def test_frontend_resource_url_is_stable_across_updates():
     assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js"
 
 
-def test_beta_versions_are_synchronized():
+def test_stable_versions_are_synchronized():
     root = Path(__file__).parents[1]
     manifest = json.loads(
         (root / "custom_components" / DOMAIN / "manifest.json").read_text()
     )
     package = json.loads((root / "frontend" / "package.json").read_text())
-    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.3.0-beta.1"
+    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.3.0"

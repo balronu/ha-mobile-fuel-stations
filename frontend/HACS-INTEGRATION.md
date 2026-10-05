@@ -9,10 +9,12 @@
   `/mobile_fuel_stations` über `async_register_static_paths`.
 - Die versionslose Resource-URL ist `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
 
-Die automatische Änderung der Lovelace-Resource-Registry wird bewusst nicht
-implementiert: Dafür gibt es keine dokumentierte öffentliche API für Custom
-Integrations. Das Bearbeiten von `.storage/lovelace_resources` wäre ein privates
-und fragiles Verhalten. Daher ist genau ein manueller Resource-Eintrag nötig;
-mehrere Config Entries erzeugen trotzdem nur einen statischen Pfad. Die URL muss
-bei HACS-Updates nicht geändert werden. Die öffentliche HA-API garantiert
-allerdings keinen sofortigen Cache-Flush in jedem Browser/Companion-Client.
+Die Integration registriert die Karte automatisch über die unterstützte
+Home-Assistant-Frontend-API. Bei Neuinstallationen ist daher kein manueller
+Lovelace-Resource-Eintrag erforderlich. Mehrere Config Entries erzeugen trotzdem
+nur einen statischen Pfad. Die URL muss bei HACS-Updates nicht geändert werden.
+Die öffentliche HA-API garantiert allerdings keinen sofortigen Cache-Flush in
+jedem Browser/Companion-Client. Bestehende v0.2.x-Installationen dürfen ihren
+alten manuellen Resource-Eintrag nach erfolgreichem Update, Neustart und
+Funktionstest über die Home-Assistant-Oberfläche entfernen. `.storage` darf
+nicht manuell bearbeitet werden.

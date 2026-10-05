@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0 — Stable release
+
+### Deutsch
+
+- Dashboard-Karte wird nach HACS-Installation und Home-Assistant-Neustart
+  automatisch durch die Integration registriert.
+- Neuinstallationen benötigen keinen manuellen Lovelace-Resource-Eintrag.
+- Upgrade-Hinweis für bestehende v0.2.x-Installationen: alten manuellen
+  Resource-Eintrag erst nach Update, Neustart und erfolgreichem Funktionstest
+  über die Home-Assistant-Oberfläche entfernen.
+- Duplicate-Load-Schutz für die Übergangsphase bleibt enthalten.
+- Apple Karten, Google Maps, Waze, visueller Editor und bestehende
+  Integration-/Sensor-Entities bleiben unterstützt bzw. unverändert.
+- Sygic, Navigationsprovider-Logos, Tankstellenmarkenlogos und Brand-Badges
+  sind nicht Bestandteil dieser Version.
+
+### English
+
+- The dashboard card is automatically registered by the integration after HACS
+  installation and a Home Assistant restart.
+- New installations do not require a manual Lovelace resource entry.
+- For existing v0.2.x installations, remove the old manual resource entry only
+  after updating, restarting, and successfully testing the card.
+- Duplicate-load protection remains available for the transition period.
+- Apple Maps, Google Maps, Waze, the visual editor, and existing
+  integration/sensor entities remain supported or unchanged.
+- Sygic, navigation-provider logos, fuel-brand logos, and brand badges are not
+  part of this release.
+
 ## 0.3.0-beta.1 — First v0.3.0 beta
 
 ### Deutsch
@@ -112,26 +141,6 @@ This remains a beta release for controlled HACS/Home Assistant testing.
 
 This remains a beta release. Client handling of map links and browser/Companion
 caching can still vary by platform.
-
-## Unreleased — Runde 4
-
-### English
-
-- Added automatic, Apple Maps, and Google Maps navigation providers with
-  coordinate validation and a visual-editor selector.
-- Switched the recommended Lovelace resource to the stable versionless URL.
-- Improved Unicode/punctuation-aware brand de-duplication.
-- Station-slot display names now follow the current station without changing
-  entity IDs or unique IDs.
-
-### Deutsch
-
-- Automatische, Apple-Karten- und Google-Maps-Navigationsanbieter mit
-  Koordinatenvalidierung und Auswahl im visuellen Editor ergänzt.
-- Versionslose Lovelace-Resource-URL als dauerhafte Empfehlung eingeführt.
-- Unicode-/satzzeichenfeste Brand-Deduplizierung verbessert.
-- Anzeigenamen der Stations-Slots folgen nun der aktuellen Tankstelle, ohne
-  Entity-IDs oder Unique-IDs zu ändern.
 
 ## 0.2.0-beta.2 — Second beta
 

@@ -25,11 +25,11 @@ Objekte.
 - Diagnostics ohne API-Key und ohne exakte Koordinaten.
 - Englische und deutsche UI-Übersetzungen.
 
-## Dashboard-Karte (`v0.3.0-beta.1`)
+## Dashboard-Karte (`v0.3.0`)
 
-Version 0.3.0-beta.1 lädt die native Lovelace-Karte
+Version 0.3.0 lädt die native Lovelace-Karte
 `custom:mobile-fuel-stations-card` nach HACS-Installation und Home-Assistant-
-Neustart automatisch über die Integration. Für neue Installationen ist kein
+Neustart automatisch über die Integration. Für Neuinstallationen ist kein
 manueller Lovelace-Resource-Eintrag erforderlich. Der kanonische Pfad lautet:
 
 ```text
@@ -73,7 +73,7 @@ navigation: true
 navigation_provider: waze
 ```
 
-Sygic ist nicht Bestandteil dieser Beta.
+Sygic ist nicht Bestandteil von v0.3.0.
 
 ### Upgrade-Hinweis für Nutzer von v0.2.0 oder älter
 
@@ -85,7 +85,7 @@ Integrationspfad selbst wird nicht entfernt. Bei Bedarf die Home-Assistant-
 Oberfläche beziehungsweise die Companion-App vollständig neu laden.
 
 Die verfügbaren Anbieter bleiben Automatisch, Apple Karten, Google Maps und
-Waze. Sygic ist nicht Bestandteil dieser Beta.
+Waze. Sygic ist nicht Bestandteil von v0.3.0.
 
 ## Voraussetzungen
 

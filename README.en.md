@@ -19,11 +19,11 @@ moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.
   connect it to the navigation mechanism supported by their client/device.
 - Diagnostics that exclude API keys and exact coordinates.
 
-## Dashboard card (`v0.3.0-beta.1`)
+## Dashboard card (`v0.3.0`)
 
-Version 0.3.0-beta.1 automatically loads the native Lovelace card
+Version 0.3.0 automatically loads the native Lovelace card
 `custom:mobile-fuel-stations-card` through the integration after HACS
-installation and a Home Assistant restart. New installations no longer need a
+installation and a Home Assistant restart. New installations do not need a
 manual Lovelace resource entry. The canonical path is:
 
 ```text
@@ -64,7 +64,7 @@ navigation: true
 navigation_provider: waze
 ```
 
-Sygic is not included in this beta.
+Sygic is not included in v0.3.0.
 
 ### Upgrade note for users of v0.2.0 or earlier
 
@@ -75,7 +75,7 @@ removed; the integration's static path must not be removed. Fully reload the
 Home Assistant frontend or Companion App if needed.
 
 The available providers remain Automatic, Apple Maps, Google Maps, and Waze.
-Sygic is not included in this beta.
+Sygic is not included in v0.3.0.
 
 ## Requirements
 
