@@ -41,7 +41,11 @@ Der aktuell unterstützte Tankstellenanbieter ist **Tankerkönig**.
 5. Starte Home Assistant vollständig neu.
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
-Die Dashboard-Karte wird automatisch registriert. Bei einer Neuinstallation ist kein manueller Lovelace-Resource-Eintrag erforderlich.
+Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0`
+enthält die Integrationsversion, damit ein Update keinen alten
+Card-JavaScript-Code aus dem Cache verwendet. Bei einer Neuinstallation ist
+kein manueller Lovelace-Resource-Eintrag erforderlich.
 
 ### Manuelle Installation
 
@@ -84,7 +88,10 @@ Der Stationsblock öffnet weiterhin More Info. Navigation wird ausschließlich �
 
 Die Karte zeigt oberhalb der Stationsliste zwei optionale Highlights: **Nächste** und **Günstigste**. Beide werden aus der vollständigen Tankerkönig-Ergebnismenge bestimmt, bevor die Liste auf die konfigurierten Stations-Slots begrenzt wird. Die nächste Station benötigt keinen gültigen Preis; bei fehlendem Preis wird „Preis nicht verfügbar“ angezeigt. Wenn keine passende offene Station vorhanden ist, wird das jeweilige Highlight nicht angezeigt.
 
-Die bestehenden Stations-Slots und ihre Entity-IDs bleiben unverändert. Wenn ein Highlight nicht in den sichtbaren Slots enthalten ist, bleibt die Navigation verfügbar; More Info wird nur geöffnet, wenn eine sichere Zuordnung zu einer sichtbaren Stations-Entity existiert.
+Die bestehenden Stations-Slots bleiben preisorientiert und ihre Entity-IDs
+bleiben unverändert. Wenn ein Highlight nicht in den sichtbaren Slots enthalten
+ist, bleibt die Navigation verfügbar; More Info wird nur geöffnet, wenn eine
+sichere Zuordnung zu einer sichtbaren Stations-Entity existiert.
 
 ### Navigation
 
@@ -121,7 +128,7 @@ Die Standort-Entity muss die numerischen Attribute `latitude` und `longitude` be
 
 Der Overview-Sensor stellt unter anderem folgende Attribute bereit:
 
-`radius`, `fuel_type`, `location_entity`, `station_count`, `station_entities`, `last_successful_update`, `reference_latitude`, `reference_longitude`, `distance_since_last_search`
+`radius`, `fuel_type`, `location_entity`, `station_count`, `station_entities`, `last_successful_update`, `reference_latitude`, `reference_longitude`, `distance_since_last_search`, `nearest_station`, `cheapest_station`
 
 Die Stations-Slots stellen unter anderem bereit:
 

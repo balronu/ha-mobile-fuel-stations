@@ -8,7 +8,7 @@
 - Home Assistant registriert beim Integrations-Setup den statischen Pfad
   `/mobile_fuel_stations` über `async_register_static_paths`.
 - Die automatisch registrierte JavaScript-URL enthält die Integrationsversion,
-  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0-beta.2`.
+  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0`.
 - Der physische StaticPath und die ausgelieferte Datei bleiben
   `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
 

@@ -41,7 +41,11 @@ The currently supported fuel-station provider is **Tankerkönig**.
 5. Restart Home Assistant completely.
 6. Add the integration through **Settings → Devices & services → Add integration**.
 
-The dashboard card is registered automatically. A manual Lovelace resource entry is not required for a new installation.
+The dashboard card is registered automatically. The automatically registered
+frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0`
+includes the integration version so an update does not reuse stale card
+JavaScript from the cache. A manual Lovelace resource entry is not required
+for a new installation.
 
 ### Manual installation
 
@@ -84,7 +88,10 @@ The station block still opens More Info. Navigation is started through the separ
 
 The card optionally shows two highlights above the station list: **Nearest** and **Cheapest**. Both are selected from the complete Tankerkönig result set before the list is limited to the configured station slots. The nearest station does not require a valid price; when its price is missing, the card displays “Price unavailable”. If no suitable open station exists, the corresponding highlight is omitted.
 
-Existing station slots and their entity IDs remain unchanged. If a highlight is not part of the visible slots, navigation remains available; More Info is opened only when the station can be safely mapped to a visible station entity.
+Existing station slots retain their price-oriented behavior and their entity IDs
+remain unchanged. If a highlight is not part of the visible slots, navigation
+remains available; More Info is opened only when the station can be safely
+mapped to a visible station entity.
 
 ### Navigation
 
@@ -121,7 +128,7 @@ The location entity must provide numeric `latitude` and `longitude` attributes. 
 
 The overview sensor exposes attributes including:
 
-`radius`, `fuel_type`, `location_entity`, `station_count`, `station_entities`, `last_successful_update`, `reference_latitude`, `reference_longitude`, `distance_since_last_search`
+`radius`, `fuel_type`, `location_entity`, `station_count`, `station_entities`, `last_successful_update`, `reference_latitude`, `reference_longitude`, `distance_since_last_search`, `nearest_station`, `cheapest_station`
 
 Station slots expose attributes including:
 

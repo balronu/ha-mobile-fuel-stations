@@ -9,7 +9,7 @@ erforderlich.
 Die automatisch registrierte URL enthält nach dem Home-Assistant-Neustart die
 Integrationsversion, zum Beispiel:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0-beta.2`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0`
 
 ## Automatische Registrierung
 

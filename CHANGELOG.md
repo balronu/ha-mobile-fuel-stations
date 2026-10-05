@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.4.0 — Stable release
+
+### Deutsch
+
+#### Added
+
+- Die Karte zeigt die nächste offene und die günstigste offene Tankstelle als
+  getrennte Highlights.
+- Beide Kandidaten werden aus der vollständigen Tankerkönig-Ergebnismenge vor
+  der Begrenzung auf Stations-Slots bestimmt.
+- Die Highlight-Navigation funktioniert auch für eine nächste Tankstelle
+  außerhalb der sichtbaren Stations-Slots.
+
+#### Changed
+
+- Neue Tankerkönig-Radiuswerte sind auf das dokumentierte Maximum von 25 km
+  begrenzt.
+- Bereits gespeicherte größere Werte bleiben ladbar; API-Anfragen werden auf
+  maximal 25 km begrenzt.
+- Die automatisch registrierte Frontend-URL ist versionsabhängig und verhindert
+  veralteten Card-JavaScript-Code nach Integrations-Updates.
+
+#### Compatibility
+
+- Keine neuen Entities oder Unique IDs.
+- Bestehende Stations-Slots, Konfigurationen und Navigation bleiben kompatibel.
+- Ein manueller Lovelace-Resource-Eintrag ist nicht erforderlich.
+
+### English
+
+#### Added
+
+- The card shows separate highlights for the nearest open and cheapest open
+  station.
+- Both candidates are calculated from the complete Tankerkönig result set
+  before the configured station-slot limit is applied.
+- Highlight navigation also works when the nearest station is outside the
+  visible station slots.
+
+#### Changed
+
+- New Tankerkönig radius values are limited to the documented maximum of 25 km.
+- Existing larger stored values remain loadable; API requests are capped at
+  25 km.
+- The automatically registered frontend URL is versioned to prevent stale card
+  JavaScript after integration updates.
+
+#### Compatibility
+
+- No new entities or unique IDs.
+- Existing station slots, configurations, and navigation remain compatible.
+- No manual Lovelace resource entry is required.
+
 ## 0.4.0-beta.2 — Versioned frontend URL
 
 ### Deutsch
