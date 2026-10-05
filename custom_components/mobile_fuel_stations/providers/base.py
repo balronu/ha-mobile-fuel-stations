@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
 from aiohttp import ClientSession
@@ -17,13 +18,16 @@ class Station:
     brand: str
     price: float | None
     distance: float | None
-    is_open: bool
+    is_open: bool | None
     street: str
     house_number: str
     postcode: str
     place: str
     latitude: float | None
     longitude: float | None
+    currency: str | None = None
+    price_updated_at: datetime | None = None
+    country_code: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -80,6 +84,30 @@ class ProviderNetworkError(ProviderError):
 
 class ProviderResponseError(ProviderError):
     """The provider returned an unusable response."""
+
+
+class ProviderPermissionError(ProviderError):
+    """The credential lacks permission for the requested provider operation."""
+
+
+class ProviderCreditError(ProviderError):
+    """The provider rejected a request because of the credit budget."""
+
+
+class ProviderDailyBudgetError(ProviderCreditError):
+    """The provider daily budget is exhausted."""
+
+
+class ProviderInsufficientCreditsError(ProviderCreditError):
+    """The provider balance cannot cover the requested response."""
+
+
+class ProviderUnavailableError(ProviderError):
+    """The provider service is temporarily unavailable."""
+
+
+class ProviderUnsupportedFuelError(ProviderConfigurationError):
+    """The provider contract does not define the requested fuel mapping."""
 
 
 class FuelStationProvider(Protocol):
