@@ -19,7 +19,7 @@ moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.
 
 ## Requirements
 
-- Home Assistant 2026.9 or newer.
+- Home Assistant 2026.2 or newer.
 - A Tankerkönig API key.
 - A Home Assistant entity exposing numeric `latitude` and `longitude`
   attributes, normally a GPS `device_tracker`.
@@ -51,13 +51,142 @@ only after a successful provider response.
 
 ## Entities
 
-- `sensor.mobile_fuel_stations_nearby_stations`: current result count and
-  configuration/status metadata.
-- `sensor.mobile_fuel_stations_station_1` through the configured slot count:
-  current price in EUR/L and station attributes.
+- Entity IDs include the normalized location entity and can vary slightly with
+  Home Assistant entity-ID normalization. Check **Settings → Devices & services
+  → Entities** after setup.
+- For a generic location `device_tracker.my_vehicle`, typical IDs are
+  `sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations` and
+  `sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1` through
+  `_station_5`.
+- The overview state is the current result count. Its attributes include
+  `radius`, `fuel_type`, `location_entity`, `station_count`,
+  `last_successful_update`, `reference_latitude`, `reference_longitude`, and
+  `distance_since_last_search`.
+- Each station slot reports the current price in EUR/L and attributes
+  `station_id`, `station_name`, `brand`, `distance`, `is_open`, `street`,
+  `house_number`, `postcode`, `place`, `latitude`, and `longitude`.
 
 Station slot IDs are stable; the station assigned to a slot can change after a
 refresh. A failed request retains the last successful result where possible.
+
+## Location entity
+
+The source can be a vehicle tracker, person/device tracker, or another GPS
+entity. Generic example only:
+
+```yaml
+device_tracker.my_vehicle:
+  state: not_home
+  attributes:
+    latitude: 50.0000
+    longitude: 8.0000
+```
+
+Replace the example entity and coordinates with values from your own system.
+
+## Dashboard example (standard cards)
+
+This example requires no custom card. Replace the example entity IDs with the
+entity IDs created on your Home Assistant instance.
+
+```yaml
+type: entities
+title: Nearby fuel stations
+entities:
+  - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations
+    name: Stations found
+  - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1
+    name: Station 1
+  - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_2
+    name: Station 2
+  - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_3
+    name: Station 3
+  - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_4
+    name: Station 4
+  - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_5
+    name: Station 5
+```
+
+## Mushroom example (optional)
+
+Requires [Mushroom Cards](https://github.com/piitaya/lovelace-mushroom). The
+example uses native station attributes directly: no JSON parsing, JavaScript,
+CSS hacks, absolute positioning, or negative margins.
+
+For a Sections view, a full-width header can use:
+
+```yaml
+type: custom:mushroom-template-card
+entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations
+primary: Nearby fuel stations
+secondary: >-
+  {{ states('sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations') }} stations ·
+  {{ state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations', 'radius') | int }} km ·
+  {{ (state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations', 'fuel_type') or 'diesel') | title }}
+multiline_secondary: true
+layout: horizontal
+fill_container: true
+grid_options:
+  columns: full
+  rows: 2
+```
+
+A station card can use a native slot entity and its attributes:
+
+```yaml
+type: custom:mushroom-template-card
+entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1
+primary: >-
+  {{ state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1', 'station_name') or 'Station unavailable' }}
+secondary: >-
+  {{ states('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1') }} €/L ·
+  {{ state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1', 'distance') }} km ·
+  {{ 'open' if is_state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1', 'is_open', true) else 'closed' }}
+multiline_secondary: true
+layout: horizontal
+fill_container: true
+```
+
+Duplicate the station card for slots 2–5 and replace only the entity ID. This
+example is display-only and works without navigation.
+
+## Navigation
+
+Mobile Fuel Stations intentionally does not depend on Apple Maps, Google Maps,
+Sygic, Waze, or another navigation provider. Each station exposes dynamic
+`latitude` and `longitude` attributes for dashboards, automations, and
+client-specific navigation solutions.
+
+The standardized `geo:` URI is defined by [RFC 5870](https://datatracker.ietf.org/doc/html/rfc5870.html).
+Clients that support it may use it, but support depends on the frontend,
+Companion App, operating system, and installed applications. The integration
+does not claim uniform `geo:` behavior on every Home Assistant client and does
+not provide an installed-app chooser.
+
+## Troubleshooting
+
+### No stations found
+
+- Confirm that the selected location entity exists and has numeric
+  `latitude`/`longitude` attributes.
+- Check the radius and fuel type.
+- Confirm the Tankerkönig API key and provider availability.
+
+### Location unavailable
+
+If the GPS entity is `unknown`, `unavailable`, or has invalid coordinates, no
+request is sent with those coordinates. The last valid result is retained where
+possible. Restore the GPS source and wait for the next update.
+
+### Prices are not updating
+
+Check the regular interval, movement-update setting, movement threshold, and
+cooldown. Provider rate limits and price freshness are external factors.
+
+### Dashboard entity not found
+
+Find the actual IDs under **Settings → Devices & services → Entities**. Entity
+IDs include the normalized location entity and may differ from examples.
 
 ## API and attribution
 
