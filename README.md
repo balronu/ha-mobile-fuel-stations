@@ -25,7 +25,7 @@ Objekte.
 - Diagnostics ohne API-Key und ohne exakte Koordinaten.
 - Englische und deutsche UI-Übersetzungen.
 
-## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.4`)
+## Dashboard-Karte (`v0.2.0`)
 
 Diese Beta ergänzt `custom:mobile-fuel-stations-card` in derselben HACS-
 Integration. Das Bundle wird mit der Integration ausgeliefert. Nach
@@ -42,19 +42,22 @@ type: custom:mobile-fuel-stations-card
 entity: <OVERVIEW_ENTITY>
 ```
 
-Beta 4 behebt außerdem den HTTP-500-Fehler beim Öffnen der Integrationsoptionen
+Version 0.2.0 behebt außerdem den HTTP-500-Fehler beim Öffnen der Integrationsoptionen
 über das Zahnrad und verwendet die aktuelle Home-Assistant-OptionsFlow-API.
 Bestehende Config Entries benötigen keine Migration; der API-Key bleibt in den
 Config-Entry-Daten geschützt.
 
-Die Beta enthält einen visuellen Editor zur Auswahl des Overview-Sensors und
+Die Karte enthält einen visuellen Editor zur Auswahl des Overview-Sensors und
 einen separaten Navigationsbutton pro Station. Navigation ist standardmäßig
 aktiviert und kann mit `navigation: false` ausgeblendet werden. Der
 Stationsblock öffnet weiterhin `more-info`; der Navigationsbutton verwendet
 einen HTTPS-Maps-Link. Die Übergabe an Browser oder Karten-App ist
-clientabhängig und garantiert keine bestimmte Karten-App.
-Im visuellen Editor kann der Anbieter auf **Automatisch**, **Apple Karten** oder
-**Google Maps** gestellt werden; `navigation_provider: auto|apple|google` ist
+clientabhängig und garantiert keine bestimmte Karten-App. Anbieter sind
+**Automatisch**, **Apple Karten**, **Google Maps** und **Waze**. Waze wird
+ausschließlich explizit ausgewählt; AUTO verwendet weiterhin Apple auf
+iOS/iPadOS und Google auf Android/Desktop.
+Im visuellen Editor kann der Anbieter auf **Automatisch**, **Apple Karten**,
+**Google Maps** oder **Waze** gestellt werden; `navigation_provider: auto|apple|google|waze` ist
 auch per YAML möglich. Die versionslose Resource-URL bleibt bei HACS-Updates
 gleich. Ein Browser-/Companion-Cache kann trotzdem einen Neuladevorgang
 erfordern. Der Anzeigename eines Stations-Slots folgt dem aktuellen
@@ -64,6 +67,17 @@ Bestehende Beta-2-Tester ändern ihre bisherige Resource einmalig von
 `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2` auf die
 versionslose URL oben. Danach sind bei HACS-Updates keine Resource-Änderungen
 mehr vorgesehen.
+
+Waze-Beispiel:
+
+```yaml
+type: custom:mobile-fuel-stations-card
+entity: sensor.<overview_entity>
+navigation: true
+navigation_provider: waze
+```
+
+Sygic ist nicht Bestandteil von v0.2.0.
 
 ## Voraussetzungen
 

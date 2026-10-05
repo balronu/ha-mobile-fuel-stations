@@ -19,7 +19,7 @@ moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.
   connect it to the navigation mechanism supported by their client/device.
 - Diagnostics that exclude API keys and exact coordinates.
 
-## Dashboard card — beta preview (`v0.2.0-beta.4`)
+## Dashboard card (`v0.2.0`)
 
 This beta adds `custom:mobile-fuel-stations-card` to the same HACS integration.
 The bundle is delivered with the integration. After installation and restart,
@@ -36,17 +36,20 @@ type: custom:mobile-fuel-stations-card
 entity: <OVERVIEW_ENTITY>
 ```
 
-Beta 4 also fixes the HTTP 500 when opening integration options and uses the
+Version 0.2.0 also fixes the HTTP 500 when opening integration options and uses the
 current Home Assistant OptionsFlow API. Existing config entries require no
 migration, and the API key remains protected in the config-entry data.
 
-The beta includes a visual editor for selecting the overview entity and a
+The card includes a visual editor for selecting the overview entity and a
 separate navigation button per station. Navigation is enabled by default and
 can be disabled with `navigation: false`. The station block still opens
 `more-info`; the navigation button uses an HTTPS maps link. Browser/app
-handling is client-dependent and no specific maps app is guaranteed.
-The visual editor offers **Automatic**, **Apple Maps**, and **Google Maps**;
-YAML can use `navigation_provider: auto|apple|google`. The versionless resource
+handling is client-dependent and no specific maps app is guaranteed. Providers
+are **Automatic**, **Apple Maps**, **Google Maps**, and **Waze**. Waze is
+explicitly selected; AUTO continues to use Apple on iOS/iPadOS and Google on
+Android/desktop.
+The visual editor offers **Automatic**, **Apple Maps**, **Google Maps**, and
+**Waze**; YAML can use `navigation_provider: auto|apple|google|waze`. The versionless resource
 URL remains unchanged across HACS updates. A browser/Companion cache may still
 need a reload. A station slot's displayed name follows the current station,
 while its entity ID and unique ID remain stable.
@@ -55,6 +58,17 @@ Existing beta-2 testers should change their resource once from
 `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2` to the
 versionless URL above. Future HACS updates are not expected to require another
 resource change.
+
+Waze example:
+
+```yaml
+type: custom:mobile-fuel-stations-card
+entity: sensor.<overview_entity>
+navigation: true
+navigation_provider: waze
+```
+
+Sygic is not included in v0.2.0.
 
 ## Requirements
 

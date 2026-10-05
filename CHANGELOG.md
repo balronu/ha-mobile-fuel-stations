@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.2.0 — Stable release
+
+### Deutsch
+
+- Native Lovelace-Custom-Card mit visuellem Editor und automatischer
+  Stationszuordnung ergänzt.
+- Apple-Karten-, Google-Maps- und Waze-Navigation über explizite Providerwahl;
+  AUTO verwendet Apple auf iOS/iPadOS und Google auf Android/Desktop.
+- Dynamische sichtbare Stationsnamen bei stabilen Entity-IDs und Unique-IDs.
+- HTTP-500 beim Öffnen der Integrationsoptionen behoben und OptionsFlow an die
+  aktuelle Home-Assistant-API angepasst.
+- Keine Breaking Changes und keine Config-Entry-Migration gegenüber v0.1.0.
+- Versionslose Lovelace-Resource:
+  `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
+- Sygic und providerbezogenes visuelles Branding sind nicht Bestandteil von
+  v0.2.0 und für eine spätere Version vorgemerkt.
+
+### English
+
+- Added a native Lovelace custom card with visual editor and automatic station
+  discovery.
+- Added Apple Maps, Google Maps, and Waze navigation through explicit provider
+  selection; AUTO uses Apple on iOS/iPadOS and Google on Android/desktop.
+- Dynamic visible station names while keeping entity IDs and unique IDs stable.
+- Fixed the HTTP 500 when opening integration options and updated the
+  OptionsFlow for the current Home Assistant API.
+- No breaking changes and no config-entry migration from v0.1.0.
+- Versionless Lovelace resource:
+  `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
+- Sygic and provider-specific visual branding are not part of v0.2.0 and are
+  deferred to a later version.
+
 ## 0.2.0-beta.4 — Vierter Beta-Stand
 
 ### Deutsch
