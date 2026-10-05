@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { discoverStationEntities, formatDistance, formatPrice, MobileFuelStationsCard } from "../src/mobile-fuel-stations-card";
+import { buildNavigationUrl, discoverStationEntities, formatDistance, formatPrice, MobileFuelStationsCard, shouldShowBrand } from "../src/mobile-fuel-stations-card";
 
 const overviewId = "sensor.vehicle_nearby_stations";
 const state = (value: string, attributes: Record<string, unknown> = {}) => ({ state: value, attributes });
@@ -19,6 +19,16 @@ describe("formatting and discovery", () => {
     const hass = { states: { "sensor.vehicle_station_1": state("1"), "sensor.other_station_1": state("2") } };
     expect(discoverStationEntities(overviewId, state("1", { station_count: 1 }), hass)).toEqual(["sensor.vehicle_station_1"]);
   });
+  it("suppresses duplicate brands but keeps additional brand information", () => {
+    expect(shouldShowBrand("Tankstelle Winkler", "Winkler")).toBe(false);
+    expect(shouldShowBrand("Auto Wahl Sport Illingen", "Auto Wahl Sport")).toBe(false);
+    expect(shouldShowBrand("Tankstelle", "Shell")).toBe(true);
+  });
+  it("validates coordinates and URL-encodes the navigation target", () => {
+    expect(buildNavigationUrl(49.123, 8.456)).toBe("https://www.google.com/maps/search/?api=1&query=49.123%2C8.456");
+    expect(buildNavigationUrl(91, 8)).toBeNull();
+    expect(buildNavigationUrl(49, -181)).toBeNull();
+  });
 });
 
 describe("card", () => {
@@ -37,4 +47,20 @@ describe("card", () => {
   it("shows open and closed states", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(1); hass.states["sensor.vehicle_station_1"]!.attributes.is_open = false; card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Geschlossen"); });
   it("renders required error states", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: "sensor.missing" }); card.hass = { states: {} }; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Overview entity not found"); card.hass = { states: { [overviewId]: state("unavailable") } }; card.setConfig({ entity: overviewId }); await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("nicht verfügbar"); });
   it("dispatches more-info with the station entity id", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); card.hass = hassFor(1); await card.updateComplete; let event: Event | undefined; card.addEventListener("hass-more-info", (value) => { event = value; }); (card.shadowRoot?.querySelector(".station") as HTMLElement).click(); expect((event as CustomEvent).detail.entityId).toBe("sensor.vehicle_station_1"); });
+  it("keeps header metadata below the title on mobile", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); card.hass = hassFor(1, { radius: 20, fuel_type: "diesel" }); await card.updateComplete; expect(card.shadowRoot?.querySelector(".header h2")).toBeTruthy(); expect(card.shadowRoot?.querySelector(".header .summary")).toBeTruthy(); });
+  it("shows navigation by default, can hide it, and keeps navigation separate from more-info", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(1, {}, { latitude: 49, longitude: 8 }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".navigate")).toBeTruthy(); let moreInfo = false; card.addEventListener("hass-more-info", () => { moreInfo = true; }); (card.shadowRoot?.querySelector(".navigate") as HTMLElement).click(); expect(moreInfo).toBe(false);
+    card.setConfig({ entity: overviewId, navigation: false }); await card.updateComplete; expect(card.shadowRoot?.querySelector(".navigate")).toBeNull();
+    hass.states["sensor.vehicle_station_1"]!.attributes.latitude = 91; card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.querySelector(".navigate")).toBeNull();
+  });
+  it("renders English labels from the HA locale", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(1, { fuel_type: "diesel" }) as ReturnType<typeof hassFor> & { locale?: { language: string } }; hass.locale = { language: "en" }; card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Nearby fuel stations"); expect(card.shadowRoot?.textContent).toContain("Open"); });
+  it("provides a visual editor that emits config-changed", async () => {
+    expect(MobileFuelStationsCard.getConfigElement().localName).toBe("mobile-fuel-stations-card-editor");
+    const editor = MobileFuelStationsCard.getConfigElement() as HTMLElement & { hass: unknown; setConfig: (config: unknown) => void; updateComplete: Promise<unknown> };
+    document.body.append(editor); editor.hass = hassFor(1); editor.setConfig({ entity: overviewId, navigation: true }); await editor.updateComplete;
+    let changed: CustomEvent | undefined; editor.addEventListener("config-changed", (event) => { changed = event as CustomEvent; });
+    const select = editor.shadowRoot?.querySelector("select") as HTMLSelectElement; select.value = overviewId; select.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.entity).toBe(overviewId);
+    const checkbox = editor.shadowRoot?.querySelector("input[type=checkbox]") as HTMLInputElement; checkbox.checked = false; checkbox.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation).toBe(false);
+  });
 });

@@ -1,99 +1,117 @@
 # Mobile Fuel Stations
 
-[English](README.md) | [Deutsch](README.de.md)
+[Deutsch](README.md) | [English](README.en.md)
 
-A Home Assistant custom integration that searches nearby fuel stations from a
-moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.tankerkoenig.de/).
+Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration, die anhand
+einer konfigurierbaren Standort-Entity nahegelegene Tankstellen sucht. Der
+erste unterstützte Anbieter ist [Tankerkönig](https://creativecommons.tankerkoenig.de/).
+Die Integration eignet sich für Fahrzeuge, Wohnmobile und andere GPS-verfolgte
+Objekte.
 
-## Features
+## Funktionen
 
-- Config flow: provider API key, location entity, radius, fuel, slot count.
-- Regular cloud polling (15 minutes by default).
-- Movement refresh when the location moved at least 2 km since the last
-  successful search, with a hard five-minute cooldown.
-- Persistent reference coordinates and successful-request timestamp.
-- Open stations first, then valid fuel prices ascending; missing prices last.
-- Stable station-slot entities with price, address, coordinates, status, and
-  distance attributes.
-- Each station slot exposes latitude and longitude so dashboard authors can
-  connect it to the navigation mechanism supported by their client/device.
-- Diagnostics that exclude API keys and exact coordinates.
+- Einrichtung und Optionen über die Home-Assistant-Oberfläche.
+- Konfigurierbare Standort-Entity mit `latitude`- und `longitude`-Attributen.
+- Tankerkönig-Suche für `diesel`, `e5` oder `e10`.
+- Konfigurierbarer Radius von 1 bis 100 km und 1 bis 10 Stations-Slots.
+- Regelmäßige Abfragen, standardmäßig alle 15 Minuten.
+- Optionale bewegungsabhängige Aktualisierung.
+- Konfigurierbare Bewegungsschwelle und Mindest-Cooldown.
+- Geöffnete Tankstellen zuerst, danach gültige Preise aufsteigend; fehlende
+  Preise zuletzt.
+- Name, Marke, Preis, Entfernung, Öffnungsstatus, Adresse und Koordinaten als
+  Entity-Daten.
+- Persistenter Referenzpunkt und Zeitstempel der letzten erfolgreichen Suche.
+- Diagnostics ohne API-Key und ohne exakte Koordinaten.
+- Englische und deutsche UI-Übersetzungen.
 
-## Dashboard card — beta preview (`v0.2.0-beta.1`)
+## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.1`)
 
-This beta adds `custom:mobile-fuel-stations-card` to the same HACS integration.
-The bundle is delivered with the integration. After installation and restart,
-register this Lovelace resource once:
+Diese Beta ergänzt `custom:mobile-fuel-stations-card` in derselben HACS-
+Integration. Das Bundle wird mit der Integration ausgeliefert. Nach
+Installation und Neustart die Lovelace-Resource einmalig registrieren:
 
 ```text
 /mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.1
 ```
 
-Then use:
+Minimale Karte:
 
 ```yaml
 type: custom:mobile-fuel-stations-card
 entity: <OVERVIEW_ENTITY>
 ```
 
-The beta has no navigation or visual card editor yet.
+Die aktuelle Entwicklung enthält zusätzlich einen visuellen Editor und einen
+separaten Navigationsbutton pro Station. Diese Erweiterungen werden in einem
+separaten nächsten Beta-Stand veröffentlicht.
 
-## Requirements
+## Voraussetzungen
 
-- Home Assistant 2026.2 or newer.
-- A Tankerkönig API key.
-- A Home Assistant entity exposing numeric `latitude` and `longitude`
-  attributes, normally a GPS `device_tracker`.
+- Home Assistant 2026.2 oder neuer.
+- Ein eigener Tankerkönig-API-Key.
+- Eine Entity mit numerischen `latitude`- und `longitude`-Attributen,
+  normalerweise ein GPS-`device_tracker`.
 
 ## Installation
 
-### HACS custom repository
+### HACS – benutzerdefiniertes Repository
 
-1. Open HACS → Integrations → three-dot menu → Custom repositories.
-2. Add `https://github.com/balronu/ha-mobile-fuel-stations` as an Integration.
-3. Install **Mobile Fuel Stations** and restart Home Assistant.
+Solange das Projekt noch nicht im offiziellen HACS-Standardverzeichnis liegt,
+kann es als benutzerdefiniertes Repository installiert werden:
 
-### Manual
+1. HACS → **Integrationen** öffnen.
+2. Das Drei-Punkte-Menü öffnen und **Benutzerdefinierte Repositories** wählen.
+3. `https://github.com/balronu/ha-mobile-fuel-stations` eintragen.
+4. Als Typ/Kategorie **Integration** auswählen.
+5. **Mobile Fuel Stations** installieren.
+6. Home Assistant neu starten.
 
-Copy `custom_components/mobile_fuel_stations` into the Home Assistant
-`config/custom_components` directory and restart Home Assistant.
+### Manuelle Installation
 
-## Configuration
+Den Ordner `custom_components/mobile_fuel_stations` nach
 
-Add the integration through **Settings → Devices & services → Add integration**
-and select **Mobile Fuel Stations**. Choose the location entity and set radius,
-fuel type, number of station slots, polling interval, movement threshold, and
-cooldown. The API key is stored in the config entry and is never exposed in
-entity attributes or diagnostics.
+```text
+/config/custom_components/mobile_fuel_stations
+```
 
-Defaults are 20 km, diesel, five slots, 15-minute polling, a 2 km movement
-threshold, and a five-minute cooldown. The movement reference point advances
-only after a successful provider response.
+kopieren und Home Assistant anschließend neu starten.
 
-## Entities
+## Einrichtung
 
-- Entity IDs include the normalized location entity and can vary slightly with
-  Home Assistant entity-ID normalization. Check **Settings → Devices & services
-  → Entities** after setup.
-- For a generic location `device_tracker.my_vehicle`, typical IDs are
-  `sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations` and
-  `sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1` through
-  `_station_5`.
-- The overview state is the current result count. Its attributes include
-  `radius`, `fuel_type`, `location_entity`, `station_count`,
-  `last_successful_update`, `reference_latitude`, `reference_longitude`, and
-  `distance_since_last_search`.
-- Each station slot reports the current price in EUR/L and attributes
-  `station_id`, `station_name`, `brand`, `distance`, `is_open`, `street`,
-  `house_number`, `postcode`, `place`, `latitude`, and `longitude`.
+Zu **Einstellungen → Geräte & Dienste → Integration hinzufügen** gehen und
+**Mobile Fuel Stations** auswählen. Benötigt werden:
 
-Station slot IDs are stable; the station assigned to a slot can change after a
-refresh. A failed request retains the last successful result where possible.
+- **Tankerkönig-API-Key**: wird im Config Entry gespeichert und nicht als
+  Entity-Attribut veröffentlicht.
+- **Standort-Entity**: Entity mit aktuellen `latitude`- und `longitude`-Werten.
+- **Radius**: 1–100 km, Standard 20 km.
+- **Kraftstoffart**: `diesel`, `e5` oder `e10`.
+- **Anzahl Stations-Slots**: 1–10, Standard 5.
+- **Regelintervall**: mindestens 5 Minuten, Standard 15 Minuten.
+- **Bewegungsupdates**: bewegungsabhängige Aktualisierungen aktivieren oder
+  deaktivieren.
+- **Bewegungsschwelle**: Standard 2 km seit der letzten erfolgreichen Suche.
+- **Cooldown**: mindestens 5 Minuten zwischen API-Abfragen, Standard 5 Minuten.
 
-## Location entity
+Die ausgewählte Standort-Entity muss bereits gültige Koordinaten besitzen. Die
+Integration stellt selbst kein GPS bereit und erstellt oder ersetzt keine
+Standort-Entity.
 
-The source can be a vehicle tracker, person/device tracker, or another GPS
-entity. Generic example only:
+### Optionen
+
+Die Optionen können später am Integrationseintrag geändert werden. Ein
+Bewegungsupdate wird erst ausgelöst, wenn die Bewegungsschwelle erreicht und
+der Cooldown abgelaufen ist. Der Referenzpunkt wird nur nach einer
+erfolgreichen Anbieterantwort verschoben. Ungültige GPS-Daten oder
+Provider-Fehler lösen keine Abfrage mit ungültigen Koordinaten aus; die letzte
+gültige Antwort bleibt soweit möglich erhalten.
+
+## Standort-Entity
+
+Als Quelle kommen Fahrzeugtracker, GPS-Tracker, Device Tracker oder eine andere
+geeignete Home-Assistant-Entity mit `latitude` und `longitude` infrage.
+Generisches Beispiel:
 
 ```yaml
 device_tracker.my_vehicle:
@@ -103,45 +121,89 @@ device_tracker.my_vehicle:
     longitude: 8.0000
 ```
 
-Replace the example entity and coordinates with values from your own system.
+Die Beispielkoordinaten sind Platzhalter. Entity und Werte müssen durch die
+eigene Standortquelle ersetzt werden.
 
-## Dashboard example (standard cards)
+## Erzeugte Entities
 
-This example requires no custom card. Replace the example entity IDs with the
-entity IDs created on your Home Assistant instance.
+Die Entity IDs werden aus Config Entry und Standort-Entity gebildet und können
+durch die Home-Assistant-Normalisierung leicht abweichen. Die tatsächlichen
+IDs unter **Einstellungen → Geräte & Dienste → Entitäten** prüfen.
+
+Für die generische Standort-Entity `device_tracker.my_vehicle` sehen die IDs
+typischerweise so aus:
+
+- `sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations`
+- `sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1` bis
+  `_station_5`
+
+Die Beispiel-IDs müssen durch die auf dem eigenen System erzeugten IDs ersetzt
+werden.
+
+### Overview-Sensor
+
+Der State des Overview-Sensors ist die Anzahl der aktuell gefundenen bzw.
+angezeigten Tankstellen. Wichtige Attribute:
+
+- `radius`: eingestellter Suchradius.
+- `fuel_type`: Kraftstoffart.
+- `location_entity`: verwendete Standort-Entity.
+- `station_count`: konfigurierte Slot-Anzahl.
+- `last_successful_update`: Zeitpunkt der letzten erfolgreichen Suche.
+- `reference_latitude` und `reference_longitude`: Referenzpunkt der letzten
+  erfolgreichen Suche.
+- `distance_since_last_search`: aktuelle Entfernung seit diesem Referenzpunkt.
+
+### Stations-Sensoren
+
+Jeder Slot-Sensor enthält im State den aktuellen Kraftstoffpreis in `EUR/L`.
+Die Stationsdaten stehen in den Attributen:
+
+`station_id`, `station_name`, `brand`, `distance`, `is_open`, `street`,
+`house_number`, `postcode`, `place`, `latitude` und `longitude`.
+
+Die Slot-IDs bleiben stabil, aber die Station in einem Slot kann sich nach
+einer Aktualisierung ändern. Ein leerer Slot wird als nicht verfügbar markiert.
+
+## Dashboard-Beispiel – Standardkarten
+
+Dieses Beispiel benötigt keine Custom Card. Die Beispiel-Entity-IDs müssen
+durch die IDs des eigenen Home-Assistant-Systems ersetzt werden.
 
 ```yaml
 type: entities
-title: Nearby fuel stations
+title: Tankstellen im Umkreis
 entities:
   - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations
-    name: Stations found
+    name: Tankstellen gefunden
   - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1
-    name: Station 1
+    name: Tankstelle 1
   - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_2
-    name: Station 2
+    name: Tankstelle 2
   - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_3
-    name: Station 3
+    name: Tankstelle 3
   - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_4
-    name: Station 4
+    name: Tankstelle 4
   - entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_5
-    name: Station 5
+    name: Tankstelle 5
 ```
 
-## Mushroom example (optional)
+## Optionales Mushroom-Beispiel
 
-Requires [Mushroom Cards](https://github.com/piitaya/lovelace-mushroom). The
-example uses native station attributes directly: no JSON parsing, JavaScript,
-CSS hacks, absolute positioning, or negative margins.
+Dieses Beispiel benötigt [Mushroom Cards](https://github.com/piitaya/lovelace-mushroom).
+Es verwendet die Stationsattribute direkt: kein JSON-Parsing, kein
+JavaScript, keine CSS-Hacks, keine absolute Positionierung und keine negativen
+Margins.
 
-For a Sections view, a full-width header can use:
+Für eine Sections-Ansicht kann der Header mit nativen Grid-Optionen vollbreit
+angezeigt werden:
 
 ```yaml
 type: custom:mushroom-template-card
 entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations
-primary: Nearby fuel stations
+primary: Tankstellen im Umkreis
 secondary: >-
-  {{ states('sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations') }} stations ·
+  {{ states('sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations') }} Tankstellen ·
   {{ state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations', 'radius') | int }} km ·
   {{ (state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_nearby_stations', 'fuel_type') or 'diesel') | title }}
 multiline_secondary: true
@@ -152,100 +214,105 @@ grid_options:
   rows: 2
 ```
 
-A station card can use a native slot entity and its attributes:
+Eine Stationskarte kann die nativen Attribute des Slots verwenden:
 
 ```yaml
 type: custom:mushroom-template-card
 entity: sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1
 primary: >-
-  {{ state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1', 'station_name') or 'Station unavailable' }}
+  {{ state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1', 'station_name') or 'Tankstelle nicht verfügbar' }}
 secondary: >-
-  {{ states('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1') }} €/L ·
+  {{ states('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1') }} €/l ·
   {{ state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1', 'distance') }} km ·
-  {{ 'open' if is_state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1', 'is_open', true) else 'closed' }}
+  {{ 'geöffnet' if is_state_attr('sensor.mobile_fuel_stations_device_tracker_my_vehicle_station_1', 'is_open', true) else 'geschlossen' }}
 multiline_secondary: true
 layout: horizontal
 fill_container: true
 ```
 
-Duplicate the station card for slots 2–5 and replace only the entity ID. This
-example is display-only and works without navigation.
+Für die Slots 2–5 die Entity ID ersetzen. Das Beispiel funktioniert vollständig
+ohne Navigation.
 
 ## Navigation
 
-Mobile Fuel Stations intentionally does not depend on Apple Maps, Google Maps,
-Sygic, Waze, or another navigation provider. Each station exposes dynamic
-`latitude` and `longitude` attributes for dashboards, automations, and
-client-specific navigation solutions.
+Mobile Fuel Stations ist bewusst plattformneutral und hängt nicht von Apple
+Karten, Google Maps, Sygic, Waze oder einem anderen Anbieter ab. Jede
+Stations-Entity stellt dynamisch `latitude` und `longitude` für individuelle
+Dashboards, Automationen oder Client-Lösungen bereit.
 
-The standardized `geo:` URI is defined by [RFC 5870](https://datatracker.ietf.org/doc/html/rfc5870.html).
-Clients that support it may use it, but support depends on the frontend,
-Companion App, operating system, and installed applications. The integration
-does not claim uniform `geo:` behavior on every Home Assistant client and does
-not provide an installed-app chooser.
+Die standardisierte `geo:`-URI ist in [RFC 5870](https://datatracker.ietf.org/doc/html/rfc5870.html)
+definiert. Ob ein Client sie verarbeitet, hängt von Frontend, Companion App,
+Betriebssystem und installierten Apps ab. Die Integration behauptet daher
+nicht, dass `geo:` auf jedem Home-Assistant-Client einheitlich funktioniert,
+und stellt keinen automatischen App-Chooser bereit.
 
-## Troubleshooting
+## Fehlerbehebung
 
-### No stations found
+### Keine Tankstellen gefunden
 
-- Confirm that the selected location entity exists and has numeric
-  `latitude`/`longitude` attributes.
-- Check the radius and fuel type.
-- Confirm the Tankerkönig API key and provider availability.
+- Prüfen, ob die Standort-Entity existiert und numerische `latitude`-/
+  `longitude`-Attribute liefert.
+- Radius und Kraftstoffart prüfen.
+- Tankerkönig-API-Key und Erreichbarkeit des Anbieters prüfen.
 
-### Location unavailable
+### Standort nicht verfügbar
 
-If the GPS entity is `unknown`, `unavailable`, or has invalid coordinates, no
-request is sent with those coordinates. The last valid result is retained where
-possible. Restore the GPS source and wait for the next update.
+Bei `unknown`, `unavailable` oder ungültigen Koordinaten sendet die Integration
+keine Abfrage mit diesen Werten. Die letzte gültige Antwort bleibt soweit
+möglich erhalten. GPS-Quelle wiederherstellen und nächste Aktualisierung
+abwarten.
 
-### Prices are not updating
+### Preise aktualisieren sich nicht
 
-Check the regular interval, movement-update setting, movement threshold, and
-cooldown. Provider rate limits and price freshness are external factors.
+Regelintervall, Bewegungsupdates, Bewegungsschwelle und Cooldown prüfen.
+Provider-Ratelimits und Preisaktualität liegen außerhalb der Integration.
 
-### Dashboard entity not found
+### Dashboard findet Entity IDs nicht
 
-Find the actual IDs under **Settings → Devices & services → Entities**. Entity
-IDs include the normalized location entity and may differ from examples.
+Die tatsächlichen IDs unter **Einstellungen → Geräte & Dienste → Entitäten**
+nachsehen. Sie enthalten die normalisierte Standort-Entity und können von den
+Beispielen abweichen.
 
-## API and attribution
+### API-Probleme
 
-The integration calls the Tankerkönig nearby-stations endpoint with dynamic
-latitude, longitude, radius, fuel type, and price sort parameters. Tankerkönig
-usage is subject to its own API terms, rate limits, and attribution
-requirements. Users must obtain and protect their own API key.
+API-Key, Provider-Verfügbarkeit und Ratelimits prüfen. Keine API-Keys in Logs,
+Screenshots oder GitHub-Issues veröffentlichen.
 
-## Privacy
+### Bewegungsupdate funktioniert scheinbar nicht
 
-The selected location is sent to the provider to perform the requested search.
-Do not publish diagnostics containing exact location data. API keys must never
-be posted in issues, logs, screenshots, fixtures, or pull requests.
+Ein Bewegungsupdate benötigt sowohl die konfigurierte Bewegungsschwelle als
+auch einen abgelaufenen Cooldown. Das Regelintervall bleibt unabhängig davon
+aktiv. Bei GPS-Fehlern oder einem noch laufenden Cooldown wird keine zusätzliche
+Abfrage ausgelöst.
 
-## Limitations
+## Datenschutz und Sicherheit
 
-- Version 0.1.0 supports Tankerkönig only.
-- A station slot is not a permanent station identity; it is a ranked slot.
-- Provider availability, price freshness, and rate limits are external.
-- Navigation is intentionally platform-agnostic. The integration does not
-  require or depend on Apple Maps, Google Maps, Sygic, Waze, or another
-  navigation provider.
-- Dashboard authors may use the station coordinates with a client-specific
-  navigation mechanism. The standardized `geo:` URI is documented by RFC
-  5870, but support and app selection depend on the receiving platform; this
-  project does not claim that `geo:` works uniformly in every Home Assistant
-  frontend or Companion App.
-- The integration does not create map or navigation links.
+- Der API-Key wird im Home-Assistant-Config-Entry gespeichert.
+- API-Keys niemals in GitHub, Logs, Screenshots, Fixtures oder Issues ablegen.
+- Die konfigurierte Standortposition wird für die Umkreissuche an Tankerkönig
+  übertragen.
+- Stationskoordinaten werden als Entity-Attribute bereitgestellt, weil sie
+  Teil des Suchergebnisses sind.
+- Diagnostics redigieren den API-Key und lassen exakte Koordinaten weg.
+- Keine Diagnostics oder Logs mit privaten Standortdaten veröffentlichen.
 
-## Development
+## API und Attribution
+
+Die Integration verwendet den Tankerkönig-Endpunkt für nahegelegene
+Tankstellen mit dynamischer Position, Radius, Kraftstoffart und Preissortierung.
+Nutzung und Attribution richten sich nach den Bedingungen und Ratelimits des
+Anbieters. Nutzer benötigen und schützen ihren eigenen API-Key.
+
+## Entwicklung und Beiträge
 
 ```bash
 python -m pytest -q
 ```
 
-Fixtures use invented data and never contain real API keys or private GPS
-coordinates.
+Fixtures verwenden erfundene Daten und enthalten keine echten API-Keys oder
+privaten GPS-Koordinaten. Bei Änderungen an benutzerrelevanter Dokumentation
+`README.md` und `README.de.md` synchron halten. Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## License
+## Lizenz
 
-MIT. See [LICENSE](LICENSE).
+MIT. Siehe [LICENSE](LICENSE).
