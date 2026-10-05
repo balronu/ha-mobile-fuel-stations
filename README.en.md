@@ -15,11 +15,11 @@ The currently supported fuel-station provider is **Tankerkönig**.
 - 1 to 10 stable station slots
 - regular refreshes and optional movement-triggered updates
 - movement threshold and cooldown
-- sorting by distance and price
+- a price-oriented station list plus separate selection of the nearest and cheapest open station
 - overview sensor with station data and search status
 - diagnostics without exposing an API key or exact location
 - German and English translations
-- native dashboard card with visual editor
+- supplied dashboard card with visual editor
 - automatic frontend registration
 - navigation with Apple Maps, Google Maps, or Waze
 - highlights for the nearest and cheapest open station
@@ -43,9 +43,11 @@ The currently supported fuel-station provider is **Tankerkönig**.
 
 The dashboard card is registered automatically. The automatically registered
 frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0`
-includes the integration version so an update does not reuse stale card
-JavaScript from the cache. A manual Lovelace resource entry is not required
-for a new installation.
+includes the integration version. Each integration version therefore gets its
+own resource URL, so stale card JavaScript from caches is not reused after a
+version update. After a HACS update, a complete Home Assistant restart is
+sufficient; current installations do not require manually clearing the
+browser cache or changing the Lovelace resource.
 
 ### Manual installation
 
@@ -132,13 +134,13 @@ The overview sensor exposes attributes including:
 
 Station slots expose attributes including:
 
-`station_id`, `station_name`, `brand`, `distance`, `is_open`, `street`, `house_number`, `postcode`, `place`, `latitude`, `longitude`
+`station_id`, `station_name`, `brand`, `price`, `distance`, `is_open`, `street`, `house_number`, `postcode`, `place`, `latitude`, `longitude`
 
 Station-slot entity IDs and unique IDs remain stable. The station currently shown in a slot may change after an update, and its display name follows the current station. An empty slot is `unavailable`. Prices use `EUR/L`.
 
 ## Alternative dashboard examples
 
-The native Mobile Fuel Stations card is the recommended default. The generated sensors can also be displayed with standard Home Assistant cards. Mushroom Cards are an optional additional custom-card dependency.
+The supplied Mobile Fuel Stations card is the recommended default. The generated sensors can also be displayed with standard Home Assistant cards. Mushroom Cards are an optional additional custom-card dependency.
 
 ## Troubleshooting
 

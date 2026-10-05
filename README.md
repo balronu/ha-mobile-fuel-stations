@@ -15,11 +15,11 @@ Der aktuell unterstützte Tankstellenanbieter ist **Tankerkönig**.
 - 1 bis 10 stabile Stations-Slots
 - regelmäßige Aktualisierung und optionale Bewegungsupdates
 - Bewegungsschwelle und Cooldown
-- Sortierung nach Entfernung und Preis
+- preisorientierte Stationsliste sowie separate Ermittlung der nächsten und günstigsten offenen Tankstelle
 - Overview-Sensor mit Stationsdaten und Suchstatus
 - Diagnostics ohne API-Key oder exakte Standortdaten
 - Deutsch und Englisch
-- native Dashboard-Karte mit Visual Editor
+- mitgelieferte Dashboard-Karte mit Visual Editor
 - automatische Frontend-Registrierung
 - Navigation mit Apple Maps, Google Maps oder Waze
 - Highlights für die nächste und günstigste offene Tankstelle
@@ -43,9 +43,12 @@ Der aktuell unterstützte Tankstellenanbieter ist **Tankerkönig**.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
 Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0`
-enthält die Integrationsversion, damit ein Update keinen alten
-Card-JavaScript-Code aus dem Cache verwendet. Bei einer Neuinstallation ist
-kein manueller Lovelace-Resource-Eintrag erforderlich.
+enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
+eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
+einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
+genügt ein vollständiger Home-Assistant-Neustart; ein manuelles Leeren des
+Browser-Caches oder Ändern der Lovelace-Resource ist bei aktuellen
+Installationen nicht erforderlich.
 
 ### Manuelle Installation
 
@@ -132,13 +135,13 @@ Der Overview-Sensor stellt unter anderem folgende Attribute bereit:
 
 Die Stations-Slots stellen unter anderem bereit:
 
-`station_id`, `station_name`, `brand`, `distance`, `is_open`, `street`, `house_number`, `postcode`, `place`, `latitude`, `longitude`
+`station_id`, `station_name`, `brand`, `price`, `distance`, `is_open`, `street`, `house_number`, `postcode`, `place`, `latitude`, `longitude`
 
 Die Slot-Entity-ID und Unique-ID bleiben stabil. Die Tankstelle in einem Slot kann sich nach einer Aktualisierung ändern; der Anzeigename folgt der aktuellen Tankstelle. Ein leerer Slot ist `unavailable`. Preiswerte verwenden `EUR/L`.
 
 ## Alternative Dashboard-Beispiele
 
-Die native Mobile Fuel Stations Card ist der empfohlene Standardweg. Alternativ können die erzeugten Sensoren mit normalen Home-Assistant-Karten dargestellt werden. Mushroom Cards sind eine optionale zusätzliche Custom-Card-Abhängigkeit.
+Die mitgelieferte Mobile Fuel Stations Card ist der empfohlene Standardweg. Alternativ können die erzeugten Sensoren mit normalen Home-Assistant-Karten dargestellt werden. Mushroom Cards sind eine optionale zusätzliche Custom-Card-Abhängigkeit.
 
 ## Fehlerbehebung
 
