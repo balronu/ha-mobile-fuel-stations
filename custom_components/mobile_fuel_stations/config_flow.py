@@ -106,14 +106,12 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return MobileFuelStationsOptionsFlow(config_entry)
+        """Return the options flow; HA provides ``config_entry`` on the flow."""
+        return MobileFuelStationsOptionsFlow()
 
 
 class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
     """Handle options."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:

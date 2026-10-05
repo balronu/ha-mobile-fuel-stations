@@ -50,9 +50,9 @@ export function validCoordinate(value: unknown, minimum: number, maximum: number
   return Number.isFinite(number) && number >= minimum && number <= maximum ? number : null;
 }
 
-export function detectNavigationProvider(provider: NavigationProvider = "auto", userAgent = globalThis.navigator?.userAgent ?? ""): Exclude<NavigationProvider, "auto"> {
+export function detectNavigationProvider(provider: NavigationProvider = "auto", userAgent = globalThis.navigator?.userAgent ?? "", maxTouchPoints = globalThis.navigator?.maxTouchPoints ?? 0): Exclude<NavigationProvider, "auto"> {
   if (provider === "apple" || provider === "google") return provider;
-  const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || (/Macintosh/i.test(userAgent) && /Mac OS X/i.test(userAgent) && typeof navigator !== "undefined" && navigator.maxTouchPoints > 1);
+  const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || (/Macintosh/i.test(userAgent) && /Mac OS X/i.test(userAgent) && maxTouchPoints > 1);
   return isIOS ? "apple" : "google";
 }
 
@@ -61,10 +61,9 @@ export function buildNavigationUrl(latitude: unknown, longitude: unknown, provid
   const lon = validCoordinate(longitude, -180, 180);
   if (lat === null || lon === null) return null;
   if (detectNavigationProvider(provider, userAgent) === "apple") {
-    const query = label?.trim() ? `&q=${encodeURIComponent(label.trim())}` : "";
-    return `https://maps.apple.com/?ll=${lat},${lon}${query}`;
+    return `https://maps.apple.com/directions?destination=${encodeURIComponent(`${lat},${lon}`)}&mode=driving`;
   }
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lon}`)}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lon}`)}&travelmode=driving&dir_action=navigate`;
 }
 
 export function discoverStationEntities(overviewId: string, overview: HassState, hass: Hass): string[] {
@@ -179,7 +178,7 @@ export class MobileFuelStationsCard extends LitElement {
     const open = typeof a.is_open === "boolean" ? a.is_open : undefined;
     const status = open === undefined ? null : open ? "Geöffnet" : "Geschlossen";
     const label = `${name}${price ? `, ${price}` : ""}`;
-    const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto", name) : null;
+    const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
     return html`<div class="station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       <ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>
       <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}</div>

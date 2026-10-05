@@ -27,10 +27,13 @@ describe("formatting and discovery", () => {
     expect(shouldShowBrand("OEL Schneider GmbH Rodenhof", "OEL")).toBe(false);
   });
   it("selects navigation providers defensively and URL-encodes targets", () => {
-    expect(buildNavigationUrl(49.123, 8.456)).toBe("https://www.google.com/maps/search/?api=1&query=49.123%2C8.456");
-    expect(buildNavigationUrl(49.123, 8.456, "apple", "Tankstelle Ä")).toBe("https://maps.apple.com/?ll=49.123,8.456&q=Tankstelle%20%C3%84");
-    expect(buildNavigationUrl(49.123, 8.456, "google", "Tankstelle Ä")).toContain("google.com/maps/search");
+    expect(buildNavigationUrl(49.123, 8.456)).toBe("https://www.google.com/maps/dir/?api=1&destination=49.123%2C8.456&travelmode=driving&dir_action=navigate");
+    expect(buildNavigationUrl(49.123, 8.456, "apple", "Tankstelle Ä")).toBe("https://maps.apple.com/directions?destination=49.123%2C8.456&mode=driving");
+    expect(buildNavigationUrl(49.123, 8.456, "google", "Tankstelle Ä")).toContain("google.com/maps/dir/");
+    expect(buildNavigationUrl(49.123, 8.456, "google")).not.toContain("origin=");
     expect(detectNavigationProvider("auto", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")).toBe("apple");
+    expect(detectNavigationProvider("auto", "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)")).toBe("apple");
+    expect(detectNavigationProvider("auto", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", 5)).toBe("apple");
     expect(detectNavigationProvider("auto", "Mozilla/5.0 (Linux; Android 14; Pixel)")).toBe("google");
     expect(detectNavigationProvider("auto", "Mozilla/5.0 (X11; Linux x86_64)")).toBe("google");
     expect(buildNavigationUrl(91, 8)).toBeNull();
