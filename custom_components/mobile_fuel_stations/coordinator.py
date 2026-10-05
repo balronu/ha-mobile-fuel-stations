@@ -30,7 +30,7 @@ from .const import (
     STORAGE_VERSION,
 )
 from .providers import create_provider
-from .providers.base import ProviderAuthError, ProviderError, ProviderRateLimitError
+from .providers.base import ProviderAuthError, ProviderError, ProviderRateLimitError, StationSearchQuery
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -120,10 +120,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self.last_request = now
         try:
             result = await self.client.async_search(
-                position[0],
-                position[1],
-                min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
-                self.options[CONF_FUEL_TYPE],
+                StationSearchQuery(
+                    latitude=position[0],
+                    longitude=position[1],
+                    radius_km=min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
+                    fuel_type=self.options[CONF_FUEL_TYPE],
+                )
             )
         except ProviderAuthError as err:
             raise UpdateFailed("API authentication failed") from err

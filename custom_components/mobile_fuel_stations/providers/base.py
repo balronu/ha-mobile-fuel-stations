@@ -8,7 +8,6 @@ from typing import Protocol
 from aiohttp import ClientSession
 
 
-
 @dataclass(slots=True, frozen=True)
 class Station:
     """Provider-neutral normalized station data."""
@@ -27,6 +26,26 @@ class Station:
     longitude: float | None
 
 
+@dataclass(slots=True, frozen=True)
+class StationSearchQuery:
+    """Provider-neutral inputs for a nearby-station search."""
+
+    latitude: float
+    longitude: float
+    radius_km: float
+    fuel_type: str
+
+
+@dataclass(slots=True, frozen=True)
+class ProviderCapabilities:
+    """Optional provider metadata; unknown future values remain None."""
+
+    supported_countries: frozenset[str] | None = None
+    supported_fuel_types: frozenset[str] | None = None
+    max_radius_km: float | None = None
+    requires_api_key: bool = True
+
+
 class ProviderError(Exception):
     """Base error raised by a station provider."""
 
@@ -43,11 +62,31 @@ class ProviderConfigurationError(ProviderError):
     """The selected provider is not available in this release."""
 
 
+class UnknownProviderError(ProviderConfigurationError):
+    """No provider registration exists for the requested mode."""
+
+
+class ProviderDisabledError(ProviderConfigurationError):
+    """A known provider is deliberately disabled in this release."""
+
+
+class ProviderTimeoutError(ProviderError):
+    """The provider request timed out."""
+
+
+class ProviderNetworkError(ProviderError):
+    """The provider request failed at the network layer."""
+
+
+class ProviderResponseError(ProviderError):
+    """The provider returned an unusable response."""
+
+
 class FuelStationProvider(Protocol):
     """Minimal interface required by the coordinator."""
 
     def __init__(self, session: ClientSession, api_key: str) -> None: ...
 
-    async def async_search(
-        self, latitude: float, longitude: float, radius: float, fuel_type: str
-    ) -> list[Station]: ...
+    capabilities: ProviderCapabilities
+
+    async def async_search(self, query: StationSearchQuery) -> list[Station]: ...

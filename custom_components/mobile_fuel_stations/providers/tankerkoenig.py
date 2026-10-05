@@ -7,26 +7,39 @@ from typing import Any
 from aiohttp import ClientError, ClientResponseError, ClientSession
 
 from ..const import API_URL
-from .base import ProviderAuthError, ProviderError, ProviderRateLimitError, Station
+from .base import (
+    ProviderAuthError,
+    ProviderCapabilities,
+    ProviderNetworkError,
+    ProviderRateLimitError,
+    ProviderResponseError,
+    ProviderTimeoutError,
+    Station,
+    StationSearchQuery,
+)
 
 
 class TankerkoenigProvider:
     """Preserve the v0.4 Tankerkönig request and normalization behavior."""
+
+    capabilities = ProviderCapabilities(
+        supported_countries=frozenset({"DE"}),
+        supported_fuel_types=frozenset({"diesel", "e5", "e10"}),
+        max_radius_km=25.0,
+    )
 
     def __init__(self, session: ClientSession, api_key: str, timeout: float = 15) -> None:
         self._session = session
         self._api_key = api_key
         self._timeout = timeout
 
-    async def async_search(
-        self, latitude: float, longitude: float, radius: float, fuel_type: str
-    ) -> list[Station]:
+    async def async_search(self, query: StationSearchQuery) -> list[Station]:
         params = {
-            "lat": f"{latitude:.7f}",
-            "lng": f"{longitude:.7f}",
-            "rad": f"{radius:g}",
+            "lat": f"{query.latitude:.7f}",
+            "lng": f"{query.longitude:.7f}",
+            "rad": f"{query.radius_km:g}",
             "sort": "price",
-            "type": fuel_type,
+            "type": query.fuel_type,
             "apikey": self._api_key,
         }
         try:
@@ -36,9 +49,13 @@ class TankerkoenigProvider:
                 response.raise_for_status()
                 payload: dict[str, Any] = await response.json(content_type=None)
         except ClientResponseError as err:
-            raise ProviderError(f"HTTP {err.status}") from err
-        except (ClientError, TimeoutError, ValueError) as err:
-            raise ProviderError("Provider request failed") from err
+            raise ProviderResponseError(f"HTTP {err.status}") from err
+        except TimeoutError as err:
+            raise ProviderTimeoutError("Provider request timed out") from err
+        except ClientError as err:
+            raise ProviderNetworkError("Provider request failed") from err
+        except ValueError as err:
+            raise ProviderResponseError("Provider returned invalid JSON") from err
 
         if payload.get("ok") is not True:
             status = str(payload.get("status", "provider_error"))
@@ -46,7 +63,7 @@ class TankerkoenigProvider:
                 raise ProviderAuthError
             if "limit" in status.lower():
                 raise ProviderRateLimitError
-            raise ProviderError("Provider returned ok=false")
+            raise ProviderResponseError("Provider returned ok=false")
 
         return [self._normalize(item) for item in payload.get("stations", []) if isinstance(item, dict)]
 
