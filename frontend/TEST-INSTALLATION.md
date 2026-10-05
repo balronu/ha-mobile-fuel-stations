@@ -6,16 +6,18 @@ Die Build-Quelle liegt unter `frontend/`; das Bundle wird beim Build automatisch
 in die Integration kopiert. Eine manuelle Kopie nach `/config/www` ist nicht
 erforderlich.
 
-Die versionslose URL nach dem Home-Assistant-Neustart ist:
+Die automatisch registrierte URL enthält nach dem Home-Assistant-Neustart die
+Integrationsversion, zum Beispiel:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0-beta.2`
 
 ## Automatische Registrierung
 
 Die Integration registriert die Karte automatisch über die unterstützte
 Home-Assistant-Frontend-API. Bei einer Neuinstallation ist kein manueller
-Lovelace-Resource-Eintrag erforderlich. Die URL bleibt bei späteren HACS-Updates
-unverändert. Browser oder Companion-Clients können bei Bedarf trotzdem einen
+Lovelace-Resource-Eintrag erforderlich. Der physische StaticPath bleibt
+unverändert; die Versionsnummer erzeugt bei späteren HACS-Updates eine neue
+Cache-URL. Browser oder Companion-Clients können bei Bedarf trotzdem einen
 Frontend-Neuladen bzw. Cache-Refresh benötigen.
 
 Bei einem Upgrade von v0.2.x darf ein bereits vorhandener manueller Resource-

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0-beta.2 — Versioned frontend URL
+
+### Deutsch
+
+- Die automatisch registrierte Frontend-URL enthält jetzt die
+  Integrationsversion und verhindert dadurch veralteten JavaScript-Code nach
+  einem Update.
+- Ein manueller Lovelace-Resource-Eintrag ist weiterhin nicht erforderlich.
+
+### English
+
+- The automatically registered frontend URL now includes the integration
+  version to prevent stale dashboard JavaScript after an update.
+- No manual Lovelace resource entry is required.
+
 ## 0.4.0-beta.1 — Nearest and cheapest station
 
 ### Deutsch
