@@ -9,6 +9,7 @@ from aiohttp import ClientSession
 
 from ..const import CONF_PROVIDER_MODE, PROVIDER_AUTO, PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
 from .base import (
+    CountryPriceCoverage,
     FuelStationProvider,
     ProviderCapabilities,
     ProviderConfigurationError,
@@ -37,6 +38,7 @@ PROVIDER_REGISTRY: dict[str, ProviderRegistration] = {
             supported_countries=frozenset({"DE"}),
             supported_fuel_types=frozenset({"diesel", "e5", "e10"}),
             max_radius_km=25.0,
+            country_price_coverage={"DE": CountryPriceCoverage.PER_STATION},
         ),
     ),
     # Deliberately no factory or concrete capabilities: Petromap is not implemented in R2B.
@@ -68,6 +70,7 @@ def create_provider(session: ClientSession, config: dict[str, object]) -> FuelSt
 
 __all__ = [
     "FuelStationProvider",
+    "CountryPriceCoverage",
     "ProviderCapabilities",
     "ProviderConfigurationError",
     "ProviderDisabledError",

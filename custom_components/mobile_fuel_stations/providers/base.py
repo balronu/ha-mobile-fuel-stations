@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from typing import Protocol
 
 from aiohttp import ClientSession
@@ -40,6 +41,16 @@ class StationSearchQuery:
     fuel_type: str
 
 
+class CountryPriceCoverage(StrEnum):
+    """How a provider can supply station prices for a country."""
+
+    PER_STATION = "per_station"
+    NATIONAL_ONLY = "national_only"
+    NO_PRICES = "no_prices"
+    UNSUPPORTED = "unsupported"
+    UNKNOWN = "unknown"
+
+
 @dataclass(slots=True, frozen=True)
 class ProviderCapabilities:
     """Optional provider metadata; unknown future values remain None."""
@@ -48,6 +59,7 @@ class ProviderCapabilities:
     supported_fuel_types: frozenset[str] | None = None
     max_radius_km: float | None = None
     requires_api_key: bool = True
+    country_price_coverage: dict[str, CountryPriceCoverage] | None = None
 
 
 class ProviderError(Exception):

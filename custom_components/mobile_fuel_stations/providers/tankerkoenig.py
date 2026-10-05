@@ -8,6 +8,7 @@ from aiohttp import ClientError, ClientResponseError, ClientSession
 
 from ..const import API_URL
 from .base import (
+    CountryPriceCoverage,
     ProviderAuthError,
     ProviderCapabilities,
     ProviderNetworkError,
@@ -26,6 +27,7 @@ class TankerkoenigProvider:
         supported_countries=frozenset({"DE"}),
         supported_fuel_types=frozenset({"diesel", "e5", "e10"}),
         max_radius_km=25.0,
+        country_price_coverage={"DE": CountryPriceCoverage.PER_STATION},
     )
 
     def __init__(self, session: ClientSession, api_key: str, timeout: float = 15) -> None:
