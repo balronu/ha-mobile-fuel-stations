@@ -94,9 +94,9 @@ def test_overview_attributes_keep_existing_fields_and_add_station_entities(monke
 
 def test_station_slot_state_and_attributes_remain_unchanged():
     station = Station(
+        "demo-id",
         "Demo Station",
         "Demo Brand",
-        "1 Example Street",
         1.799,
         2.4,
         True,
