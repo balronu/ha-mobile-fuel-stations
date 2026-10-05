@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.0-beta.2 — Second beta
+
+### English
+
+- Added a visual Lovelace card editor with overview-entity selection.
+- Added a navigation toggle and station navigation buttons for valid
+  coordinates; station taps still open `more-info`.
+- Improved the mobile header and brand de-duplication.
+- Made German documentation the default HACS repository view.
+- Added frontend coverage for editor, navigation, coordinate validation,
+  language labels, and brand handling.
+
+Navigation behavior depends on the client/platform. The Lovelace resource still
+requires one manual registration, and the final UI/navigation behavior remains
+under real-device validation.
+
+### Deutsch
+
+- Visuellen Lovelace-Karteneditor mit Overview-Entity-Auswahl ergänzt.
+- Navigationsschalter und Navigationsbuttons für gültige Koordinaten ergänzt;
+  Stations-Taps öffnen weiterhin `more-info`.
+- Mobilen Header und Brand-Deduplizierung verbessert.
+- Deutsche Dokumentation als HACS-Standardansicht eingerichtet.
+- Frontend-Tests für Editor, Navigation, Koordinatenvalidierung, Sprache und
+  Brand-Verarbeitung erweitert.
+
+Das Navigationsverhalten hängt von Client/Plattform ab. Die Lovelace-Resource
+muss weiterhin einmal manuell registriert werden; UI und Navigation werden noch
+auf realen Geräten validiert.
+
 ## 0.2.0-beta.1 — Beta preview
 
 ### English

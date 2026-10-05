@@ -25,14 +25,14 @@ Objekte.
 - Diagnostics ohne API-Key und ohne exakte Koordinaten.
 - Englische und deutsche UI-Übersetzungen.
 
-## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.1`)
+## Dashboard-Karte — Beta-Vorschau (`v0.2.0-beta.2`)
 
 Diese Beta ergänzt `custom:mobile-fuel-stations-card` in derselben HACS-
 Integration. Das Bundle wird mit der Integration ausgeliefert. Nach
 Installation und Neustart die Lovelace-Resource einmalig registrieren:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.1
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2
 ```
 
 Minimale Karte:
@@ -42,9 +42,12 @@ type: custom:mobile-fuel-stations-card
 entity: <OVERVIEW_ENTITY>
 ```
 
-Die aktuelle Entwicklung enthält zusätzlich einen visuellen Editor und einen
-separaten Navigationsbutton pro Station. Diese Erweiterungen werden in einem
-separaten nächsten Beta-Stand veröffentlicht.
+Die Beta enthält einen visuellen Editor zur Auswahl des Overview-Sensors und
+einen separaten Navigationsbutton pro Station. Navigation ist standardmäßig
+aktiviert und kann mit `navigation: false` ausgeblendet werden. Der
+Stationsblock öffnet weiterhin `more-info`; der Navigationsbutton verwendet
+einen HTTPS-Maps-Link. Die Übergabe an Browser oder Karten-App ist
+clientabhängig und garantiert keine bestimmte Karten-App.
 
 ## Voraussetzungen
 

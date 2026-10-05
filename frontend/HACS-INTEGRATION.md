@@ -7,7 +7,7 @@
   `custom_components/mobile_fuel_stations/frontend/mobile-fuel-stations-card.js`.
 - Home Assistant registriert beim Integrations-Setup den statischen Pfad
   `/mobile_fuel_stations` über `async_register_static_paths`.
-- Die Resource-URL ist `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.1`.
+- Die Resource-URL ist `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.2.0-beta.2`.
 
 Die automatische Änderung der Lovelace-Resource-Registry wird bewusst nicht
 implementiert: Dafür gibt es keine dokumentierte öffentliche API für Custom
