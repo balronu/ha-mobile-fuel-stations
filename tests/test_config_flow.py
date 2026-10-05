@@ -32,9 +32,15 @@ def _entry(data, options=None):
 
 def _flow(entry):
     flow = MobileFuelStationsConfigFlow.async_get_options_flow(entry)
-    flow._config_entry_id = entry.entry_id
+    # OptionsFlow derives its public ``config_entry`` property from the
+    # handler set by Home Assistant's flow manager.  Do not assign the
+    # read-only ``_config_entry_id`` implementation detail directly.
+    flow.handler = entry.entry_id
     flow.hass = SimpleNamespace(
-        config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry)
+        config_entries=SimpleNamespace(
+            async_get_known_entry=lambda entry_id: entry,
+            async_get_entry=lambda entry_id: entry,
+        )
     )
     return flow
 
