@@ -67,16 +67,16 @@ def _finite_number(value: Any, field: str) -> float:
 def _optional_timestamp(value: Any) -> datetime | None:
     if value is None:
         return None
-
-
-def _text(value: Any) -> str:
-    return value if isinstance(value, str) else ""
     if not isinstance(value, str):
         return None
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _text(value: Any) -> str:
+    return value if isinstance(value, str) else ""
 
 
 def build_search_request(query: StationSearchQuery) -> PetromapSearchRequest:

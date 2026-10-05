@@ -86,6 +86,7 @@ def test_parser_normalizes_station_and_cursor_without_pagination():
     assert station.currency == "EUR"
     assert station.country_code == "DE"
     assert station.price_updated_at is not None
+    assert station.price_updated_at.isoformat() == "2026-10-05T10:00:00+00:00"
     assert station.is_open is True
 
 
@@ -112,6 +113,24 @@ def test_parser_handles_austrian_station_and_optional_values():
     assert station.price_updated_at is None
     assert station.is_open is None
     assert station.brand == ""
+
+
+def test_parser_accepts_iso_offset_and_invalid_timestamp_is_unavailable():
+    offset_result = parse_search_response(
+        {"places": [_place(fuel={"price": {"amount": 1.8, "updatedAt": "2026-10-05T12:00:00+02:00"}})]}
+    )
+    assert offset_result.stations[0].price_updated_at is not None
+    assert offset_result.stations[0].price_updated_at.isoformat() == "2026-10-05T12:00:00+02:00"
+
+    null_result = parse_search_response(
+        {"places": [_place(fuel={"price": {"amount": 1.8, "updatedAt": None}})]}
+    )
+    assert null_result.stations[0].price_updated_at is None
+
+    invalid_result = parse_search_response(
+        {"places": [_place(fuel={"price": {"amount": 1.8, "updatedAt": "not-a-timestamp"}})]}
+    )
+    assert invalid_result.stations[0].price_updated_at is None
 
 
 def test_parser_rejects_invalid_required_data():
