@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.1-beta.1 — Card-picker hotfix test release
+
+### Deutsch
+
+- Behebt einen Fehler, bei dem die Mobile Fuel Stations Card im Home-Assistant-
+  Card-Picker als leerer, dauerhaft ladender Eintrag erscheinen konnte.
+- `getStubConfig` erkennt vorhandene Overview-Entities für die initiale
+  Kartenkonfiguration.
+- Fehlende Overview-Entities werden im Picker kontrolliert behandelt, ohne den
+  Picker zum Absturz zu bringen.
+
+### English
+
+- Fixed an issue where Mobile Fuel Stations could appear as an empty,
+  permanently loading entry in the Home Assistant card picker.
+- `getStubConfig` detects existing overview entities for the initial card
+  configuration.
+- Missing overview entities are handled without crashing the picker.
+
 ## 0.3.0 — Stable release
 
 ### Deutsch
