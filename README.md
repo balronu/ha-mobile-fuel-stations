@@ -13,6 +13,8 @@ moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.
 - Open stations first, then valid fuel prices ascending; missing prices last.
 - Stable station-slot entities with price, address, coordinates, status, and
   distance attributes.
+- Each station slot exposes latitude and longitude so dashboard authors can
+  connect it to the navigation mechanism supported by their client/device.
 - Diagnostics that exclude API keys and exact coordinates.
 
 ## Requirements
@@ -75,6 +77,14 @@ be posted in issues, logs, screenshots, fixtures, or pull requests.
 - Version 0.1.0 supports Tankerkönig only.
 - A station slot is not a permanent station identity; it is a ranked slot.
 - Provider availability, price freshness, and rate limits are external.
+- Navigation is intentionally platform-agnostic. The integration does not
+  require or depend on Apple Maps, Google Maps, Sygic, Waze, or another
+  navigation provider.
+- Dashboard authors may use the station coordinates with a client-specific
+  navigation mechanism. The standardized `geo:` URI is documented by RFC
+  5870, but support and app selection depend on the receiving platform; this
+  project does not claim that `geo:` works uniformly in every Home Assistant
+  frontend or Companion App.
 - The integration does not create map or navigation links.
 
 ## Development
