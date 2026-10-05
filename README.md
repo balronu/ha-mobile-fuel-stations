@@ -1,5 +1,7 @@
 # Mobile Fuel Stations
 
+[English](README.md) | [Deutsch](README.de.md)
+
 A Home Assistant custom integration that searches nearby fuel stations from a
 moving GPS entity. The first provider is [Tankerkönig](https://creativecommons.tankerkoenig.de/).
 
