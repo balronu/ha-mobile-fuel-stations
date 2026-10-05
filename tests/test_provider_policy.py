@@ -1,6 +1,11 @@
 from mobile_fuel_stations.const import PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
 from mobile_fuel_stations.providers import PROVIDER_REGISTRY, create_provider
-from mobile_fuel_stations.providers.base import CountryPriceCoverage, ProviderCapabilities, ProviderDisabledError
+from mobile_fuel_stations.providers.base import (
+    CountryPriceCoverage,
+    ProviderCapabilities,
+    ProviderDisabledError,
+    resolve_fuel,
+)
 from mobile_fuel_stations.providers.policy import CountryHysteresis, choose_auto_provider, normalize_country_code
 
 
@@ -34,11 +39,49 @@ def test_country_normalization_is_strict_iso_alpha2():
     assert normalize_country_code("D1") is None
 
 
+def test_fuel_resolution_preserves_supported_fuels_without_fallback():
+    capabilities = ProviderCapabilities(supported_fuel_types=frozenset({"diesel", "e5", "e10"}))
+    for fuel in ("diesel", "e5", "e10"):
+        resolution = resolve_fuel(fuel, capabilities)
+        assert resolution.requested_fuel == fuel
+        assert resolution.effective_fuel == fuel
+        assert resolution.fallback_used is False
+        assert resolution.fallback_reason is None
+
+
+def test_fuel_resolution_allows_only_e10_to_e5_fallback():
+    capabilities = ProviderCapabilities(supported_fuel_types=frozenset({"diesel", "e5"}))
+
+    resolution = resolve_fuel("e10", capabilities)
+    assert resolution.effective_fuel == "e5"
+    assert resolution.fallback_used is True
+    assert resolution.fallback_reason == "provider_unsupported"
+    assert resolve_fuel("e5", ProviderCapabilities(supported_fuel_types=frozenset({"e10"}))).effective_fuel is None
+    assert resolve_fuel("diesel", ProviderCapabilities(supported_fuel_types=frozenset({"e5", "e10"}))).effective_fuel is None
+
+
+def test_fuel_resolution_returns_unsupported_without_cross_fuel_fallback():
+    resolution = resolve_fuel("e10", ProviderCapabilities(supported_fuel_types=frozenset({"diesel"})))
+    assert resolution.effective_fuel is None
+    assert resolution.fallback_used is False
+    assert resolution.fallback_reason == "provider_unsupported"
+
+
 def test_auto_prefers_tankerkoenig_for_all_supported_german_fuels():
     for fuel in ("diesel", "e5", "e10"):
         decision = choose_auto_provider("DE", fuel, tankerkoenig_capabilities=TANKERKOENIG)
         assert decision.provider_mode == PROVIDER_TANKERKOENIG
         assert decision.reason == "preferred_provider"
+        assert decision.fuel_resolution is not None
+        assert decision.fuel_resolution.effective_fuel == fuel
+
+
+def test_auto_uses_e10_for_tankerkoenig_even_when_fallback_exists_elsewhere():
+    decision = choose_auto_provider("DE", "e10", tankerkoenig_capabilities=TANKERKOENIG)
+    assert decision.provider_mode == PROVIDER_TANKERKOENIG
+    assert decision.fuel_resolution is not None
+    assert decision.fuel_resolution.effective_fuel == "e10"
+    assert decision.fuel_resolution.fallback_used is False
 
 
 def test_auto_has_tankerkoenig_as_the_default_german_capability():
@@ -55,9 +98,14 @@ def test_auto_hypothetical_petromap_selection_is_capability_and_fuel_aware():
     assert choose_auto_provider(
         "AT", "diesel", petromap_enabled=True, petromap_capabilities=PETROMAP_HYPOTHETICAL
     ).provider_mode == PROVIDER_PETROMAP
-    assert choose_auto_provider(
+    e10_decision = choose_auto_provider(
         "AT", "e10", petromap_enabled=True, petromap_capabilities=PETROMAP_HYPOTHETICAL
-    ).reason == "unsupported_fuel"
+    )
+    assert e10_decision.provider_mode == PROVIDER_PETROMAP
+    assert e10_decision.fuel_resolution is not None
+    assert e10_decision.fuel_resolution.effective_fuel == "e5"
+    assert e10_decision.fuel_resolution.fallback_used is True
+    assert e10_decision.fuel_resolution.fallback_reason == "provider_unsupported"
 
 
 def test_auto_rejects_national_only_and_no_price_coverage():

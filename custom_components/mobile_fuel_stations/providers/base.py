@@ -62,6 +62,31 @@ class ProviderCapabilities:
     country_price_coverage: dict[str, CountryPriceCoverage] | None = None
 
 
+@dataclass(slots=True, frozen=True)
+class FuelResolution:
+    """Provider-neutral mapping from requested to effective fuel."""
+
+    requested_fuel: str
+    effective_fuel: str | None
+    fallback_used: bool
+    fallback_reason: str | None = None
+
+
+def resolve_fuel(
+    requested_fuel: str,
+    capabilities: ProviderCapabilities | None,
+) -> FuelResolution:
+    """Resolve a requested fuel using capability-only fallback rules."""
+
+    supported = capabilities.supported_fuel_types if capabilities else frozenset()
+    supported = supported or frozenset()
+    if requested_fuel in supported:
+        return FuelResolution(requested_fuel, requested_fuel, False)
+    if requested_fuel == "e10" and "e5" in supported:
+        return FuelResolution(requested_fuel, "e5", True, "provider_unsupported")
+    return FuelResolution(requested_fuel, None, False, "provider_unsupported")
+
+
 class ProviderError(Exception):
     """Base error raised by a station provider."""
 

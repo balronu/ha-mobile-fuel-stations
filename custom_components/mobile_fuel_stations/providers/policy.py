@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..const import PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
-from .base import CountryPriceCoverage, ProviderCapabilities
+from .base import CountryPriceCoverage, FuelResolution, ProviderCapabilities, resolve_fuel
 
 PETROMAP_COUNTRY_COVERAGE: dict[str, CountryPriceCoverage] = {
     "DE": CountryPriceCoverage.PER_STATION,
@@ -49,6 +49,7 @@ class AutoProviderDecision:
     country_code: str | None
     coverage: CountryPriceCoverage
     reason: str
+    fuel_resolution: FuelResolution | None = None
 
 
 def _coverage_for(
@@ -82,14 +83,21 @@ def choose_auto_provider(
         return AutoProviderDecision(None, None, CountryPriceCoverage.UNKNOWN, "unsupported_country")
 
     tanker_capabilities = tankerkoenig_capabilities or TANKERKOENIG_CAPABILITIES
+    tanker_fuel = resolve_fuel(fuel_type, tanker_capabilities)
     tanker_coverage = _coverage_for(tanker_capabilities, normalized)
     if (
         normalized == "DE"
         and tankerkoenig_enabled
         and tanker_coverage == CountryPriceCoverage.PER_STATION
-        and fuel_type in (tanker_capabilities.supported_fuel_types or frozenset())
+        and tanker_fuel.effective_fuel is not None
     ):
-        return AutoProviderDecision(PROVIDER_TANKERKOENIG, normalized, tanker_coverage, "preferred_provider")
+        return AutoProviderDecision(
+            PROVIDER_TANKERKOENIG,
+            normalized,
+            tanker_coverage,
+            "preferred_provider",
+            tanker_fuel,
+        )
 
     petromap_coverage = _coverage_for(petromap_capabilities, normalized)
     if petromap_coverage != CountryPriceCoverage.PER_STATION:
@@ -103,9 +111,25 @@ def choose_auto_provider(
     if not petromap_enabled:
         return AutoProviderDecision(None, normalized, petromap_coverage, "provider_disabled")
     supported_fuels = petromap_capabilities.supported_fuel_types if petromap_capabilities else PETROMAP_FUEL_TYPES
-    if fuel_type not in supported_fuels:
-        return AutoProviderDecision(None, normalized, petromap_coverage, "unsupported_fuel")
-    return AutoProviderDecision(PROVIDER_PETROMAP, normalized, petromap_coverage, "provider_available")
+    petromap_fuel = resolve_fuel(
+        fuel_type,
+        ProviderCapabilities(supported_fuel_types=supported_fuels),
+    )
+    if petromap_fuel.effective_fuel is None:
+        return AutoProviderDecision(
+            None,
+            normalized,
+            petromap_coverage,
+            "unsupported_fuel",
+            petromap_fuel,
+        )
+    return AutoProviderDecision(
+        PROVIDER_PETROMAP,
+        normalized,
+        petromap_coverage,
+        "provider_available",
+        petromap_fuel,
+    )
 
 
 class CountryHysteresis:
@@ -149,8 +173,10 @@ class CountryHysteresis:
 __all__ = [
     "AutoProviderDecision",
     "CountryHysteresis",
+    "FuelResolution",
     "PETROMAP_COUNTRY_COVERAGE",
     "TANKERKOENIG_CAPABILITIES",
     "choose_auto_provider",
     "normalize_country_code",
+    "resolve_fuel",
 ]
