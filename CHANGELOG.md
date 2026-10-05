@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.1 — Stable release
+
+### Deutsch
+
+- Behebt die Card-Picker-Regression, durch die Mobile Fuel Stations als leerer,
+  dauerhaft ladender Eintrag erscheinen konnte.
+- Vorhandene Overview-Entities werden für die initiale Kartenkonfiguration
+  robust erkannt.
+- Fehlende Overview-Entities werden kontrolliert behandelt, ohne den Picker
+  zum Absturz zu bringen.
+
+### English
+
+- Fixed the Home Assistant card-picker regression that could show Mobile Fuel
+  Stations as an empty, permanently loading entry.
+- Existing overview entities are detected robustly for the initial card
+  configuration.
+- Missing overview entities are handled safely without crashing the picker.
+
 ## 0.3.1-beta.1 — Card-picker hotfix test release
 
 ### Deutsch

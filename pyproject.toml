@@ -1,6 +1,6 @@
 [project]
 name = "ha-mobile-fuel-stations"
-version = "0.3.1b1"
+version = "0.3.1"
 requires-python = ">=3.12"
 dependencies = ["pytest>=8.0"]
 
