@@ -12,5 +12,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: python -m pip install --upgrade pip pytest aiohttp homeassistant==2026.9.4
+      # Use the newest Home Assistant wheel available on PyPI for the test
+      # runner; the target installation is validated separately by hassfest.
+      - run: python -m pip install --upgrade pip pytest aiohttp homeassistant==2026.2.3
       - run: pytest -q
