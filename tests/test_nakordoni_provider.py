@@ -12,6 +12,7 @@ from mobile_fuel_stations.providers.base import (
     ProviderUnsupportedFuelError,
     StationSearchQuery,
 )
+from mobile_fuel_stations.api import station_attributes
 from mobile_fuel_stations.providers.nakordoni import NakordoniProvider, NAKORDONI_API_URL
 
 
@@ -106,6 +107,8 @@ def test_nakordoni_request_uses_bearer_header_and_one_page():
     assert stations[0].price == 1.799
     assert stations[0].price_stale is False
     assert provider.last_response_metadata.quota_remaining == 999
+    assert station_attributes(stations[0])["currency"] == "EUR"
+    assert station_attributes(stations[0])["price_age_hours"] == 0.5
 
 
 @pytest.mark.parametrize("status, error_type", [(401, ProviderAuthError), (403, ProviderPermissionError), (429, ProviderRateLimitError)])

@@ -71,6 +71,7 @@ def test_overview_attributes_keep_existing_fields_and_add_station_entities(monke
             "fuel_type": "diesel",
             "location_entity": "device_tracker.my_vehicle",
             "station_count": 2,
+            "provider_mode": PROVIDER_TANKERKOENIG,
         },
         reference_position=None,
         last_successful_update=None,

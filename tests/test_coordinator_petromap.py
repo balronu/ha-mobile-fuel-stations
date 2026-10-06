@@ -48,6 +48,7 @@ class _Provider:
 def _coordinator(provider, fuel="diesel"):
     coordinator = object.__new__(MobileFuelStationsCoordinator)
     coordinator.hass = object()
+    coordinator.entry = SimpleNamespace(async_start_reauth=lambda *args, **kwargs: None)
     coordinator.options = {
         CONF_LOCATION_ENTITY: "device_tracker.vehicle",
         CONF_RADIUS: 25.0,

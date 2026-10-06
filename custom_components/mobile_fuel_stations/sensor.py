@@ -107,12 +107,12 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "distance_since_last_search": self.coordinator.current_distance_km,
             "nearest_station": station_attributes(self.coordinator.nearest_station),
             "cheapest_station": station_attributes(self.coordinator.cheapest_station),
-            "provider": self.coordinator.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
+            "provider": self.coordinator.config.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
             "attribution_name": "Data by nakordoni.eu"
-            if self.coordinator.options.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
+            if self.coordinator.config.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
             else None,
             "attribution_url": "https://nakordoni.eu"
-            if self.coordinator.options.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
+            if self.coordinator.config.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
             else None,
         }
 
@@ -160,11 +160,10 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
         station = self.station
         if station is None:
             return {"station_id": None}
-        return {
+        attributes = {
             "station_id": station.station_id,
             "station_name": station.name,
             "brand": station.brand,
-            "currency": station.currency,
             "distance": station.distance,
             "is_open": station.is_open,
             "street": station.street,
@@ -173,9 +172,14 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
             "place": station.place,
             "latitude": station.latitude,
             "longitude": station.longitude,
+        }
+        optional = {
+            "currency": station.currency,
             "provider": station.provider,
             "price_updated_at": station.price_updated_at.isoformat() if station.price_updated_at else None,
             "price_confirmed_at": station.price_confirmed_at.isoformat() if station.price_confirmed_at else None,
             "price_age_hours": station.price_age_hours,
             "price_stale": station.price_stale,
         }
+        attributes.update({key: value for key, value in optional.items() if value is not None})
+        return attributes
