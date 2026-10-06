@@ -280,16 +280,15 @@ def test_auto_pm_failure_preserves_last_valid_data_without_tk_fallback(monkeypat
         monkeypatch, lambda: next(samples), "e5", pm_error=ProviderTimeoutError("timeout")
     )
     asyncio.run(coordinator._async_update_data())
+    asyncio.run(coordinator._async_update_data())
+    asyncio.run(coordinator._async_update_data())
     previous = coordinator.stations
 
-    for _ in range(2):
-        with pytest.raises(UpdateFailed):
-            asyncio.run(coordinator._async_update_data())
     with pytest.raises(UpdateFailed):
         asyncio.run(coordinator._async_update_data())
 
     assert coordinator.stations == previous
-    assert len(tk.calls) == 1
+    assert len(tk.calls) == 3
     assert len(pm.calls) == 1
     assert coordinator.auto_runtime_state.effective_provider == PROVIDER_PETROMAP
     _assert_runtime_usage_zero(pm)

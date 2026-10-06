@@ -228,8 +228,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             if self.stations:
                 return self.stations
             raise UpdateFailed("Location entity has no valid GPS coordinates")
+        observed_decision = self.country_auto_context.observe_position(position)
         if self._is_auto:
-            decision = self.country_auto_context.observe_position(position)
+            decision = observed_decision
             self._set_auto_runtime_state(decision)
             try:
                 validate_direct_fuel_runtime(decision)
