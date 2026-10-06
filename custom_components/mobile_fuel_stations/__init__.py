@@ -11,6 +11,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    CONFIG_ENTRY_VERSION,
     CONF_API_KEY,
     CONF_PETROMAP_API_KEY,
     CONF_PETROMAP_PRIVACY_ACCEPTED,
@@ -35,7 +36,7 @@ _FRONTEND_DIR = Path(__file__).parent / "frontend"
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate legacy generic credentials without losing ambiguous data."""
 
-    if entry.version > 1:
+    if entry.version >= CONFIG_ENTRY_VERSION:
         return True
     data = dict(entry.data)
     mode = data.get(CONF_PROVIDER_MODE)
@@ -55,8 +56,12 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
         # An unexpected generic key is retained rather than guessed or dropped.
 
-    if data != entry.data:
-        hass.config_entries.async_update_entry(entry, data=data)
+    if data != entry.data or entry.version != CONFIG_ENTRY_VERSION:
+        hass.config_entries.async_update_entry(
+            entry,
+            data=data,
+            version=CONFIG_ENTRY_VERSION,
+        )
     return True
 
 

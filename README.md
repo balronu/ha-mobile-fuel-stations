@@ -46,7 +46,7 @@ den Berechtigungen des konfigurierten Developer-Keys ab.
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.3`
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.4`
 enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
 eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
 einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
@@ -122,6 +122,8 @@ navigation_provider: waze
 ```
 
 ## Upgrade von älteren Versionen
+
+Für das Upgrade auf v0.5.0-beta.4 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.4 behebt ausschließlich die Persistierung der ConfigEntry-Version bei der Migration von 1 auf 2; Provider- und Runtime-Verhalten bleiben unverändert.
 
 Für das Upgrade von v0.5.0-beta.2 auf v0.5.0-beta.3 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Bestehende Tankerkönig-Konfigurationen bleiben kompatibel. Der Tankerkönig-Radius ist auf 25 km begrenzt; bestehende Konfigurationen mit einem höheren gespeicherten Wert werden beim API-Aufruf defensiv auf 25 km begrenzt.
 

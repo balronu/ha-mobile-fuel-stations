@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-beta.4 — ConfigEntry migration version persistence
+
+- Fixed persistence of the ConfigEntry version during the 1→2 migration.
+- No provider or runtime behavior changes.
+
 ## 0.5.0-beta.3 — Atomic options and provider reloads
 
 - Options changes now become active immediately after saving.

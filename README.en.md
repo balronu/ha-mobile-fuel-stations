@@ -46,7 +46,7 @@ the permissions of the configured developer key.
 6. Add the integration through **Settings → Devices & services → Add integration**.
 
 The dashboard card is registered automatically. The automatically registered
-frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.3`
+frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.4`
 includes the integration version. Each integration version therefore gets its
 own resource URL, so stale card JavaScript from caches is not reused after a
 version update. After a HACS update, a complete Home Assistant restart is
@@ -121,6 +121,8 @@ navigation_provider: waze
 ```
 
 ## Upgrading from older versions
+
+For the upgrade to v0.5.0-beta.4, update through HACS and restart Home Assistant completely. Beta.4 only fixes persistence of the ConfigEntry version during the 1-to-2 migration; provider and runtime behavior are unchanged.
 
 For an upgrade from v0.5.0-beta.2 to v0.5.0-beta.3, update through HACS and restart Home Assistant completely. Existing Tankerkönig configurations remain compatible. The Tankerkönig radius is limited to 25 km; existing configurations with a higher stored value are defensively capped at 25 km for the API request.
 

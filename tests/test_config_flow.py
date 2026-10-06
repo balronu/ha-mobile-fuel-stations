@@ -515,9 +515,11 @@ def test_legacy_migration_maps_generic_key_to_tankerkoenig_without_loss():
     )
     updates = []
 
-    def async_update_entry(current, *, data):
+    def async_update_entry(current, *, data, version=None):
         updates.append(dict(data))
         current.data = dict(data)
+        if version is not None:
+            current.version = version
 
     hass = SimpleNamespace(
         config_entries=SimpleNamespace(async_update_entry=async_update_entry)
@@ -528,6 +530,7 @@ def test_legacy_migration_maps_generic_key_to_tankerkoenig_without_loss():
     assert entry.data[CONF_TANKERKOENIG_API_KEY] == "legacy-tk"
     assert CONF_API_KEY not in entry.data
     assert entry.data[CONF_LOCATION_ENTITY] == "device_tracker.vehicle"
+    assert entry.version == 2
 
 
 def test_explicit_petromap_migration_sets_privacy_marker_and_preserves_data():
@@ -540,8 +543,10 @@ def test_explicit_petromap_migration_sets_privacy_marker_and_preserves_data():
         },
     )
 
-    def async_update_entry(current, *, data):
+    def async_update_entry(current, *, data, version=None):
         current.data = dict(data)
+        if version is not None:
+            current.version = version
 
     hass = SimpleNamespace(
         config_entries=SimpleNamespace(async_update_entry=async_update_entry)
@@ -551,6 +556,7 @@ def test_explicit_petromap_migration_sets_privacy_marker_and_preserves_data():
     assert entry.data[CONF_PETROMAP_PRIVACY_ACCEPTED] is True
     assert CONF_API_KEY not in entry.data
     assert entry.data[CONF_LOCATION_ENTITY] == "device_tracker.vehicle"
+    assert entry.version == 2
 
 
 def test_ambiguous_generic_key_is_retained_during_migration():
@@ -565,9 +571,11 @@ def test_ambiguous_generic_key_is_retained_during_migration():
     )
     updates = []
 
-    def async_update_entry(current, *, data):
+    def async_update_entry(current, *, data, version=None):
         updates.append(dict(data))
         current.data = dict(data)
+        if version is not None:
+            current.version = version
 
     hass = SimpleNamespace(
         config_entries=SimpleNamespace(async_update_entry=async_update_entry)
@@ -577,3 +585,67 @@ def test_ambiguous_generic_key_is_retained_during_migration():
     assert entry.data[CONF_TANKERKOENIG_API_KEY] == "tk-known"
     assert entry.data[CONF_PETROMAP_API_KEY] == "pm-known"
     assert entry.data[CONF_PETROMAP_PRIVACY_ACCEPTED] is True
+    assert entry.version == 2
+
+
+def test_canonical_v2_data_at_version_one_is_promoted_without_mutation():
+    entry = SimpleNamespace(
+        version=1,
+        data={
+            CONF_PROVIDER_MODE: PROVIDER_PETROMAP,
+            CONF_PETROMAP_API_KEY: "pm-known",
+            CONF_PETROMAP_PRIVACY_ACCEPTED: True,
+            CONF_LOCATION_ENTITY: "device_tracker.vehicle",
+        },
+    )
+
+    def async_update_entry(current, *, data, version=None):
+        current.data = dict(data)
+        if version is not None:
+            current.version = version
+
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(async_update_entry=async_update_entry)
+    )
+    original_data = dict(entry.data)
+    assert asyncio.run(integration.async_migrate_entry(hass, entry)) is True
+    assert entry.version == 2
+    assert entry.data == original_data
+
+
+def test_config_entry_migration_lifecycle_persists_handler_version():
+    """Exercise the public HA migration contract around the integration hook."""
+
+    entry = SimpleNamespace(
+        version=1,
+        data={
+            CONF_API_KEY: "legacy-pm",
+            CONF_PROVIDER_MODE: PROVIDER_PETROMAP,
+            CONF_LOCATION_ENTITY: "device_tracker.vehicle",
+        },
+    )
+    updates = []
+
+    def async_update_entry(current, *, data, version=None):
+        current.data = dict(data)
+        if version is not None:
+            current.version = version
+        updates.append(version)
+
+    class ConfigEntries:
+        async def async_migrate(self, current):
+            if current.version >= MobileFuelStationsConfigFlow.VERSION:
+                return True
+            result = await integration.async_migrate_entry(hass, current)
+            assert isinstance(result, bool)
+            return result
+
+    hass = SimpleNamespace(
+        config_entries=ConfigEntries(),
+    )
+    hass.config_entries.async_update_entry = async_update_entry
+
+    assert asyncio.run(hass.config_entries.async_migrate(entry)) is True
+    assert updates == [2]
+    assert entry.version == MobileFuelStationsConfigFlow.VERSION == 2
+    assert entry.data[CONF_PETROMAP_API_KEY] == "legacy-pm"

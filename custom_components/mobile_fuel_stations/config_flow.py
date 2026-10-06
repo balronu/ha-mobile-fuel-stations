@@ -11,6 +11,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import selector
 
 from .const import (
+    CONFIG_ENTRY_VERSION,
     CONF_API_KEY,
     CONF_PETROMAP_API_KEY,
     CONF_PETROMAP_PRIVACY_ACCEPTED,
@@ -144,7 +145,7 @@ def _validate_location(hass: HomeAssistant, entity_id: str) -> bool:
 class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
-    VERSION = 2
+    VERSION = CONFIG_ENTRY_VERSION
 
     @staticmethod
     def _validation_error(error: ProviderError) -> str:
