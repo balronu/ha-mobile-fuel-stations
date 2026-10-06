@@ -148,7 +148,11 @@ def test_options_provider_switch_tankerkoenig_to_petromap_requires_privacy_and_k
         }
     )
     flow = _flow(entry)
-    submitted = {**_data(), CONF_PROVIDER_MODE: PROVIDER_PETROMAP}
+    submitted = {
+        key: value
+        for key, value in {**_data(), CONF_PROVIDER_MODE: PROVIDER_PETROMAP}.items()
+        if key != CONF_API_KEY
+    }
 
     privacy = asyncio.run(flow.async_step_init(submitted))
     assert privacy["step_id"] == "options_petromap_privacy"
@@ -175,9 +179,7 @@ def test_options_provider_switch_petromap_to_auto_preserves_pm_and_requires_tk()
     flow = _flow(entry)
     submitted = {**_data(), CONF_PROVIDER_MODE: PROVIDER_AUTO}
 
-    privacy = asyncio.run(flow.async_step_init(submitted))
-    assert privacy["step_id"] == "options_petromap_privacy"
-    credentials = asyncio.run(flow.async_step_options_petromap_privacy({}))
+    credentials = asyncio.run(flow.async_step_init(submitted))
     assert credentials["step_id"] == "provider_credentials"
     result = asyncio.run(
         flow.async_step_provider_credentials(

@@ -363,7 +363,12 @@ def test_first_refresh_expected_auto_state_is_accepted(monkeypatch, expected):
             except UpdateFailed as update_error:
                 raise integration.ConfigEntryNotReady("mobile") from update_error
 
-    entry = SimpleNamespace(data={CONF_PROVIDER_MODE: PROVIDER_AUTO}, runtime_data=None)
+    entry = SimpleNamespace(
+        data={CONF_PROVIDER_MODE: PROVIDER_AUTO},
+        runtime_data=None,
+        add_update_listener=lambda listener: listener,
+        async_on_unload=lambda unsubscribe: None,
+    )
     hass = SimpleNamespace(config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()))
     monkeypatch.setattr(integration, "MobileFuelStationsCoordinator", _Coordinator)
     assert asyncio.run(integration.async_setup_entry(hass, entry)) is True
