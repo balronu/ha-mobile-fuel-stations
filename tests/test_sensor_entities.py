@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from mobile_fuel_stations.api import Station
+from mobile_fuel_stations.const import CONF_PROVIDER_MODE, PROVIDER_AUTO, PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
 from mobile_fuel_stations import sensor
 
 
@@ -144,3 +145,26 @@ def test_station_slot_name_follows_station_without_changing_unique_id():
     slot.coordinator.data = [second]
     assert slot.name == "Second Station"
     assert slot._attr_unique_id == "entry-a_station_slot_1"
+
+
+@pytest.mark.parametrize(
+    ("provider_mode", "manufacturer"),
+    [
+        (None, "Tankerkönig"),
+        (PROVIDER_TANKERKOENIG, "Tankerkönig"),
+        (PROVIDER_PETROMAP, "Petromap"),
+        (PROVIDER_AUTO, "Mobile Fuel Stations"),
+    ],
+)
+def test_device_manufacturer_follows_mode_without_changing_identifier(
+    provider_mode, manufacturer
+):
+    data = {"entry_id": "entry-a", "title": "Vehicle stations", "data": {}, "options": {}}
+    if provider_mode is not None:
+        data["data"][CONF_PROVIDER_MODE] = provider_mode
+    entry = SimpleNamespace(**data)
+
+    info = sensor._device_info(entry)
+
+    assert info["manufacturer"] == manufacturer
+    assert info["identifiers"] == {(sensor.DOMAIN, "entry-a")}

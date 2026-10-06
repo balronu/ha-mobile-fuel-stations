@@ -45,7 +45,12 @@ export function formatDistance(value: unknown, locale = "de-DE"): string | null 
 }
 
 export function fuelLabel(value: unknown): string | null {
-  const labels: Record<string, string> = { diesel: "Diesel", e5: "E5", e10: "E10" };
+  const labels: Record<string, string> = {
+    diesel: "Diesel",
+    e5: "E5",
+    e10: "E10",
+    lpg: "LPG / Autogas",
+  };
   return typeof value === "string" ? labels[value.toLowerCase()] ?? value : null;
 }
 

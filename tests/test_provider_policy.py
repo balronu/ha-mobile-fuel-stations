@@ -89,6 +89,14 @@ def test_auto_prefers_tankerkoenig_for_all_supported_german_fuels():
         assert decision.fuel_resolution.effective_fuel == fuel
 
 
+def test_auto_routes_german_lpg_to_petromap_when_tankerkoenig_lacks_lpg():
+    decision = choose_auto_provider("DE", "lpg", petromap_enabled=True)
+    assert decision.provider_mode == PROVIDER_PETROMAP
+    assert decision.fuel_resolution is not None
+    assert decision.fuel_resolution.effective_fuel == "lpg"
+    assert decision.fuel_resolution.fallback_used is False
+
+
 def test_auto_uses_e10_for_tankerkoenig_even_when_fallback_exists_elsewhere():
     decision = choose_auto_provider("DE", "e10", tankerkoenig_capabilities=TANKERKOENIG)
     assert decision.provider_mode == PROVIDER_TANKERKOENIG
@@ -177,14 +185,20 @@ def test_registry_enables_petromap_but_keeps_auto_disabled():
 def test_registry_and_policy_share_petromap_capabilities():
     assert PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities is PETROMAP_CAPABILITIES
     assert PETROMAP_CAPABILITIES.supported_countries == frozenset({"DE", "AT"})
-    assert PETROMAP_CAPABILITIES.supported_fuel_types == frozenset({"diesel", "e5"})
+    assert PETROMAP_CAPABILITIES.supported_fuel_types == frozenset({"diesel", "e5", "lpg"})
     assert PETROMAP_CAPABILITIES.max_radius_km == 25.0
 
-    for fuel in ("diesel", "e5"):
+    for fuel in ("diesel", "e5", "lpg"):
         decision = choose_auto_provider("AT", fuel, petromap_enabled=True)
         assert decision.provider_mode == PROVIDER_PETROMAP
         assert decision.fuel_resolution is not None
         assert decision.fuel_resolution.effective_fuel == fuel
+
+
+def test_hvo100_is_not_selectable_without_a_verified_provider_contract():
+    assert "hvo100" not in PETROMAP_CAPABILITIES.supported_fuel_types
+    assert "hvo100" not in TANKERKOENIG.supported_fuel_types
+    assert resolve_fuel("hvo100", PETROMAP_CAPABILITIES).effective_fuel is None
 
 
 def test_c2b_outcomes_are_pre_network_and_distinct():

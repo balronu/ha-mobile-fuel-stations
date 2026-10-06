@@ -262,6 +262,17 @@ def test_transport_e5_uses_super_95_token():
     assert "fuelFamily" not in session.calls[0][1]["params"]
 
 
+def test_transport_lpg_uses_documented_fuel_family_without_fallback():
+    session = _FakeSession(_FakeResponse(payload={"places": []}))
+    provider = PetromapProvider(session, "dummy-key")
+
+    asyncio.run(provider.async_search(_query("lpg")))
+
+    assert len(session.calls) == 1
+    assert session.calls[0][1]["params"]["fuelFamily"] == "lpg"
+    assert "fuel" not in session.calls[0][1]["params"]
+
+
 def test_transport_rejects_e10_before_network():
     session = _FakeSession(_FakeResponse(payload={"places": []}))
     provider = PetromapProvider(session, "dummy-key")

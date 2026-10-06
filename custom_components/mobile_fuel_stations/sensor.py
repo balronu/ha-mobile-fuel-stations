@@ -10,7 +10,14 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import Station, station_attributes
-from .const import CONF_STATION_COUNT, DOMAIN
+from .const import (
+    CONF_PROVIDER_MODE,
+    CONF_STATION_COUNT,
+    DOMAIN,
+    PROVIDER_AUTO,
+    PROVIDER_PETROMAP,
+    PROVIDER_TANKERKOENIG,
+)
 from .coordinator import MobileFuelStationsCoordinator
 
 
@@ -36,10 +43,19 @@ def _registered_station_entity_ids(hass, entry: ConfigEntry, station_count: int)
 
 
 def _device_info(entry: ConfigEntry) -> DeviceInfo:
+    provider_mode = entry.options.get(
+        CONF_PROVIDER_MODE,
+        entry.data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
+    )
+    manufacturer = {
+        PROVIDER_TANKERKOENIG: "Tankerkönig",
+        PROVIDER_PETROMAP: "Petromap",
+        PROVIDER_AUTO: "Mobile Fuel Stations",
+    }.get(provider_mode, "Mobile Fuel Stations")
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
         name=entry.title,
-        manufacturer="Tankerkönig",
+        manufacturer=manufacturer,
         model="Mobile Fuel Stations",
     )
 

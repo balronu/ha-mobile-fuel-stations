@@ -77,7 +77,7 @@ def _schema(
                 vol.Coerce(float), vol.Range(min=1, max=MAX_API_RADIUS_KM)
             ),
             vol.Required(CONF_FUEL_TYPE, default=defaults.get(CONF_FUEL_TYPE, DEFAULT_FUEL_TYPE)): vol.In(
-                ["diesel", "e5", "e10"]
+                ["diesel", "e5", "e10", "lpg"]
             ),
             vol.Required(CONF_STATION_COUNT, default=defaults.get(CONF_STATION_COUNT, DEFAULT_STATION_COUNT)): vol.All(
                 vol.Coerce(int), vol.Range(min=1, max=10)
@@ -115,6 +115,17 @@ def _credential_schema(provider_mode: str) -> vol.Schema:
                 selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
             )
         }
+    return vol.Schema(fields)
+
+
+def _options_credential_schema(provider_mode: str, missing: set[str]) -> vol.Schema:
+    """Return password fields only for credentials missing from a target mode."""
+
+    fields: dict[Any, Any] = {}
+    for key in missing:
+        fields[vol.Required(key)] = selector.TextSelector(
+            selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+        )
     return vol.Schema(fields)
 
 
@@ -364,5 +375,113 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-        return self.async_show_form(step_id="init", data_schema=_schema({**self.config_entry.data, **self.config_entry.options}, False))
+            self._pending_options = dict(user_input)
+            current_mode = self.config_entry.data.get(
+                CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG
+            )
+            target_mode = user_input.get(CONF_PROVIDER_MODE, current_mode)
+            if target_mode in (PROVIDER_PETROMAP, PROVIDER_AUTO) and current_mode not in (
+                PROVIDER_PETROMAP,
+                PROVIDER_AUTO,
+            ):
+                return self.async_show_form(
+                    step_id="options_petromap_privacy", data_schema=vol.Schema({})
+                )
+            return await self._async_options_credentials({})
+        return self.async_show_form(
+            step_id="init",
+            data_schema=_schema(
+                {**self.config_entry.data, **self.config_entry.options},
+                False,
+                True,
+            ),
+        )
+
+    async def async_step_options_petromap_privacy(self, user_input=None):
+        """Show the Petromap disclosure before a provider switch activates it."""
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="options_petromap_privacy", data_schema=vol.Schema({})
+            )
+        return await self._async_options_credentials({})
+
+    async def async_step_provider_credentials(self, user_input=None):
+        """Collect only credentials missing for the selected provider mode."""
+
+        return await self._async_options_credentials(user_input or {})
+
+    async def _async_options_credentials(self, credentials: dict[str, Any]):
+        pending = getattr(self, "_pending_options", {})
+        current_data = dict(self.config_entry.data)
+        current_mode = current_data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+        target_mode = pending.get(CONF_PROVIDER_MODE, current_mode)
+
+        def existing_key(target_mode: str) -> str:
+            if current_mode == PROVIDER_AUTO:
+                key = (
+                    CONF_TANKERKOENIG_API_KEY
+                    if target_mode == PROVIDER_TANKERKOENIG
+                    else CONF_PETROMAP_API_KEY
+                )
+                return current_data.get(key, "")
+            if current_mode == target_mode:
+                return current_data.get(CONF_API_KEY, "")
+            return ""
+
+        missing: set[str] = set()
+        if target_mode == PROVIDER_AUTO:
+            tankerkoenig_key = credentials.get(CONF_TANKERKOENIG_API_KEY, "").strip()
+            petromap_key = credentials.get(CONF_PETROMAP_API_KEY, "").strip()
+            if not tankerkoenig_key:
+                tankerkoenig_key = existing_key(PROVIDER_TANKERKOENIG)
+            if not petromap_key:
+                petromap_key = existing_key(PROVIDER_PETROMAP)
+            if not tankerkoenig_key:
+                missing.add(CONF_TANKERKOENIG_API_KEY)
+            if not petromap_key:
+                missing.add(CONF_PETROMAP_API_KEY)
+        elif target_mode == PROVIDER_PETROMAP:
+            api_key = credentials.get(CONF_API_KEY, "").strip()
+            if not api_key:
+                api_key = existing_key(PROVIDER_PETROMAP)
+            if not api_key:
+                missing.add(CONF_API_KEY)
+        else:
+            api_key = credentials.get(CONF_API_KEY, "").strip()
+            if not api_key:
+                api_key = existing_key(PROVIDER_TANKERKOENIG)
+            if not api_key:
+                missing.add(CONF_API_KEY)
+
+        if missing:
+            return self.async_show_form(
+                step_id="provider_credentials",
+                data_schema=_options_credential_schema(target_mode, missing),
+                errors={key: "api_key_required" for key in missing},
+            )
+
+        new_data = {
+            key: value
+            for key, value in current_data.items()
+            if key
+            not in {
+                CONF_API_KEY,
+                CONF_TANKERKOENIG_API_KEY,
+                CONF_PETROMAP_API_KEY,
+            }
+        }
+        new_data[CONF_PROVIDER_MODE] = target_mode
+        if target_mode == PROVIDER_AUTO:
+            new_data[CONF_TANKERKOENIG_API_KEY] = tankerkoenig_key
+            new_data[CONF_PETROMAP_API_KEY] = petromap_key
+        else:
+            new_data[CONF_API_KEY] = api_key
+
+        options = {
+            key: value
+            for key, value in pending.items()
+            if key != CONF_PROVIDER_MODE
+        }
+        self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
+        return self.async_create_entry(title="", data=options)

@@ -42,6 +42,7 @@ from .providers.base import (
     ProviderError,
     ProviderRateLimitError,
     ProviderReauthContext,
+    ProviderUnsupportedFuelError,
     StationSearchQuery,
 )
 from .providers import PROVIDER_REGISTRY
@@ -243,6 +244,13 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             provider_mode = self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
             provider = self.client
             query_fuel = self.options[CONF_FUEL_TYPE]
+            capabilities = PROVIDER_REGISTRY[provider_mode].capabilities
+            if query_fuel not in (capabilities.supported_fuel_types or frozenset()):
+                raise UpdateFailed(
+                    str(ProviderUnsupportedFuelError(
+                        f"{provider_mode} does not support fuel {query_fuel}"
+                    ))
+                )
         now = datetime.now().astimezone()
         self.last_request = now
         if self._is_auto:

@@ -12,7 +12,8 @@ the permissions of the configured developer key.
 
 - setup and options through the Home Assistant UI
 - configurable location entity with `latitude` and `longitude` attributes
-- diesel, E5, and E10
+- diesel, E5, E10, and LPG / Autogas
+- HVO100 is not selectable yet because no verified provider-specific API selector is available.
 - search radius from 1 to 25 km
 - 1 to 10 stable station slots
 - regular refreshes and optional movement-triggered updates
@@ -45,7 +46,7 @@ the permissions of the configured developer key.
 6. Add the integration through **Settings → Devices & services → Add integration**.
 
 The dashboard card is registered automatically. The automatically registered
-frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.1`
+frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.2`
 includes the integration version. Each integration version therefore gets its
 own resource URL, so stale card JavaScript from caches is not reused after a
 version update. After a HACS update, a complete Home Assistant restart is
@@ -121,7 +122,7 @@ navigation_provider: waze
 
 ## Upgrading from older versions
 
-For an upgrade from v0.4.0 to v0.5.0-beta.1, update through HACS and restart Home Assistant completely. Existing Tankerkönig configurations remain compatible. The Tankerkönig radius is limited to 25 km; existing configurations with a higher stored value are defensively capped at 25 km for the API request.
+For an upgrade from v0.5.0-beta.1 to v0.5.0-beta.2, update through HACS and restart Home Assistant completely. Existing Tankerkönig configurations remain compatible. The Tankerkönig radius is limited to 25 km; existing configurations with a higher stored value are defensively capped at 25 km for the API request.
 
 Older v0.2.x installations may still contain the former manual Lovelace resource `/mobile_fuel_stations/mobile-fuel-stations-card.js`. Update the integration first, restart Home Assistant, and verify the card and card picker. Then remove the old entry through the Home Assistant UI and fully reload the browser or companion app. Never edit `.storage` manually.
 

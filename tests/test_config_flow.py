@@ -19,6 +19,10 @@ from mobile_fuel_stations.const import (
     DEFAULT_STATION_COUNT,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    CONF_PROVIDER_MODE,
+    PROVIDER_AUTO,
+    PROVIDER_PETROMAP,
+    PROVIDER_TANKERKOENIG,
 )
 
 
@@ -40,6 +44,7 @@ def _flow(entry):
         config_entries=SimpleNamespace(
             async_get_known_entry=lambda entry_id: entry,
             async_get_entry=lambda entry_id: entry,
+            async_update_entry=lambda current, data: current.data.update(data),
         )
     )
     return flow
@@ -133,3 +138,56 @@ def test_legacy_radius_above_provider_limit_is_loaded_defensively():
     result = asyncio.run(flow.async_step_init())
     values = result["data_schema"]({})
     assert values[CONF_RADIUS] == 25.0
+
+
+def test_options_provider_switch_tankerkoenig_to_petromap_requires_privacy_and_key():
+    entry = _entry(
+        {
+            **_data(),
+            CONF_PROVIDER_MODE: PROVIDER_TANKERKOENIG,
+        }
+    )
+    flow = _flow(entry)
+    submitted = {**_data(), CONF_PROVIDER_MODE: PROVIDER_PETROMAP}
+
+    privacy = asyncio.run(flow.async_step_init(submitted))
+    assert privacy["step_id"] == "options_petromap_privacy"
+    credentials = asyncio.run(flow.async_step_options_petromap_privacy({}))
+    assert credentials["step_id"] == "provider_credentials"
+    result = asyncio.run(
+        flow.async_step_provider_credentials({CONF_API_KEY: "petromap-new"})
+    )
+
+    assert result["type"] == "create_entry"
+    assert entry.data[CONF_PROVIDER_MODE] == PROVIDER_PETROMAP
+    assert entry.data[CONF_API_KEY] == "petromap-new"
+    assert CONF_API_KEY not in result["data"]
+
+
+def test_options_provider_switch_petromap_to_auto_preserves_pm_and_requires_tk():
+    entry = _entry(
+        {
+            **_data(),
+            CONF_PROVIDER_MODE: PROVIDER_PETROMAP,
+            CONF_API_KEY: "pm-old",
+        }
+    )
+    flow = _flow(entry)
+    submitted = {**_data(), CONF_PROVIDER_MODE: PROVIDER_AUTO}
+
+    privacy = asyncio.run(flow.async_step_init(submitted))
+    assert privacy["step_id"] == "options_petromap_privacy"
+    credentials = asyncio.run(flow.async_step_options_petromap_privacy({}))
+    assert credentials["step_id"] == "provider_credentials"
+    result = asyncio.run(
+        flow.async_step_provider_credentials(
+            {CONF_TANKERKOENIG_API_KEY: "tk-new"}
+        )
+    )
+
+    assert result["type"] == "create_entry"
+    assert entry.data[CONF_PROVIDER_MODE] == PROVIDER_AUTO
+    assert entry.data[CONF_TANKERKOENIG_API_KEY] == "tk-new"
+    assert entry.data[CONF_PETROMAP_API_KEY] == "pm-old"
+    assert CONF_API_KEY not in entry.data
+    assert CONF_API_KEY not in result["data"]

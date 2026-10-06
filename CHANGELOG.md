@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.5.0-beta.2 — LPG fuel support
+
+### Deutsch
+
+- Petromap-LPG / Autogas ist als eigener Kraftstoff mit `fuelFamily=lpg`
+  verfügbar.
+- Tankerkönig wird für LPG nicht als unterstützt markiert.
+- HVO100 bleibt blockiert, weil kein verifizierter providerbezogener
+  API-Selektor vorliegt; es gibt keinen Diesel-Fallback.
+
+### English
+
+- Petromap LPG / Autogas is available as a distinct fuel using
+  `fuelFamily=lpg`.
+- Tankerkönig is not marked as LPG-capable.
+- HVO100 remains blocked because no verified provider-specific API selector is
+  available; no diesel fallback is used.
+
+## 0.5.0-beta.2 — Provider UX
+
+### Deutsch
+
+- Die Geräteherstelleranzeige folgt jetzt dem konfigurierten Modus: Tankerkönig,
+  Petromap oder eine stabile neutrale Anzeige für Auto.
+- Providerwechsel sind über den Options Flow möglich, ohne Device-Identifier,
+  Entity-IDs oder Unique-IDs zu verändern.
+- Providerwechsel zeigen vor der ersten Petromap-Aktivierung die Privacy
+  Disclosure und speichern nur die für den Zielmodus erforderlichen Credentials.
+- Der Wechsel führt keine Petromap-Netzwerkrequests aus; die bestehende Runtime-
+  und Request-Semantik bleibt unverändert.
+
+### English
+
+- Device manufacturer information now follows the configured mode: Tankerkönig,
+  Petromap, or a stable neutral label for Auto.
+- Provider switching is available through the options flow without changing
+  device identifiers, entity IDs, or unique IDs.
+- Switching to a Petromap-capable mode shows the privacy disclosure first and
+  stores only the credentials required by the target mode.
+- Switching performs no Petromap network request; existing runtime and request
+  semantics remain unchanged.
+
 ## 0.5.0-beta.1 — Beta release
 
 ### Deutsch

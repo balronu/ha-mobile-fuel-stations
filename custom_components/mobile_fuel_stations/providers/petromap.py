@@ -39,7 +39,7 @@ MFS_RADIUS_LIMIT_KM = MAX_API_RADIUS_KM
 
 PETROMAP_CAPABILITIES = ProviderCapabilities(
     supported_countries=frozenset({"DE", "AT"}),
-    supported_fuel_types=frozenset({"diesel", "e5"}),
+    supported_fuel_types=frozenset({"diesel", "e5", "lpg"}),
     max_radius_km=MAX_API_RADIUS_KM,
     country_price_coverage={
         "DE": CountryPriceCoverage.PER_STATION,
@@ -55,6 +55,7 @@ PETROMAP_CAPABILITIES = ProviderCapabilities(
 _FUEL_PARAMS: dict[str, dict[str, str]] = {
     "diesel": {"fuelFamily": "diesel"},
     "e5": {"fuel": "petrol_95_e5"},
+    "lpg": {"fuelFamily": "lpg"},
 }
 
 
