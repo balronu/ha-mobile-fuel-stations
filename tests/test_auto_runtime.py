@@ -114,6 +114,7 @@ def _coordinator(monkeypatch, country, fuel="diesel", *, tk_error=None, pm_error
         ),
     )
     entry = SimpleNamespace(
+        entry_id="test-auto-entry",
         data={CONF_PROVIDER_MODE: PROVIDER_AUTO},
         async_start_reauth=Mock(),
     )
@@ -369,7 +370,10 @@ def test_first_refresh_expected_auto_state_is_accepted(monkeypatch, expected):
         add_update_listener=lambda listener: listener,
         async_on_unload=lambda unsubscribe: None,
     )
-    hass = SimpleNamespace(config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()))
+    hass = SimpleNamespace(
+        data={},
+        config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
+    )
     monkeypatch.setattr(integration, "MobileFuelStationsCoordinator", _Coordinator)
     assert asyncio.run(integration.async_setup_entry(hass, entry)) is True
     hass.config_entries.async_forward_entry_setups.assert_awaited_once()
@@ -386,8 +390,15 @@ def test_first_refresh_real_network_failure_is_not_swallowed(monkeypatch):
         async def async_config_entry_first_refresh(self):
             raise integration.ConfigEntryNotReady("network") from UpdateFailed("network")
 
-    entry = SimpleNamespace(data={CONF_PROVIDER_MODE: PROVIDER_AUTO}, runtime_data=None)
-    hass = SimpleNamespace(config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()))
+    entry = SimpleNamespace(
+        entry_id="test-auto-entry",
+        data={CONF_PROVIDER_MODE: PROVIDER_AUTO},
+        runtime_data=None,
+    )
+    hass = SimpleNamespace(
+        data={},
+        config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
+    )
     monkeypatch.setattr(integration, "MobileFuelStationsCoordinator", _Coordinator)
     with pytest.raises(integration.ConfigEntryNotReady):
         asyncio.run(integration.async_setup_entry(hass, entry))
