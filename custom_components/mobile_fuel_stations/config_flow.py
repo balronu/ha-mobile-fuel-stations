@@ -435,6 +435,8 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             source_petromap_key = legacy_api_key
             legacy_key_is_unambiguous = bool(legacy_api_key)
 
+        tankerkoenig_key = source_tankerkoenig_key
+        petromap_key = source_petromap_key
         missing: set[str] = set()
         if target_mode == PROVIDER_AUTO:
             tankerkoenig_key = credentials.get(CONF_TANKERKOENIG_API_KEY, "").strip()
