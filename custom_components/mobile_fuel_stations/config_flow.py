@@ -417,26 +417,25 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
         current_mode = current_data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
         target_mode = pending.get(CONF_PROVIDER_MODE, current_mode)
 
-        def existing_key(target_mode: str) -> str:
-            if current_mode == PROVIDER_AUTO:
-                key = (
-                    CONF_TANKERKOENIG_API_KEY
-                    if target_mode == PROVIDER_TANKERKOENIG
-                    else CONF_PETROMAP_API_KEY
-                )
-                return current_data.get(key, "")
-            if current_mode == target_mode:
-                return current_data.get(CONF_API_KEY, "")
-            return ""
+        if current_mode == PROVIDER_AUTO:
+            source_tankerkoenig_key = current_data.get(CONF_TANKERKOENIG_API_KEY, "")
+            source_petromap_key = current_data.get(CONF_PETROMAP_API_KEY, "")
+        elif current_mode == PROVIDER_PETROMAP:
+            source_tankerkoenig_key = ""
+            source_petromap_key = current_data.get(CONF_API_KEY, "")
+        else:
+            # Explicit Tankerkönig and legacy entries both use CONF_API_KEY.
+            source_tankerkoenig_key = current_data.get(CONF_API_KEY, "")
+            source_petromap_key = ""
 
         missing: set[str] = set()
         if target_mode == PROVIDER_AUTO:
             tankerkoenig_key = credentials.get(CONF_TANKERKOENIG_API_KEY, "").strip()
             petromap_key = credentials.get(CONF_PETROMAP_API_KEY, "").strip()
             if not tankerkoenig_key:
-                tankerkoenig_key = existing_key(PROVIDER_TANKERKOENIG)
+                tankerkoenig_key = source_tankerkoenig_key
             if not petromap_key:
-                petromap_key = existing_key(PROVIDER_PETROMAP)
+                petromap_key = source_petromap_key
             if not tankerkoenig_key:
                 missing.add(CONF_TANKERKOENIG_API_KEY)
             if not petromap_key:
@@ -444,13 +443,13 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
         elif target_mode == PROVIDER_PETROMAP:
             api_key = credentials.get(CONF_API_KEY, "").strip()
             if not api_key:
-                api_key = existing_key(PROVIDER_PETROMAP)
+                api_key = source_petromap_key
             if not api_key:
                 missing.add(CONF_API_KEY)
         else:
             api_key = credentials.get(CONF_API_KEY, "").strip()
             if not api_key:
-                api_key = existing_key(PROVIDER_TANKERKOENIG)
+                api_key = source_tankerkoenig_key
             if not api_key:
                 missing.add(CONF_API_KEY)
 
@@ -481,7 +480,13 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
         options = {
             key: value
             for key, value in pending.items()
-            if key != CONF_PROVIDER_MODE
+            if key
+            not in {
+                CONF_PROVIDER_MODE,
+                CONF_API_KEY,
+                CONF_TANKERKOENIG_API_KEY,
+                CONF_PETROMAP_API_KEY,
+            }
         }
         self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
         return self.async_create_entry(title="", data=options)

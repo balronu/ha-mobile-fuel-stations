@@ -195,3 +195,119 @@ def test_options_provider_switch_petromap_to_auto_preserves_pm_and_requires_tk()
     assert entry.data[CONF_PETROMAP_API_KEY] == "pm-old"
     assert CONF_API_KEY not in entry.data
     assert CONF_API_KEY not in result["data"]
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "source_credentials", "new_credentials", "expected"),
+    [
+        (
+            PROVIDER_TANKERKOENIG,
+            PROVIDER_PETROMAP,
+            {CONF_API_KEY: "tk-old"},
+            {CONF_API_KEY: "pm-new"},
+            {CONF_API_KEY: "pm-new"},
+        ),
+        (
+            PROVIDER_PETROMAP,
+            PROVIDER_TANKERKOENIG,
+            {CONF_API_KEY: "pm-old"},
+            {CONF_API_KEY: "tk-new"},
+            {CONF_API_KEY: "tk-new"},
+        ),
+        (
+            PROVIDER_TANKERKOENIG,
+            PROVIDER_AUTO,
+            {CONF_API_KEY: "tk-old"},
+            {CONF_PETROMAP_API_KEY: "pm-new"},
+            {
+                CONF_TANKERKOENIG_API_KEY: "tk-old",
+                CONF_PETROMAP_API_KEY: "pm-new",
+            },
+        ),
+        (
+            PROVIDER_PETROMAP,
+            PROVIDER_AUTO,
+            {CONF_API_KEY: "pm-old"},
+            {CONF_TANKERKOENIG_API_KEY: "tk-new"},
+            {
+                CONF_TANKERKOENIG_API_KEY: "tk-new",
+                CONF_PETROMAP_API_KEY: "pm-old",
+            },
+        ),
+        (
+            PROVIDER_AUTO,
+            PROVIDER_TANKERKOENIG,
+            {
+                CONF_TANKERKOENIG_API_KEY: "tk-old",
+                CONF_PETROMAP_API_KEY: "pm-old",
+            },
+            {},
+            {CONF_API_KEY: "tk-old"},
+        ),
+        (
+            PROVIDER_AUTO,
+            PROVIDER_PETROMAP,
+            {
+                CONF_TANKERKOENIG_API_KEY: "tk-old",
+                CONF_PETROMAP_API_KEY: "pm-old",
+            },
+            {},
+            {CONF_API_KEY: "pm-old"},
+        ),
+        (
+            None,
+            PROVIDER_PETROMAP,
+            {CONF_API_KEY: "legacy-tk"},
+            {CONF_API_KEY: "pm-new"},
+            {CONF_API_KEY: "pm-new"},
+        ),
+        (
+            None,
+            PROVIDER_AUTO,
+            {CONF_API_KEY: "legacy-tk"},
+            {CONF_PETROMAP_API_KEY: "pm-new"},
+            {
+                CONF_TANKERKOENIG_API_KEY: "legacy-tk",
+                CONF_PETROMAP_API_KEY: "pm-new",
+            },
+        ),
+    ],
+)
+def test_provider_switch_rebuilds_canonical_credentials(
+    source, target, source_credentials, new_credentials, expected
+):
+    source_data = {**_data(), **source_credentials}
+    if source is not None:
+        source_data[CONF_PROVIDER_MODE] = source
+    entry = _entry(source_data)
+    flow = _flow(entry)
+    submitted = {
+        key: value
+        for key, value in {**_data(), CONF_PROVIDER_MODE: target}.items()
+        if key
+        not in {CONF_API_KEY, CONF_TANKERKOENIG_API_KEY, CONF_PETROMAP_API_KEY}
+    }
+
+    result = asyncio.run(flow.async_step_init(submitted))
+    current_mode = source or PROVIDER_TANKERKOENIG
+    if target in (PROVIDER_PETROMAP, PROVIDER_AUTO) and current_mode not in (
+        PROVIDER_PETROMAP,
+        PROVIDER_AUTO,
+    ):
+        assert result["step_id"] == "options_petromap_privacy"
+        result = asyncio.run(flow.async_step_options_petromap_privacy({}))
+    if result["type"] == "form":
+        result = asyncio.run(flow.async_step_provider_credentials(new_credentials))
+
+    assert result["type"] == "create_entry"
+    assert entry.data[CONF_PROVIDER_MODE] == target
+    assert {key: entry.data[key] for key in expected} == expected
+    credential_keys = {
+        CONF_API_KEY,
+        CONF_TANKERKOENIG_API_KEY,
+        CONF_PETROMAP_API_KEY,
+    }
+    assert {
+        key: entry.data[key] for key in credential_keys if key in entry.data
+    } == expected
+    assert not credential_keys.intersection(result["data"])
