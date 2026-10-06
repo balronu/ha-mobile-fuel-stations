@@ -147,9 +147,9 @@ def test_country_hysteresis_resets_candidate_when_result_jumps_back():
     assert hysteresis.observe("FR") == "FR"
 
 
-def test_registry_still_keeps_auto_and_petromap_disabled():
-    assert PROVIDER_REGISTRY[PROVIDER_PETROMAP].enabled is False
-    assert PROVIDER_REGISTRY[PROVIDER_PETROMAP].factory is None
+def test_registry_enables_petromap_but_keeps_auto_disabled():
+    assert PROVIDER_REGISTRY[PROVIDER_PETROMAP].enabled is True
+    assert PROVIDER_REGISTRY[PROVIDER_PETROMAP].factory is not None
     assert PROVIDER_REGISTRY["auto"].enabled is False
     assert PROVIDER_REGISTRY["auto"].factory is None
     try:

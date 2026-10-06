@@ -8,7 +8,6 @@ from mobile_fuel_stations.api import cheapest_station, nearest_station
 from mobile_fuel_stations.providers.base import (
     ProviderAuthError,
     ProviderDailyBudgetError,
-    ProviderDisabledError,
     ProviderInsufficientCreditsError,
     ProviderNetworkError,
     ProviderPermissionError,
@@ -357,6 +356,12 @@ def test_transport_allows_optional_headers_to_be_missing_or_invalid():
     assert provider.last_response_metadata.retry_after is None
 
 
-def test_registry_keeps_petromap_disabled_before_network():
-    with pytest.raises(ProviderDisabledError):
-        create_provider(object(), {"provider_mode": "petromap", "api_key": "dummy"})
+def test_registry_enables_petromap_without_network_at_construction():
+    session = _FakeSession()
+    provider = create_provider(
+        session, {"provider_mode": "petromap", "api_key": "dummy"}
+    )
+
+    assert isinstance(provider, PetromapProvider)
+    assert provider._session is session
+    assert session.calls == []
