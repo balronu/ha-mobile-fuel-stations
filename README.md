@@ -49,7 +49,7 @@ Providerquoten ab.
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.5`
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.6`
 enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
 eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
 einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
@@ -136,6 +136,8 @@ Credential wird niemals in Options, Entity-Attributen, Diagnostics oder
 Frontend-Code gespeichert.
 
 ## Upgrade von älteren Versionen
+
+Für das Upgrade auf v0.5.0-beta.6 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.6 ergänzt sichere Nakordoni-Fehlerdiagnostik für Rate-/Quota-/Berechtigungsfehler; es werden keine zusätzlichen Providerrequests ausgeführt und keine Credentials oder Standortdaten protokolliert.
 
 Für das Upgrade auf v0.5.0-beta.5 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.5 ergänzt den expliziten Nakordoni-Provider; bestehende beta.4-Entries bleiben ohne Migration kompatibel.
 

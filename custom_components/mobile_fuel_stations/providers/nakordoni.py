@@ -19,6 +19,7 @@ from .base import (
     ProviderPermissionError,
     ProviderRateLimitError,
     ProviderResponseError,
+    ProviderRequestDiagnostics,
     ProviderTimeoutError,
     ProviderUnavailableError,
     ProviderUnsupportedFuelError,
@@ -45,6 +46,23 @@ class NakordoniResponseMetadata:
     attribution_url: str = NAKORDONI_ATTRIBUTION_URL
     notices: tuple[str, ...] = ()
     total_found: int | None = None
+
+
+_SAFE_ERROR_CODES = frozenset(
+    {
+        "qps_exceeded",
+        "quota_exceeded",
+        "market_not_allowed",
+        "not_approved",
+        "invalid_credential",
+    }
+)
+
+
+def _safe_error_code(value: object) -> str:
+    """Keep only the documented, non-sensitive provider classifications."""
+
+    return value if isinstance(value, str) and value in _SAFE_ERROR_CODES else "provider_error"
 
 
 def _number(value: Any, field: str, *, optional: bool = False) -> float | None:
@@ -74,21 +92,38 @@ def _text(value: Any) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _error(status: int, payload: object) -> Exception:
+def _error(
+    status: int,
+    payload: object,
+    headers: Any,
+    *,
+    response_ok: bool | None,
+) -> Exception:
     error = payload.get("error") if isinstance(payload, dict) else None
     code = error.get("code") if isinstance(error, dict) else error
-    code = str(code or "provider_error")
-    if status == 401 or code in {"missing_api_key", "invalid_api_key"}:
-        return ProviderAuthError(code)
-    if status == 403 or code in {"not_approved", "market_not_allowed"}:
-        return ProviderPermissionError(code)
-    if status == 429 or code in {"qps_exceeded", "quota_exceeded"}:
-        return ProviderRateLimitError(code)
-    if status in {500, 503, 504} or code in {
+    if status == 401 or code in {"missing_api_key", "invalid_api_key", "invalid_credential"}:
+        exception = ProviderAuthError(_safe_error_code("invalid_credential"))
+    elif status == 403 or code in {"not_approved", "market_not_allowed"}:
+        exception = ProviderPermissionError(_safe_error_code(code))
+    elif status == 429 or code in {"qps_exceeded", "quota_exceeded"}:
+        exception = ProviderRateLimitError(_safe_error_code(code))
+    elif status in {500, 503, 504} or code in {
         "internal_error", "product_unavailable", "status_unavailable", "timeout",
     }:
-        return ProviderUnavailableError(code)
-    return ProviderResponseError(code)
+        exception = ProviderUnavailableError("provider_error")
+    else:
+        exception = ProviderResponseError("provider_error")
+    exception.diagnostics = ProviderRequestDiagnostics(
+        provider=PROVIDER_NAKORDONI,
+        http_status=status,
+        error_code=_safe_error_code(code),
+        retry_after=_header_nonnegative_int(headers, "Retry-After"),
+        quota_limit=_header_nonnegative_int(headers, "X-Devapi-Limit"),
+        quota_remaining=_header_nonnegative_int(headers, "X-Devapi-Remaining"),
+        request_success=False,
+        response_ok=response_ok,
+    )
+    return exception
 
 
 def _parse_station(item: object, fuel_type: str) -> Station:
@@ -145,8 +180,11 @@ class NakordoniProvider:
         self._api_key = api_key
         self._timeout = timeout or ClientTimeout(total=DEFAULT_TIMEOUT.total_seconds())
         self.last_response_metadata: NakordoniResponseMetadata | None = None
+        self.last_request_diagnostics: ProviderRequestDiagnostics | None = None
 
     async def async_search(self, query: StationSearchQuery) -> list[Station]:
+        self.last_response_metadata = None
+        self.last_request_diagnostics = None
         if query.fuel_type not in NAKORDONI_FUELS:
             raise ProviderUnsupportedFuelError(
                 f"Nakordoni fuel mapping is not verified: {query.fuel_type}"
@@ -168,40 +206,82 @@ class NakordoniProvider:
                 headers={"Authorization": f"Bearer {self._api_key}"},
                 timeout=self._timeout,
             ) as response:
+                quota_limit = _header_nonnegative_int(response.headers, "X-Devapi-Limit")
+                quota_remaining = _header_nonnegative_int(response.headers, "X-Devapi-Remaining")
+                retry_after = _header_nonnegative_int(response.headers, "Retry-After")
                 try:
                     payload = await response.json(content_type=None)
                 except (TypeError, ValueError) as err:
-                    raise ProviderResponseError("Nakordoni response is not valid JSON") from err
+                    exception = ProviderResponseError("provider_error")
+                    exception.diagnostics = ProviderRequestDiagnostics(
+                        PROVIDER_NAKORDONI, response.status, "provider_error", retry_after,
+                        quota_limit, quota_remaining, False, None,
+                    )
+                    self.last_request_diagnostics = exception.diagnostics
+                    raise exception from err
+                response_ok = payload.get("ok") if isinstance(payload, dict) and isinstance(payload.get("ok"), bool) else None
                 if response.status < 200 or response.status >= 300:
-                    raise _error(response.status, payload)
+                    exception = _error(response.status, payload, response.headers, response_ok=response_ok)
+                    self.last_request_diagnostics = exception.diagnostics
+                    raise exception
                 if not isinstance(payload, dict) or payload.get("ok") is not True:
-                    raise _error(response.status, payload)
+                    exception = _error(response.status, payload, response.headers, response_ok=response_ok)
+                    self.last_request_diagnostics = exception.diagnostics
+                    raise exception
                 data = payload.get("data")
                 if not isinstance(data, dict) or not isinstance(data.get("stations"), list):
-                    raise ProviderResponseError("Nakordoni response has no data.stations list")
+                    exception = ProviderResponseError("provider_error")
+                    exception.diagnostics = ProviderRequestDiagnostics(
+                        PROVIDER_NAKORDONI, response.status, "provider_error", retry_after,
+                        quota_limit, quota_remaining, False, True,
+                    )
+                    self.last_request_diagnostics = exception.diagnostics
+                    raise exception
                 notices = data.get("notices")
                 self.last_response_metadata = NakordoniResponseMetadata(
-                    quota_limit=_header_int(response.headers, "X-Devapi-Limit"),
-                    quota_remaining=_header_int(response.headers, "X-Devapi-Remaining"),
+                    quota_limit=quota_limit,
+                    quota_remaining=quota_remaining,
                     notices=tuple(
                         str(item.get("reason", item)) if isinstance(item, dict) else str(item)
                         for item in notices
                     ) if isinstance(notices, list) else (),
                     total_found=data.get("total_found") if isinstance(data.get("total_found"), int) else None,
                 )
-                return [_parse_station(item, query.fuel_type) for item in data["stations"]]
+                try:
+                    stations = [_parse_station(item, query.fuel_type) for item in data["stations"]]
+                except ProviderError as err:
+                    err.diagnostics = ProviderRequestDiagnostics(
+                        PROVIDER_NAKORDONI, response.status, "provider_error", retry_after,
+                        quota_limit, quota_remaining, False, True,
+                    )
+                    self.last_request_diagnostics = err.diagnostics
+                    raise
+                self.last_request_diagnostics = ProviderRequestDiagnostics(
+                    PROVIDER_NAKORDONI, response.status, None, retry_after,
+                    quota_limit, quota_remaining, True, True,
+                )
+                return stations
         except asyncio.TimeoutError as err:
-            raise ProviderTimeoutError("Nakordoni request timed out") from err
+            exception = ProviderTimeoutError("provider_error")
+            exception.diagnostics = ProviderRequestDiagnostics(PROVIDER_NAKORDONI, None, "provider_error", None, None, None, False, None)
+            self.last_request_diagnostics = exception.diagnostics
+            raise exception from err
         except ClientConnectionError as err:
-            raise ProviderNetworkError("Nakordoni connection failed") from err
+            exception = ProviderNetworkError("provider_error")
+            exception.diagnostics = ProviderRequestDiagnostics(PROVIDER_NAKORDONI, None, "provider_error", None, None, None, False, None)
+            self.last_request_diagnostics = exception.diagnostics
+            raise exception from err
         except ClientError as err:
-            raise ProviderNetworkError("Nakordoni network request failed") from err
+            exception = ProviderNetworkError("provider_error")
+            exception.diagnostics = ProviderRequestDiagnostics(PROVIDER_NAKORDONI, None, "provider_error", None, None, None, False, None)
+            self.last_request_diagnostics = exception.diagnostics
+            raise exception from err
 
 
-def _header_int(headers: Any, name: str) -> int | None:
+def _header_nonnegative_int(headers: Any, name: str) -> int | None:
     try:
         value = headers.get(name)
-        return int(value) if value is not None else None
+        parsed = int(value) if value is not None else None
+        return parsed if parsed is not None and parsed >= 0 else None
     except (AttributeError, TypeError, ValueError):
         return None
-

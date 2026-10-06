@@ -20,6 +20,7 @@ from mobile_fuel_stations.providers.base import (
     ProviderPermissionError,
     ProviderRateLimitError,
     ProviderResponseError,
+    ProviderRequestDiagnostics,
     ProviderTimeoutError,
     ProviderUnavailableError,
     Station,
@@ -47,8 +48,11 @@ class _Provider:
 
 def _coordinator(provider, fuel="diesel"):
     coordinator = object.__new__(MobileFuelStationsCoordinator)
-    coordinator.hass = object()
-    coordinator.entry = SimpleNamespace(async_start_reauth=lambda *args, **kwargs: None)
+    coordinator.hass = SimpleNamespace(data={})
+    coordinator.entry = SimpleNamespace(
+        entry_id="test-entry",
+        async_start_reauth=lambda *args, **kwargs: None,
+    )
     coordinator.options = {
         CONF_LOCATION_ENTITY: "device_tracker.vehicle",
         CONF_RADIUS: 25.0,
@@ -145,6 +149,30 @@ def test_petromap_rate_limit_keeps_last_valid_stations(monkeypatch):
 
     assert coordinator.stations == previous
     assert len(provider.calls) == 2
+
+
+def test_nakordoni_failure_metadata_is_published_before_update_failed(monkeypatch):
+    provider = _Provider(error=ProviderRateLimitError("qps_exceeded"))
+    provider.error.diagnostics = ProviderRequestDiagnostics(
+        "nakordoni", 429, "qps_exceeded", 60, 1000, 999, False, False
+    )
+    coordinator = _coordinator(provider)
+    coordinator.options[CONF_PROVIDER_MODE] = "nakordoni"
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    with pytest.raises(UpdateFailed, match="qps_exceeded"):
+        asyncio.run(coordinator._async_update_data())
+
+    assert coordinator.hass.data["mobile_fuel_stations"]["last_request_diagnostics"]["test-entry"] == {
+        "provider": "nakordoni",
+        "http_status": 429,
+        "error_code": "qps_exceeded",
+        "retry_after": 60,
+        "quota_limit": 1000,
+        "quota_remaining": 999,
+        "request_success": False,
+        "response_ok": False,
+    }
 
 
 @pytest.mark.parametrize(

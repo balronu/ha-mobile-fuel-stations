@@ -47,7 +47,7 @@ the permissions of the configured developer key.
 6. Add the integration through **Settings → Devices & services → Add integration**.
 
 The dashboard card is registered automatically. The automatically registered
-frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.5`
+frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.6`
 includes the integration version. Each integration version therefore gets its
 own resource URL, so stale card JavaScript from caches is not reused after a
 version update. After a HACS update, a complete Home Assistant restart is
@@ -122,6 +122,8 @@ navigation_provider: waze
 ```
 
 ## Upgrading from older versions
+
+For the upgrade to v0.5.0-beta.6, update through HACS and restart Home Assistant completely. Beta.6 adds safe Nakordoni rate, quota, and permission diagnostics; it performs no additional provider requests and logs no credentials or location data.
 
 For the upgrade to v0.5.0-beta.5, update through HACS and restart Home Assistant completely. Beta.5 adds the explicit Nakordoni provider; existing beta.4 entries remain compatible without migration.
 

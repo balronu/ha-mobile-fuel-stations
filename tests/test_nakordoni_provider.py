@@ -9,6 +9,8 @@ from mobile_fuel_stations.providers.base import (
     ProviderConfigurationError,
     ProviderPermissionError,
     ProviderRateLimitError,
+    ProviderRequestDiagnostics,
+    ProviderUnavailableError,
     ProviderUnsupportedFuelError,
     StationSearchQuery,
 )
@@ -116,6 +118,98 @@ def test_nakordoni_http_errors_are_classified(status, error_type):
     provider = NakordoniProvider(Session(Response({"ok": False, "error": {"code": "provider_error"}}, status=status)), "dummy")
     with pytest.raises(error_type):
         asyncio.run(provider.async_search(query()))
+
+
+def test_nakordoni_rate_failure_preserves_only_safe_metadata():
+    session = Session(Response(
+        {"ok": False, "error": {"code": "qps_exceeded", "message": "do not expose"}},
+        status=429,
+        headers={"Retry-After": "60", "X-Devapi-Limit": "1000", "X-Devapi-Remaining": "999"},
+    ))
+    provider = NakordoniProvider(session, "SECRET_MUST_NOT_APPEAR")
+
+    with pytest.raises(ProviderRateLimitError) as caught:
+        asyncio.run(provider.async_search(query()))
+
+    diagnostics = caught.value.diagnostics
+    assert isinstance(diagnostics, ProviderRequestDiagnostics)
+    assert diagnostics.as_dict() == {
+        "provider": "nakordoni",
+        "http_status": 429,
+        "error_code": "qps_exceeded",
+        "retry_after": 60,
+        "quota_limit": 1000,
+        "quota_remaining": 999,
+        "request_success": False,
+        "response_ok": False,
+    }
+    assert "SECRET_MUST_NOT_APPEAR" not in repr(diagnostics)
+    assert "do not expose" not in repr(diagnostics)
+
+
+def test_nakordoni_unknown_error_code_is_redacted():
+    provider = NakordoniProvider(Session(Response(
+        {"ok": False, "error": {"code": "private-provider-detail"}}, status=403,
+    )), "dummy")
+
+    with pytest.raises(ProviderPermissionError) as caught:
+        asyncio.run(provider.async_search(query()))
+
+    assert caught.value.diagnostics.error_code == "provider_error"
+
+
+@pytest.mark.parametrize(
+    ("status", "code", "error_type"),
+    [
+        (429, "quota_exceeded", ProviderRateLimitError),
+        (403, "market_not_allowed", ProviderPermissionError),
+        (403, "not_approved", ProviderPermissionError),
+        (401, "invalid_credential", ProviderAuthError),
+    ],
+)
+def test_nakordoni_known_error_codes_are_preserved(status, code, error_type):
+    provider = NakordoniProvider(Session(Response(
+        {"ok": False, "error": {"code": code}}, status=status,
+        headers={"Retry-After": "-1", "X-Devapi-Limit": "invalid", "X-Devapi-Remaining": "-2"},
+    )), "dummy")
+
+    with pytest.raises(error_type) as caught:
+        asyncio.run(provider.async_search(query()))
+
+    diagnostics = caught.value.diagnostics
+    assert diagnostics.error_code == code
+    assert diagnostics.retry_after is None
+    assert diagnostics.quota_limit is None
+    assert diagnostics.quota_remaining is None
+
+
+def test_nakordoni_server_failure_has_safe_diagnostics():
+    provider = NakordoniProvider(Session(Response(
+        {"ok": False, "error": {"code": "internal_error", "message": "private"}}, status=503,
+    )), "dummy")
+
+    with pytest.raises(ProviderUnavailableError) as caught:
+        asyncio.run(provider.async_search(query()))
+
+    assert caught.value.diagnostics.http_status == 503
+    assert caught.value.diagnostics.error_code == "provider_error"
+    assert "private" not in repr(caught.value.diagnostics)
+
+
+def test_nakordoni_success_then_failure_does_not_retain_success_metadata():
+    session = Session(Response(payload(), headers={"X-Devapi-Limit": "1000", "X-Devapi-Remaining": "999"}))
+    provider = NakordoniProvider(session, "dummy")
+    asyncio.run(provider.async_search(query()))
+    session.response = Response(
+        {"ok": False, "error": {"code": "quota_exceeded"}}, status=429,
+    )
+
+    with pytest.raises(ProviderRateLimitError):
+        asyncio.run(provider.async_search(query()))
+
+    assert provider.last_response_metadata is None
+    assert provider.last_request_diagnostics.quota_limit is None
+    assert provider.last_request_diagnostics.error_code == "quota_exceeded"
 
 
 def test_nakordoni_rejects_unverified_fuels_without_network():

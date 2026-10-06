@@ -46,6 +46,34 @@ class StationSearchQuery:
     station_count: int = 5
 
 
+@dataclass(slots=True, frozen=True)
+class ProviderRequestDiagnostics:
+    """Secret- and location-free metadata for the latest provider request."""
+
+    provider: str
+    http_status: int | None
+    error_code: str | None
+    retry_after: int | None
+    quota_limit: int | None
+    quota_remaining: int | None
+    request_success: bool
+    response_ok: bool | None
+
+    def as_dict(self) -> dict[str, object]:
+        """Return only the approved diagnostic fields."""
+
+        return {
+            "provider": self.provider,
+            "http_status": self.http_status,
+            "error_code": self.error_code,
+            "retry_after": self.retry_after,
+            "quota_limit": self.quota_limit,
+            "quota_remaining": self.quota_remaining,
+            "request_success": self.request_success,
+            "response_ok": self.response_ok,
+        }
+
+
 class CountryPriceCoverage(StrEnum):
     """How a provider can supply station prices for a country."""
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-beta.6 — Nakordoni failure diagnostics
+
+- Added safe Nakordoni rate, quota, permission, and first-refresh diagnostics.
+- No additional provider requests, credentials, or location data are stored or logged.
+
 ## 0.5.0-beta.5 — Nakordoni provider
 
 - Added explicit Nakordoni support for diesel, E5, E10 and LPG.

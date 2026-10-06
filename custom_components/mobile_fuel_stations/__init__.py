@@ -20,6 +20,7 @@ from .const import (
     DOMAIN,
     FRONTEND_URL,
     PROVIDER_AUTO,
+    PROVIDER_NAKORDONI,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
 )
@@ -78,6 +79,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfigEntry) -> bool:
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    configured_provider = {**entry.data, **entry.options}.get(CONF_PROVIDER_MODE)
+    if configured_provider != PROVIDER_NAKORDONI:
+        domain_data.setdefault("last_request_diagnostics", {}).pop(entry.entry_id, None)
     coordinator = MobileFuelStationsCoordinator(hass, entry)
     await coordinator.async_setup()
     try:

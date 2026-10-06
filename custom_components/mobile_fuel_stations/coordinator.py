@@ -42,6 +42,7 @@ from .providers.base import (
     ProviderAuthError,
     ProviderError,
     ProviderRateLimitError,
+    ProviderRequestDiagnostics,
     ProviderReauthContext,
     ProviderUnsupportedFuelError,
     StationSearchQuery,
@@ -173,6 +174,45 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._providers[provider_mode] = provider
         return provider
 
+    def _record_nakordoni_failure(self, error: ProviderError) -> None:
+        """Publish only approved Nakordoni diagnostics before setup can fail."""
+
+        diagnostics = getattr(error, "diagnostics", None)
+        if not isinstance(diagnostics, ProviderRequestDiagnostics):
+            return
+        domain_data = self.hass.data.setdefault(DOMAIN, {})
+        records = domain_data.setdefault("last_request_diagnostics", {})
+        records[self.entry.entry_id] = diagnostics.as_dict()
+        fields = [
+            f"status={diagnostics.http_status}",
+            f"code={diagnostics.error_code}",
+            f"retry_after={diagnostics.retry_after}",
+            f"quota_limit={diagnostics.quota_limit}",
+            f"quota_remaining={diagnostics.quota_remaining}",
+        ]
+        _LOGGER.warning("Nakordoni request failed: %s", " ".join(fields))
+
+    def _record_nakordoni_success(self, provider: Any) -> None:
+        """Publish the latest safe success metadata for a loaded entry."""
+
+        diagnostics = getattr(provider, "last_request_diagnostics", None)
+        if not isinstance(diagnostics, ProviderRequestDiagnostics):
+            return
+        self.hass.data.setdefault(DOMAIN, {}).setdefault(
+            "last_request_diagnostics", {}
+        )[self.entry.entry_id] = diagnostics.as_dict()
+
+    def _nakordoni_error_message(self, error: ProviderError) -> str:
+        """Return a bounded, provider-specific message without raw response text."""
+
+        code = getattr(getattr(error, "diagnostics", None), "error_code", None)
+        return {
+            "qps_exceeded": "Nakordoni rate limit reached: qps_exceeded",
+            "quota_exceeded": "Nakordoni quota exceeded",
+            "market_not_allowed": "Nakordoni market not allowed",
+            "not_approved": "Nakordoni account/product not approved",
+        }.get(code, "nakordoni request failed")
+
     def _set_auto_runtime_state(
         self,
         decision: AutoProviderDecision,
@@ -267,6 +307,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                 )
             )
         except ProviderAuthError as err:
+            if provider_mode == PROVIDER_NAKORDONI:
+                self._record_nakordoni_failure(err)
             if provider_mode in (PROVIDER_PETROMAP, PROVIDER_NAKORDONI):
                 self.entry.async_start_reauth(
                     self.hass,
@@ -275,11 +317,19 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                 raise ConfigEntryAuthFailed("API authentication failed") from err
             raise UpdateFailed("API authentication failed") from err
         except ProviderRateLimitError as err:
+            if provider_mode == PROVIDER_NAKORDONI:
+                self._record_nakordoni_failure(err)
+                raise UpdateFailed(self._nakordoni_error_message(err)) from err
             raise UpdateFailed("API rate limit reached") from err
         except ProviderError as err:
+            if provider_mode == PROVIDER_NAKORDONI:
+                self._record_nakordoni_failure(err)
+                raise UpdateFailed(self._nakordoni_error_message(err)) from err
             provider_label = provider_mode or "provider"
             raise UpdateFailed(f"{provider_label} request failed") from err
         self.nearest_station = nearest_station(result)
+        if provider_mode == PROVIDER_NAKORDONI:
+            self._record_nakordoni_success(provider)
         self.cheapest_station = cheapest_station(result)
         self.stations = sort_stations(result, int(self.options[CONF_STATION_COUNT]))
         self.last_successful_update = now
