@@ -9,6 +9,8 @@ FRONTEND_URL = f"/{DOMAIN}/{FRONTEND_FILENAME}?v={FRONTEND_VERSION}"
 FRONTEND_RESOURCE_URL = FRONTEND_URL
 PLATFORMS = ["sensor"]
 CONF_API_KEY = "api_key"
+CONF_TANKERKOENIG_API_KEY = "tankerkoenig_api_key"
+CONF_PETROMAP_API_KEY = "petromap_api_key"
 CONF_PROVIDER_MODE = "provider_mode"
 CONF_LOCATION_ENTITY = "location_entity"
 CONF_RADIUS = "radius"

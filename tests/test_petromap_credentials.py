@@ -9,6 +9,7 @@ import mobile_fuel_stations.config_flow as config_flow_module
 from mobile_fuel_stations.config_flow import MobileFuelStationsConfigFlow, _schema
 from mobile_fuel_stations.const import (
     CONF_API_KEY,
+    CONF_PETROMAP_API_KEY,
     CONF_COOLDOWN,
     CONF_FUEL_TYPE,
     CONF_LOCATION_ENTITY,
@@ -17,6 +18,7 @@ from mobile_fuel_stations.const import (
     CONF_PROVIDER_MODE,
     CONF_RADIUS,
     CONF_STATION_COUNT,
+    CONF_TANKERKOENIG_API_KEY,
     CONF_UPDATE_INTERVAL,
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
@@ -120,11 +122,12 @@ def test_usage_validator_maps_timeout_and_connection_errors_without_retry():
 
 
 def test_config_schema_exposes_provider_mode_but_options_do_not():
-    user_schema = _schema({}, True, True)
+    user_schema = _schema({}, False, True)
     options_schema = _schema({}, False)
     user_keys = {getattr(key, "schema", key) for key in user_schema.schema}
     option_keys = {getattr(key, "schema", key) for key in options_schema.schema}
     assert CONF_PROVIDER_MODE in user_keys
+    assert CONF_API_KEY not in user_keys
     assert CONF_PROVIDER_MODE not in option_keys
 
 
@@ -149,7 +152,6 @@ def _flow_with_location():
 def _user_input(provider_mode):
     return {
         CONF_PROVIDER_MODE: provider_mode,
-        CONF_API_KEY: "provider-secret",
         CONF_LOCATION_ENTITY: "device_tracker.vehicle",
         CONF_RADIUS: 20.0,
         CONF_FUEL_TYPE: "diesel",
@@ -161,15 +163,27 @@ def _user_input(provider_mode):
     }
 
 
+def _credential_input(provider_mode):
+    if provider_mode == PROVIDER_AUTO:
+        return {
+            CONF_TANKERKOENIG_API_KEY: "tankerkoenig-secret",
+            CONF_PETROMAP_API_KEY: "petromap-secret",
+        }
+    return {CONF_API_KEY: "provider-secret"}
+
+
 def test_tankerkoenig_flow_does_not_validate_petromap(monkeypatch):
     flow = _flow_with_location()
     validator = AsyncMock(side_effect=AssertionError("must not be called"))
     monkeypatch.setattr(config_flow_module, "async_validate_petromap_credentials", validator)
 
-    result = asyncio.run(flow.async_step_user(_user_input(PROVIDER_TANKERKOENIG)))
+    credentials = asyncio.run(flow.async_step_user(_user_input(PROVIDER_TANKERKOENIG)))
+    assert credentials["step_id"] == "tankerkoenig_credentials"
+    result = asyncio.run(flow.async_step_tankerkoenig_credentials(_credential_input(PROVIDER_TANKERKOENIG)))
 
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PROVIDER_MODE] == PROVIDER_TANKERKOENIG
+    assert result["data"][CONF_API_KEY] == "provider-secret"
     validator.assert_not_awaited()
 
 
@@ -180,10 +194,13 @@ def test_enabled_petromap_flow_creates_entry_after_privacy_and_usage(monkeypatch
 
     privacy = asyncio.run(flow.async_step_user(_user_input(PROVIDER_PETROMAP)))
     assert privacy["step_id"] == "petromap_privacy"
-    result = asyncio.run(flow.async_step_petromap_privacy({}))
+    credentials = asyncio.run(flow.async_step_petromap_privacy({}))
+    assert credentials["step_id"] == "petromap_credentials"
+    result = asyncio.run(flow.async_step_petromap_credentials(_credential_input(PROVIDER_PETROMAP)))
 
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PROVIDER_MODE] == PROVIDER_PETROMAP
+    assert result["data"][CONF_API_KEY] == "provider-secret"
     validator.assert_awaited_once_with("provider-secret")
 
 
@@ -194,11 +211,30 @@ def test_disabled_auto_flow_never_creates_a_broken_entry(monkeypatch):
 
     privacy = asyncio.run(flow.async_step_user(_user_input(PROVIDER_AUTO)))
     assert privacy["step_id"] == "auto_privacy"
-    result = asyncio.run(flow.async_step_auto_privacy({}))
+    credentials = asyncio.run(flow.async_step_auto_privacy({}))
+    assert credentials["step_id"] == "auto_credentials"
+    result = asyncio.run(flow.async_step_auto_credentials(_credential_input(PROVIDER_AUTO)))
 
     assert result["type"] == "form"
     assert result["errors"]["base"] == "provider_disabled"
     validator.assert_awaited_once_with("provider-secret")
+
+
+def test_auto_credential_model_requires_both_keys_before_validation():
+    flow = _flow_with_location()
+    flow._validate_petromap_key = AsyncMock(return_value=None)
+
+    asyncio.run(flow.async_step_user(_user_input(PROVIDER_AUTO)))
+    asyncio.run(flow.async_step_auto_privacy({}))
+    result = asyncio.run(
+        flow.async_step_auto_credentials(
+            {CONF_TANKERKOENIG_API_KEY: "tankerkoenig-secret"}
+        )
+    )
+
+    assert result["type"] == "form"
+    assert result["errors"][CONF_PETROMAP_API_KEY] == "api_key_required"
+    flow._validate_petromap_key.assert_not_awaited()
 
 
 @pytest.mark.parametrize("provider_mode", [PROVIDER_PETROMAP, PROVIDER_AUTO])
@@ -220,12 +256,19 @@ def test_enabled_external_provider_flow_validates_once_before_entry(monkeypatch,
 
     privacy = asyncio.run(flow.async_step_user(_user_input(provider_mode)))
     assert privacy["step_id"] in {"petromap_privacy", "auto_privacy"}
+    credentials = asyncio.run(getattr(flow, f"async_step_{privacy['step_id']}")({}))
     result = asyncio.run(
-        getattr(flow, f"async_step_{privacy['step_id']}")({})
+        getattr(flow, f"async_step_{credentials['step_id']}")(
+            _credential_input(provider_mode)
+        )
     )
 
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PROVIDER_MODE] == provider_mode
+    if provider_mode == PROVIDER_AUTO:
+        assert result["data"][CONF_TANKERKOENIG_API_KEY] == "tankerkoenig-secret"
+        assert result["data"][CONF_PETROMAP_API_KEY] == "petromap-secret"
+        assert CONF_API_KEY not in result["data"]
     validator.assert_awaited_once()
 
 

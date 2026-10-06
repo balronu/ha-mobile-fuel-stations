@@ -12,6 +12,8 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_API_KEY,
+    CONF_PETROMAP_API_KEY,
+    CONF_TANKERKOENIG_API_KEY,
     CONF_COOLDOWN,
     CONF_FUEL_TYPE,
     CONF_LOCATION_ENTITY,
@@ -95,6 +97,27 @@ def _schema(
     return vol.Schema(schema)
 
 
+def _credential_schema(provider_mode: str) -> vol.Schema:
+    """Return the provider-specific credential form."""
+
+    if provider_mode == PROVIDER_AUTO:
+        fields = {
+            vol.Required(CONF_TANKERKOENIG_API_KEY): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
+            vol.Required(CONF_PETROMAP_API_KEY): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
+        }
+    else:
+        fields = {
+            vol.Required(CONF_API_KEY): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            )
+        }
+    return vol.Schema(fields)
+
+
 def _validate_location(hass: HomeAssistant, entity_id: str) -> bool:
     state = hass.states.get(entity_id)
     if state is None:
@@ -142,18 +165,42 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
         api_key = user_input.get(CONF_API_KEY, "").strip()
         errors = {}
-        if provider_mode in (PROVIDER_PETROMAP, PROVIDER_AUTO):
+        if provider_mode == PROVIDER_AUTO:
+            tankerkoenig_key = user_input.get(CONF_TANKERKOENIG_API_KEY, "").strip()
+            petromap_key = user_input.get(CONF_PETROMAP_API_KEY, "").strip()
+            if not tankerkoenig_key:
+                errors[CONF_TANKERKOENIG_API_KEY] = "api_key_required"
+            if not petromap_key:
+                errors[CONF_PETROMAP_API_KEY] = "api_key_required"
+            if not errors:
+                validation_error = await self._validate_petromap_key(petromap_key)
+                if validation_error:
+                    errors[CONF_PETROMAP_API_KEY] = validation_error
             registration = PROVIDER_REGISTRY.get(provider_mode)
-            validation_error = await self._validate_petromap_key(api_key)
-            if validation_error:
-                errors["base"] = validation_error
-            elif registration is None:
+            if not errors and registration is None:
                 errors["base"] = "unknown"
-            elif not registration.enabled or registration.factory is None:
+            elif not errors and (
+                not registration.enabled or registration.factory is None
+            ):
+                errors["base"] = "provider_disabled"
+        elif provider_mode == PROVIDER_PETROMAP:
+            if not api_key:
+                errors[CONF_API_KEY] = "api_key_required"
+            else:
+                validation_error = await self._validate_petromap_key(api_key)
+                if validation_error:
+                    errors[CONF_API_KEY] = validation_error
+            registration = PROVIDER_REGISTRY.get(provider_mode)
+            if not errors and registration is None:
+                errors["base"] = "unknown"
+            elif not errors and (not registration.enabled or registration.factory is None):
                 errors["base"] = "provider_disabled"
         if errors:
+            step_id = "auto_credentials" if provider_mode == PROVIDER_AUTO else "petromap_credentials"
             return self.async_show_form(
-                step_id="user", data_schema=_schema({}, True, True), errors=errors
+                step_id=step_id,
+                data_schema=_credential_schema(provider_mode),
+                errors=errors,
             )
         await self.async_set_unique_id(
             f"{user_input[CONF_LOCATION_ENTITY]}_{user_input[CONF_FUEL_TYPE]}"
@@ -161,7 +208,12 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
         data = dict(user_input)
         data[CONF_PROVIDER_MODE] = provider_mode
-        data[CONF_API_KEY] = api_key
+        if provider_mode == PROVIDER_AUTO:
+            data.pop(CONF_API_KEY, None)
+            data[CONF_TANKERKOENIG_API_KEY] = user_input[CONF_TANKERKOENIG_API_KEY].strip()
+            data[CONF_PETROMAP_API_KEY] = user_input[CONF_PETROMAP_API_KEY].strip()
+        else:
+            data[CONF_API_KEY] = api_key
         return self.async_create_entry(
             title=f"Mobile Fuel Stations ({user_input[CONF_LOCATION_ENTITY]})",
             data=data,
@@ -171,28 +223,23 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
-            api_key = user_input.get(CONF_API_KEY, "").strip()
-            if not api_key:
-                errors[CONF_API_KEY] = "api_key_required"
-            elif not _validate_location(self.hass, user_input[CONF_LOCATION_ENTITY]):
+            if not _validate_location(self.hass, user_input[CONF_LOCATION_ENTITY]):
                 errors[CONF_LOCATION_ENTITY] = "invalid_location"
             if not errors:
+                self._pending_user_input = dict(user_input)
                 if provider_mode == PROVIDER_PETROMAP:
-                    self._pending_user_input = dict(user_input)
-                    return self.async_show_form(
-                        step_id="petromap_privacy", data_schema=vol.Schema({})
-                    )
+                    return self.async_show_form(step_id="petromap_privacy", data_schema=vol.Schema({}))
                 if provider_mode == PROVIDER_AUTO:
-                    self._pending_user_input = dict(user_input)
-                    return self.async_show_form(
-                        step_id="auto_privacy", data_schema=vol.Schema({})
-                    )
-                return await self._async_create_user_entry(user_input)
+                    return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
+                return self.async_show_form(
+                    step_id="tankerkoenig_credentials",
+                    data_schema=_credential_schema(PROVIDER_TANKERKOENIG),
+                )
         defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL, CONF_MOVEMENT_UPDATES: DEFAULT_MOVEMENT_UPDATES,
                     CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN}
         return self.async_show_form(
-            step_id="user", data_schema=_schema(defaults, True, True), errors=errors
+            step_id="user", data_schema=_schema(defaults, False, True), errors=errors
         )
 
     async def async_step_petromap_privacy(self, user_input=None):
@@ -202,14 +249,56 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(
                 step_id="petromap_privacy", data_schema=vol.Schema({})
             )
-        return await self._async_create_user_entry(self._pending_user_input)
+        return self.async_show_form(
+            step_id="petromap_credentials",
+            data_schema=_credential_schema(PROVIDER_PETROMAP),
+        )
 
     async def async_step_auto_privacy(self, user_input=None):
         """Show the Auto/Petromap data-transfer disclosure before validation."""
 
         if user_input is None:
             return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
-        return await self._async_create_user_entry(self._pending_user_input)
+        return self.async_show_form(
+            step_id="auto_credentials",
+            data_schema=_credential_schema(PROVIDER_AUTO),
+        )
+
+    async def async_step_tankerkoenig_credentials(self, user_input=None):
+        """Collect the explicit Tankerkönig credential without validation."""
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="tankerkoenig_credentials",
+                data_schema=_credential_schema(PROVIDER_TANKERKOENIG),
+            )
+        return await self._async_create_user_entry(
+            {**self._pending_user_input, **user_input}
+        )
+
+    async def async_step_petromap_credentials(self, user_input=None):
+        """Validate the explicit Petromap credential once, then create the entry."""
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="petromap_credentials",
+                data_schema=_credential_schema(PROVIDER_PETROMAP),
+            )
+        return await self._async_create_user_entry(
+            {**self._pending_user_input, **user_input}
+        )
+
+    async def async_step_auto_credentials(self, user_input=None):
+        """Validate only the Petromap half before the disabled-provider guard."""
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="auto_credentials",
+                data_schema=_credential_schema(PROVIDER_AUTO),
+            )
+        return await self._async_create_user_entry(
+            {**self._pending_user_input, **user_input}
+        )
 
     async def async_step_reauth(self, entry_data):
         """Start reauthentication for a Petromap entry."""
