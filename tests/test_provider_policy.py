@@ -4,9 +4,20 @@ from mobile_fuel_stations.providers.base import (
     CountryPriceCoverage,
     ProviderCapabilities,
     ProviderDisabledError,
+    FuelFallbackBlockedError,
+    NoSuitableProviderError,
+    ProviderReauthContext,
+    ProviderUnavailableError,
     resolve_fuel,
 )
-from mobile_fuel_stations.providers.policy import CountryHysteresis, choose_auto_provider, normalize_country_code
+from mobile_fuel_stations.providers.policy import (
+    CountryHysteresis,
+    choose_auto_provider,
+    normalize_country_code,
+    is_expected_auto_unavailable,
+    validate_direct_fuel_runtime,
+)
+from mobile_fuel_stations.providers.petromap import PETROMAP_CAPABILITIES
 
 
 PETROMAP_HYPOTHETICAL = ProviderCapabilities(
@@ -152,9 +163,43 @@ def test_registry_enables_petromap_but_keeps_auto_disabled():
     assert PROVIDER_REGISTRY[PROVIDER_PETROMAP].factory is not None
     assert PROVIDER_REGISTRY["auto"].enabled is False
     assert PROVIDER_REGISTRY["auto"].factory is None
+    assert PROVIDER_REGISTRY["auto"].is_strategy is True
     try:
         create_provider(object(), {"api_key": "secret", "provider_mode": "auto"})
     except ProviderDisabledError:
         pass
     else:
         raise AssertionError("auto must remain disabled")
+
+
+def test_registry_and_policy_share_petromap_capabilities():
+    assert PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities is PETROMAP_CAPABILITIES
+    assert PETROMAP_CAPABILITIES.supported_countries == frozenset({"DE", "AT"})
+    assert PETROMAP_CAPABILITIES.supported_fuel_types == frozenset({"diesel", "e5"})
+    assert PETROMAP_CAPABILITIES.max_radius_km == 25.0
+
+    for fuel in ("diesel", "e5"):
+        decision = choose_auto_provider("AT", fuel, petromap_enabled=True)
+        assert decision.provider_mode == PROVIDER_PETROMAP
+        assert decision.fuel_resolution is not None
+        assert decision.fuel_resolution.effective_fuel == fuel
+
+
+def test_c2b_outcomes_are_pre_network_and_distinct():
+    unsupported = choose_auto_provider("RS", "diesel", petromap_enabled=True)
+    with pytest.raises(NoSuitableProviderError):
+        validate_direct_fuel_runtime(unsupported)
+
+    fallback = choose_auto_provider("AT", "e10", petromap_enabled=True)
+    with pytest.raises(FuelFallbackBlockedError):
+        validate_direct_fuel_runtime(fallback)
+    assert is_expected_auto_unavailable(NoSuitableProviderError("unsupported_country"))
+    assert is_expected_auto_unavailable(FuelFallbackBlockedError("fallback_required"))
+    assert not is_expected_auto_unavailable(ProviderUnavailableError("503"))
+
+
+def test_provider_reauth_context_is_secret_free_and_serializable():
+    context = ProviderReauthContext(PROVIDER_PETROMAP)
+    assert context.as_dict() == {"provider_mode": PROVIDER_PETROMAP}
+    assert ProviderReauthContext.from_dict(context.as_dict()) == context
+    assert "secret" not in repr(context).lower()

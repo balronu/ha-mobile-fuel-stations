@@ -10,6 +10,7 @@ from mobile_fuel_stations.const import (
     CONF_RADIUS,
     CONF_STATION_COUNT,
     PROVIDER_TANKERKOENIG,
+    PROVIDER_PETROMAP,
 )
 from mobile_fuel_stations.coordinator import CountryAutoContext, MobileFuelStationsCoordinator
 from mobile_fuel_stations.providers.base import CountryPriceCoverage
@@ -67,15 +68,15 @@ def test_none_keeps_confirmed_country_and_resets_candidate():
     assert context.confirmed_country == "FR"
 
 
-def test_at_has_no_usable_real_provider_and_does_not_switch_anything():
+def test_at_prepares_petromap_decision_without_switching_runtime_provider():
     context = _context(["AT"])
 
     decision = context.observe_position((48.2082, 16.3738))
 
     assert context.confirmed_country == "AT"
-    assert decision.provider_mode is None
-    assert decision.coverage == CountryPriceCoverage.UNSUPPORTED
-    assert decision.reason == "unsupported_country"
+    assert decision.provider_mode == PROVIDER_PETROMAP
+    assert decision.coverage == CountryPriceCoverage.PER_STATION
+    assert decision.reason == "provider_available"
 
 
 def test_policy_context_is_pure_and_does_not_make_requests():

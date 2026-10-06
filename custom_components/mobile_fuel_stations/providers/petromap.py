@@ -16,6 +16,7 @@ from aiohttp import ClientConnectionError, ClientError, ClientSession, ClientTim
 
 from ..const import DEFAULT_TIMEOUT, MAX_API_RADIUS_KM
 from .base import (
+    CountryPriceCoverage,
     ProviderAuthError,
     ProviderDailyBudgetError,
     ProviderInsufficientCreditsError,
@@ -26,6 +27,7 @@ from .base import (
     ProviderTimeoutError,
     ProviderUnavailableError,
     ProviderUnsupportedFuelError,
+    ProviderCapabilities,
     Station,
     StationSearchQuery,
 )
@@ -34,6 +36,21 @@ PETROMAP_API_BASE_URL = "https://api.petromap.eu/v2"
 PETROMAP_PLACES_PATH = "/places"
 PETROMAP_USAGE_PATH = "/usage"
 MFS_RADIUS_LIMIT_KM = MAX_API_RADIUS_KM
+
+PETROMAP_CAPABILITIES = ProviderCapabilities(
+    supported_countries=frozenset({"DE", "AT"}),
+    supported_fuel_types=frozenset({"diesel", "e5"}),
+    max_radius_km=MAX_API_RADIUS_KM,
+    country_price_coverage={
+        "DE": CountryPriceCoverage.PER_STATION,
+        "AT": CountryPriceCoverage.PER_STATION,
+        "BG": CountryPriceCoverage.NATIONAL_ONLY,
+        "PL": CountryPriceCoverage.NATIONAL_ONLY,
+        "SK": CountryPriceCoverage.NATIONAL_ONLY,
+        "ME": CountryPriceCoverage.NO_PRICES,
+        "RS": CountryPriceCoverage.NO_PRICES,
+    },
+)
 
 _FUEL_PARAMS: dict[str, dict[str, str]] = {
     "diesel": {"fuelFamily": "diesel"},

@@ -16,18 +16,23 @@ from .base import (
     ProviderDisabledError,
     UnknownProviderError,
 )
-from .petromap import PetromapProvider
+from .petromap import PETROMAP_CAPABILITIES, PetromapProvider
 from .tankerkoenig import TankerkoenigProvider
 
 
 @dataclass(frozen=True)
 class ProviderRegistration:
-    """Explicit registry entry; disabled entries have no factory."""
+    """Explicit registry entry for concrete providers and strategies."""
 
     provider_id: str
     factory: Callable[[ClientSession, str], FuelStationProvider] | None
     enabled: bool
     capabilities: ProviderCapabilities
+    is_strategy: bool = False
+
+
+CONCRETE_PROVIDER_IDS = frozenset({PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP})
+STRATEGY_PROVIDER_IDS = frozenset({PROVIDER_AUTO})
 
 
 PROVIDER_REGISTRY: dict[str, ProviderRegistration] = {
@@ -46,13 +51,14 @@ PROVIDER_REGISTRY: dict[str, ProviderRegistration] = {
         provider_id=PROVIDER_PETROMAP,
         factory=PetromapProvider,
         enabled=True,
-        capabilities=ProviderCapabilities(),
+        capabilities=PETROMAP_CAPABILITIES,
     ),
     PROVIDER_AUTO: ProviderRegistration(
         provider_id=PROVIDER_AUTO,
         factory=None,
         enabled=False,
         capabilities=ProviderCapabilities(),
+        is_strategy=True,
     ),
 }
 
@@ -63,7 +69,7 @@ def create_provider(session: ClientSession, config: dict[str, object]) -> FuelSt
     registration = PROVIDER_REGISTRY.get(str(mode))
     if registration is None:
         raise UnknownProviderError(f"Unknown provider mode: {mode}")
-    if not registration.enabled or registration.factory is None:
+    if registration.is_strategy or not registration.enabled or registration.factory is None:
         raise ProviderDisabledError(f"Provider mode is disabled: {mode}")
     return registration.factory(session, str(config["api_key"]))
 
@@ -75,6 +81,9 @@ __all__ = [
     "ProviderConfigurationError",
     "ProviderDisabledError",
     "ProviderRegistration",
+    "CONCRETE_PROVIDER_IDS",
+    "STRATEGY_PROVIDER_IDS",
+    "PETROMAP_CAPABILITIES",
     "PROVIDER_REGISTRY",
     "TankerkoenigProvider",
     "UnknownProviderError",

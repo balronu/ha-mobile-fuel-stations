@@ -10,19 +10,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..const import PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
-from .base import CountryPriceCoverage, FuelResolution, ProviderCapabilities, resolve_fuel
+from .base import (
+    CountryPriceCoverage,
+    FuelFallbackBlockedError,
+    FuelResolution,
+    NoSuitableProviderError,
+    ProviderCapabilities,
+    ProviderError,
+    ProviderUnavailableError,
+    resolve_fuel,
+)
+from .petromap import PETROMAP_CAPABILITIES
 
-PETROMAP_COUNTRY_COVERAGE: dict[str, CountryPriceCoverage] = {
-    "DE": CountryPriceCoverage.PER_STATION,
-    "AT": CountryPriceCoverage.PER_STATION,
-    "BG": CountryPriceCoverage.NATIONAL_ONLY,
-    "PL": CountryPriceCoverage.NATIONAL_ONLY,
-    "SK": CountryPriceCoverage.NATIONAL_ONLY,
-    "ME": CountryPriceCoverage.NO_PRICES,
-    "RS": CountryPriceCoverage.NO_PRICES,
-}
-
-PETROMAP_FUEL_TYPES = frozenset({"diesel", "e5"})
+# Compatibility aliases; the capability object above is the only definition.
+PETROMAP_COUNTRY_COVERAGE = PETROMAP_CAPABILITIES.country_price_coverage
+PETROMAP_FUEL_TYPES = PETROMAP_CAPABILITIES.supported_fuel_types
 TANKERKOENIG_FUEL_TYPES = frozenset({"diesel", "e5", "e10"})
 TANKERKOENIG_CAPABILITIES = ProviderCapabilities(
     supported_countries=frozenset({"DE"}),
@@ -50,6 +52,37 @@ class AutoProviderDecision:
     coverage: CountryPriceCoverage
     reason: str
     fuel_resolution: FuelResolution | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class AutoRuntimeState:
+    """Secret-free state contract for a future Auto coordinator runtime."""
+
+    configured_provider_mode: str
+    effective_provider: str | None
+    raw_country: str | None
+    confirmed_country: str | None
+    coverage: CountryPriceCoverage
+    fuel_resolution: FuelResolution | None
+    reason: str
+
+
+def validate_direct_fuel_runtime(decision: AutoProviderDecision) -> AutoProviderDecision:
+    """Reject Auto outcomes that cannot make one direct provider request."""
+
+    if decision.provider_mode is None:
+        raise NoSuitableProviderError(decision.reason)
+    if decision.fuel_resolution and decision.fuel_resolution.fallback_used:
+        raise FuelFallbackBlockedError(
+            decision.fuel_resolution.fallback_reason or "fallback_required"
+        )
+    return decision
+
+
+def is_expected_auto_unavailable(error: ProviderError) -> bool:
+    """Identify policy states that must not be treated as transport failures."""
+
+    return isinstance(error, (NoSuitableProviderError, FuelFallbackBlockedError))
 
 
 def _coverage_for(
@@ -99,6 +132,7 @@ def choose_auto_provider(
             tanker_fuel,
         )
 
+    petromap_capabilities = petromap_capabilities or PETROMAP_CAPABILITIES
     petromap_coverage = _coverage_for(petromap_capabilities, normalized)
     if petromap_coverage != CountryPriceCoverage.PER_STATION:
         reason = {
@@ -110,7 +144,7 @@ def choose_auto_provider(
         return AutoProviderDecision(None, normalized, petromap_coverage, reason)
     if not petromap_enabled:
         return AutoProviderDecision(None, normalized, petromap_coverage, "provider_disabled")
-    supported_fuels = petromap_capabilities.supported_fuel_types if petromap_capabilities else PETROMAP_FUEL_TYPES
+    supported_fuels = petromap_capabilities.supported_fuel_types or frozenset()
     petromap_fuel = resolve_fuel(
         fuel_type,
         ProviderCapabilities(supported_fuel_types=supported_fuels),
@@ -172,11 +206,17 @@ class CountryHysteresis:
 
 __all__ = [
     "AutoProviderDecision",
+    "AutoRuntimeState",
     "CountryHysteresis",
+    "FuelFallbackBlockedError",
     "FuelResolution",
+    "NoSuitableProviderError",
+    "PETROMAP_CAPABILITIES",
     "PETROMAP_COUNTRY_COVERAGE",
     "TANKERKOENIG_CAPABILITIES",
     "choose_auto_provider",
     "normalize_country_code",
     "resolve_fuel",
+    "is_expected_auto_unavailable",
+    "validate_direct_fuel_runtime",
 ]

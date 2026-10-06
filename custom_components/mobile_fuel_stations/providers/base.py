@@ -72,6 +72,27 @@ class FuelResolution:
     fallback_reason: str | None = None
 
 
+@dataclass(slots=True, frozen=True)
+class ProviderReauthContext:
+    """Non-sensitive provider identity carried into a future reauth flow."""
+
+    provider_mode: str
+
+    def as_dict(self) -> dict[str, str]:
+        """Return a serializable, secret-free provider context."""
+
+        return {"provider_mode": self.provider_mode}
+
+    @classmethod
+    def from_dict(cls, data: object) -> ProviderReauthContext | None:
+        """Restore only the provider identity from serialized flow context."""
+
+        if not isinstance(data, dict):
+            return None
+        provider_mode = data.get("provider_mode")
+        return cls(provider_mode) if isinstance(provider_mode, str) else None
+
+
 def resolve_fuel(
     requested_fuel: str,
     capabilities: ProviderCapabilities | None,
@@ -109,6 +130,14 @@ class UnknownProviderError(ProviderConfigurationError):
 
 class ProviderDisabledError(ProviderConfigurationError):
     """A known provider is deliberately disabled in this release."""
+
+
+class NoSuitableProviderError(ProviderConfigurationError):
+    """Auto mode has no provider that can serve the confirmed country."""
+
+
+class FuelFallbackBlockedError(ProviderConfigurationError):
+    """Auto mode would need a fallback that is not enabled in this runtime."""
 
 
 class ProviderTimeoutError(ProviderError):
