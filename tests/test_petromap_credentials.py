@@ -175,7 +175,9 @@ def _credential_input(provider_mode):
 def test_tankerkoenig_flow_does_not_validate_petromap(monkeypatch):
     flow = _flow_with_location()
     validator = AsyncMock(side_effect=AssertionError("must not be called"))
-    monkeypatch.setattr(config_flow_module, "async_validate_petromap_credentials", validator)
+    monkeypatch.setattr(
+        config_flow_module, "async_validate_petromap_credentials", validator
+    )
 
     credentials = asyncio.run(flow.async_step_user(_user_input(PROVIDER_TANKERKOENIG)))
     assert credentials["step_id"] == "tankerkoenig_credentials"
@@ -187,10 +189,12 @@ def test_tankerkoenig_flow_does_not_validate_petromap(monkeypatch):
     validator.assert_not_awaited()
 
 
-def test_enabled_petromap_flow_creates_entry_after_privacy_and_usage(monkeypatch):
+def test_enabled_petromap_flow_creates_entry_without_network_request(monkeypatch):
     flow = _flow_with_location()
-    validator = AsyncMock(return_value=None)
-    flow._validate_petromap_key = validator
+    validator = AsyncMock(side_effect=AssertionError("setup must not call /usage"))
+    monkeypatch.setattr(
+        config_flow_module, "async_validate_petromap_credentials", validator
+    )
 
     privacy = asyncio.run(flow.async_step_user(_user_input(PROVIDER_PETROMAP)))
     assert privacy["step_id"] == "petromap_privacy"
@@ -201,13 +205,13 @@ def test_enabled_petromap_flow_creates_entry_after_privacy_and_usage(monkeypatch
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PROVIDER_MODE] == PROVIDER_PETROMAP
     assert result["data"][CONF_API_KEY] == "provider-secret"
-    validator.assert_awaited_once_with("provider-secret")
+    validator.assert_not_awaited()
 
 
-def test_auto_flow_creates_entry_with_dual_credentials(monkeypatch):
+def test_auto_flow_creates_entry_with_dual_credentials_without_network_request(monkeypatch):
     flow = _flow_with_location()
-    validator = AsyncMock(return_value=None)
-    flow._validate_petromap_key = validator
+    validator = AsyncMock(side_effect=AssertionError("setup must not call /usage"))
+    monkeypatch.setattr(config_flow_module, "async_validate_petromap_credentials", validator)
 
     privacy = asyncio.run(flow.async_step_user(_user_input(PROVIDER_AUTO)))
     assert privacy["step_id"] == "auto_privacy"
@@ -220,8 +224,7 @@ def test_auto_flow_creates_entry_with_dual_credentials(monkeypatch):
     assert result["data"][CONF_TANKERKOENIG_API_KEY] == "tankerkoenig-secret"
     assert result["data"][CONF_PETROMAP_API_KEY] == "petromap-secret"
     assert CONF_API_KEY not in result["data"]
-    validator.assert_awaited_once_with("petromap-secret")
-    assert validator.await_args.args[0] != "tankerkoenig-secret"
+    validator.assert_not_awaited()
 
 
 def test_auto_credential_model_requires_both_keys_before_validation():
@@ -242,7 +245,7 @@ def test_auto_credential_model_requires_both_keys_before_validation():
 
 
 @pytest.mark.parametrize("provider_mode", [PROVIDER_PETROMAP, PROVIDER_AUTO])
-def test_enabled_external_provider_flow_validates_once_before_entry(monkeypatch, provider_mode):
+def test_enabled_external_provider_flow_creates_entry_without_network_request(monkeypatch, provider_mode):
     flow = _flow_with_location()
     validator = AsyncMock(return_value=None)
     monkeypatch.setattr(config_flow_module, "async_validate_petromap_credentials", validator)
@@ -273,7 +276,7 @@ def test_enabled_external_provider_flow_validates_once_before_entry(monkeypatch,
         assert result["data"][CONF_TANKERKOENIG_API_KEY] == "tankerkoenig-secret"
         assert result["data"][CONF_PETROMAP_API_KEY] == "petromap-secret"
         assert CONF_API_KEY not in result["data"]
-    validator.assert_awaited_once()
+    validator.assert_not_awaited()
 
 
 def test_external_privacy_step_does_not_validate_or_request():
@@ -303,7 +306,7 @@ def test_config_flow_maps_validator_errors_without_leaking_key():
     assert flow._validation_error(ProviderResponseError("response")) == "unknown"
 
 
-def test_reauth_updates_only_key_after_successful_usage_validation():
+def test_reauth_updates_only_explicit_key_without_usage_validation():
     flow = MobileFuelStationsConfigFlow()
     entry = SimpleNamespace(
         data={
@@ -313,7 +316,9 @@ def test_reauth_updates_only_key_after_successful_usage_validation():
         }
     )
     flow._get_reauth_entry = lambda: entry
-    flow._validate_petromap_key = AsyncMock(return_value=None)
+    flow._validate_petromap_key = AsyncMock(
+        side_effect=AssertionError("reauth must not call /usage")
+    )
     flow.async_update_reload_and_abort = lambda current, **kwargs: {
         "type": "abort",
         "entry": current,
@@ -327,22 +332,52 @@ def test_reauth_updates_only_key_after_successful_usage_validation():
     assert result["type"] == "abort"
     assert result["data_updates"] == {CONF_API_KEY: "NEW_SECRET"}
     assert entry.data[CONF_API_KEY] == "OLD_SECRET"
-    flow._validate_petromap_key.assert_awaited_once_with("NEW_SECRET")
+    flow._validate_petromap_key.assert_not_awaited()
 
 
-def test_reauth_failure_keeps_old_key_and_does_not_reload():
+def test_reauth_missing_key_keeps_old_key_and_does_not_reload():
     flow = MobileFuelStationsConfigFlow()
     entry = SimpleNamespace(data={CONF_API_KEY: "OLD_SECRET"})
     flow._get_reauth_entry = lambda: entry
-    flow._validate_petromap_key = AsyncMock(return_value="invalid_auth")
+    flow._validate_petromap_key = AsyncMock(
+        side_effect=AssertionError("reauth must not call /usage")
+    )
     reload_helper = AsyncMock()
     flow.async_update_reload_and_abort = reload_helper
 
     result = asyncio.run(
-        flow.async_step_reauth_confirm({CONF_API_KEY: "NEW_SECRET"})
+        flow.async_step_reauth_confirm({CONF_API_KEY: ""})
     )
 
     assert result["type"] == "form"
-    assert result["errors"]["base"] == "invalid_auth"
+    assert result["errors"][CONF_API_KEY] == "api_key_required"
     assert entry.data[CONF_API_KEY] == "OLD_SECRET"
     reload_helper.assert_not_awaited()
+
+
+def test_auto_reauth_updates_only_petromap_key_without_usage_validation():
+    flow = MobileFuelStationsConfigFlow()
+    entry = SimpleNamespace(
+        data={
+            CONF_TANKERKOENIG_API_KEY: "TK_OLD",
+            CONF_PETROMAP_API_KEY: "PM_OLD",
+            CONF_PROVIDER_MODE: PROVIDER_AUTO,
+        }
+    )
+    flow._get_reauth_entry = lambda: entry
+    flow._validate_petromap_key = AsyncMock(side_effect=AssertionError("reauth must not call /usage"))
+    flow.async_update_reload_and_abort = lambda current, **kwargs: {
+        "type": "abort",
+        "entry": current,
+        **kwargs,
+    }
+
+    result = asyncio.run(
+        flow.async_step_reauth_auto_confirm({CONF_PETROMAP_API_KEY: "PM_NEW"})
+    )
+
+    assert result["type"] == "abort"
+    assert result["data_updates"] == {CONF_PETROMAP_API_KEY: "PM_NEW"}
+    assert entry.data[CONF_TANKERKOENIG_API_KEY] == "TK_OLD"
+    assert entry.data[CONF_PETROMAP_API_KEY] == "PM_OLD"
+    flow._validate_petromap_key.assert_not_awaited()

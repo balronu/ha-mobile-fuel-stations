@@ -160,7 +160,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return None
 
     async def _async_create_user_entry(self, user_input):
-        """Validate an external credential and create the entry if allowed."""
+        """Collect credentials and create the entry if the provider is enabled."""
 
         provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
         api_key = user_input.get(CONF_API_KEY, "").strip()
@@ -172,19 +172,11 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_TANKERKOENIG_API_KEY] = "api_key_required"
             if not petromap_key:
                 errors[CONF_PETROMAP_API_KEY] = "api_key_required"
-            if not errors:
-                validation_error = await self._validate_petromap_key(petromap_key)
-                if validation_error:
-                    errors[CONF_PETROMAP_API_KEY] = validation_error
             if not errors and PROVIDER_REGISTRY.get(PROVIDER_PETROMAP) is None:
                 errors["base"] = "unknown"
         elif provider_mode == PROVIDER_PETROMAP:
             if not api_key:
                 errors[CONF_API_KEY] = "api_key_required"
-            else:
-                validation_error = await self._validate_petromap_key(api_key)
-                if validation_error:
-                    errors[CONF_API_KEY] = validation_error
             registration = PROVIDER_REGISTRY.get(provider_mode)
             if not errors and registration is None:
                 errors["base"] = "unknown"
@@ -272,7 +264,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_petromap_credentials(self, user_input=None):
-        """Validate the explicit Petromap credential once, then create the entry."""
+        """Collect the explicit Petromap credential without a setup request."""
 
         if user_input is None:
             return self.async_show_form(
@@ -284,7 +276,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_auto_credentials(self, user_input=None):
-        """Validate only the Petromap half before the disabled-provider guard."""
+        """Collect both provider credentials without a setup request."""
 
         if user_input is None:
             return self.async_show_form(
@@ -305,7 +297,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_auto_confirm(self, user_input=None):
-        """Replace only the Auto Petromap credential after validation."""
+        """Replace only the Auto Petromap credential without a usage request."""
 
         errors = {}
         if user_input is not None:
@@ -316,14 +308,10 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             elif reauth_entry is None:
                 errors["base"] = "unknown"
             else:
-                validation_error = await self._validate_petromap_key(api_key)
-                if validation_error:
-                    errors[CONF_PETROMAP_API_KEY] = validation_error
-                else:
-                    return self.async_update_reload_and_abort(
-                        reauth_entry,
-                        data_updates={CONF_PETROMAP_API_KEY: api_key},
-                    )
+                return self.async_update_reload_and_abort(
+                    reauth_entry,
+                    data_updates={CONF_PETROMAP_API_KEY: api_key},
+                )
         return self.async_show_form(
             step_id="reauth_auto_confirm",
             data_schema=vol.Schema(
@@ -337,7 +325,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_reauth_confirm(self, user_input=None):
-        """Replace only the Petromap credential after successful validation."""
+        """Replace only the explicit Petromap credential without a usage request."""
 
         errors = {}
         if user_input is not None:
@@ -348,14 +336,10 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             elif reauth_entry is None:
                 errors["base"] = "unknown"
             else:
-                validation_error = await self._validate_petromap_key(api_key)
-                if validation_error:
-                    errors["base"] = validation_error
-                else:
-                    return self.async_update_reload_and_abort(
-                        reauth_entry,
-                        data_updates={CONF_API_KEY: api_key},
-                    )
+                return self.async_update_reload_and_abort(
+                    reauth_entry,
+                    data_updates={CONF_API_KEY: api_key},
+                )
         return self.async_show_form(
             step_id="reauth_confirm",
             data_schema=vol.Schema(

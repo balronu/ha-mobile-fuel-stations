@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.5.0-beta.1 — Beta release
+
+### Deutsch
+
+- Provider-Abstraktion und Petromap-v2-Runtime-Unterstützung ergänzt.
+- Offline-Country-Resolver und automatische Provider-Auswahl eingeführt:
+  Deutschland nutzt Tankerkönig; Österreich nutzt Petromap für Diesel und E5.
+- Auto-Einträge speichern getrennte Tankerkönig- und Petromap-Credentials.
+- Privacy Disclosure und provider-spezifische Reauth-Flows bleiben erhalten.
+- Petromap-Runtime verwendet pro Refresh höchstens eine Places-Seite; kein
+  `/usage`-Aufruf im normalen Runtime-Refresh.
+- AT/E10 bleibt in dieser Beta bewusst vor dem Netzwerk blockiert.
+- Petromap runtime support is included in beta; real-world API access depends
+  on the permissions of the configured Petromap developer key.
+
+### English
+
+- Added provider abstraction and Petromap v2 runtime support.
+- Added the offline country resolver and automatic provider selection:
+  Germany uses Tankerkönig; Austria uses Petromap for diesel and E5.
+- Auto entries store separate Tankerkönig and Petromap credentials.
+- Privacy disclosure and provider-specific reauthentication flows remain in
+  place.
+- Petromap runtime uses at most one Places page per refresh; normal runtime
+  refreshes never call `/usage`.
+- AT/E10 remains deliberately blocked before the network in this beta.
+- Petromap runtime support is included in beta; real-world API access depends
+  on the permissions of the configured Petromap developer key.
+
 ## 0.4.0 — Stable release
 
 ### Deutsch

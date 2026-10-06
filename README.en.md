@@ -4,7 +4,9 @@
 
 Mobile Fuel Stations is a Home Assistant custom integration that finds nearby fuel stations using a configurable location entity. It is suited to vehicles, motorhomes, GPS trackers, and other moving objects.
 
-The currently supported fuel-station provider is **Tankerkönig**.
+The beta supports **Tankerkönig** and **Petromap v2**. In Auto mode, the
+provider is selected from the confirmed country. Petromap access depends on
+the permissions of the configured developer key.
 
 ## Features
 
@@ -23,12 +25,13 @@ The currently supported fuel-station provider is **Tankerkönig**.
 - automatic frontend registration
 - navigation with Apple Maps, Google Maps, or Waze
 - highlights for the nearest and cheapest open station
+- automatic provider selection with separate Tankerkönig and Petromap credentials
 
 ## Requirements
 
 - Home Assistant with HACS, or access to a manual custom-integration installation
 - a location entity exposing `latitude` and `longitude`
-- a Tankerkönig API key
+- a Tankerkönig API key, a Petromap v2 API key, or both as required by the selected provider mode
 
 ## Installation
 
@@ -42,7 +45,7 @@ The currently supported fuel-station provider is **Tankerkönig**.
 6. Add the integration through **Settings → Devices & services → Add integration**.
 
 The dashboard card is registered automatically. The automatically registered
-frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0`
+frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.1`
 includes the integration version. Each integration version therefore gets its
 own resource URL, so stale card JavaScript from caches is not reused after a
 version update. After a HACS update, a complete Home Assistant restart is
@@ -55,7 +58,7 @@ Download the repository and copy `custom_components/mobile_fuel_stations` to `co
 
 ## Setup
 
-Choose the location entity, radius, fuel type, and number of station slots. Configure refresh and movement options as needed.
+Choose the location entity, radius, fuel type, and number of station slots. Then choose Tankerkönig, Petromap, or Auto and provide the required credentials. Configure refresh and movement options as needed. The beta does not validate Petromap credentials during setup; the first required runtime request is authoritative.
 
 ## Dashboard card
 
@@ -118,7 +121,7 @@ navigation_provider: waze
 
 ## Upgrading from older versions
 
-For an upgrade from v0.3.1 to v0.4.0, update through HACS and restart Home Assistant completely. No migration is required. The Tankerkönig radius is limited to 25 km; existing configurations with a higher stored value are defensively capped at 25 km for the API request.
+For an upgrade from v0.4.0 to v0.5.0-beta.1, update through HACS and restart Home Assistant completely. Existing Tankerkönig configurations remain compatible. The Tankerkönig radius is limited to 25 km; existing configurations with a higher stored value are defensively capped at 25 km for the API request.
 
 Older v0.2.x installations may still contain the former manual Lovelace resource `/mobile_fuel_stations/mobile-fuel-stations-card.js`. Update the integration first, restart Home Assistant, and verify the card and card picker. Then remove the old entry through the Home Assistant UI and fully reload the browser or companion app. Never edit `.storage` manually.
 
@@ -148,7 +151,7 @@ The supplied Mobile Fuel Stations card is the recommended default. The generated
 - **Location unavailable:** Check that the location entity provides current numeric `latitude` and `longitude` attributes.
 - **Prices do not update:** Check the overview sensor, last successful update, and Home Assistant logs.
 - **The card is missing from Add card:** Update the integration, restart Home Assistant completely, fully reload the browser or companion app, and check that an overview sensor exists. A manual resource entry is not required for current installations.
-- **API errors:** Check the Tankerkönig API key and the log messages.
+- **API errors:** Check the configured provider credentials, permissions, and log messages.
 - **Movement updates:** Check the movement threshold and cooldown.
 - **Entity IDs:** Review the generated entities under **Settings → Devices & services → Entities**.
 
@@ -156,11 +159,11 @@ If the problem persists, inspect frontend logs and the browser console, then ope
 
 ## Privacy and security
 
-The API key is stored in the config entry and must not be published. The location is sent to Tankerkönig for the station search. Review diagnostics for sensitive data before sharing them. Do not publish exact locations or credentials in issues.
+Provider credentials are stored in the config entry and must not be published. The configured location is sent to the selected provider for station searches. Review diagnostics for sensitive data before sharing them. Do not publish exact locations or credentials in issues.
 
 ## API and attribution
 
-Station data is provided by the configured Tankerkönig service. Follow its terms of use and API limits.
+Station data is provided by the configured Tankerkönig or Petromap service. Follow the relevant terms of use, permissions, and API limits. Petromap runtime support is included in the beta; real-world access depends on the permissions of the configured developer key.
 
 ## Development and contributions
 

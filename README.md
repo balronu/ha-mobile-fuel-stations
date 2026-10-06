@@ -4,7 +4,9 @@
 
 Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration für nahegelegene Tankstellen anhand einer frei wählbaren Standort-Entity. Sie eignet sich besonders für Fahrzeuge, Wohnmobile, GPS-Tracker und andere bewegliche Objekte.
 
-Der aktuell unterstützte Tankstellenanbieter ist **Tankerkönig**.
+Die Beta unterstützt **Tankerkönig** und **Petromap v2**. Im Auto-Modus wird
+der Provider anhand des bestätigten Landes gewählt. Petromap-Zugriff hängt von
+den Berechtigungen des konfigurierten Developer-Keys ab.
 
 ## Funktionen
 
@@ -23,12 +25,13 @@ Der aktuell unterstützte Tankstellenanbieter ist **Tankerkönig**.
 - automatische Frontend-Registrierung
 - Navigation mit Apple Maps, Google Maps oder Waze
 - Highlights für die nächste und günstigste offene Tankstelle
+- Auto-Provider-Auswahl mit getrennten Tankerkönig- und Petromap-Credentials
 
 ## Voraussetzungen
 
 - Home Assistant mit HACS oder Zugriff auf eine manuelle Custom-Integration-Installation
 - eine Standort-Entity mit `latitude` und `longitude`
-- ein Tankerkönig-API-Key
+- ein Tankerkönig-API-Key, ein Petromap-v2-API-Key oder beide je nach Provider-Modus
 
 ## Installation
 
@@ -42,7 +45,7 @@ Der aktuell unterstützte Tankstellenanbieter ist **Tankerkönig**.
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.4.0`
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.1`
 enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
 eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
 einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
@@ -56,7 +59,7 @@ Lade das Repository herunter und kopiere den Ordner `custom_components/mobile_fu
 
 ## Einrichtung
 
-Wähle die Standort-Entity, den Radius, den Kraftstofftyp und die Anzahl der Stations-Slots. Konfiguriere anschließend die Aktualisierungs- und Bewegungsoptionen nach Bedarf.
+Wähle die Standort-Entity, den Radius, den Kraftstofftyp und die Anzahl der Stations-Slots. Wähle anschließend Tankerkönig, Petromap oder Auto und hinterlege die dafür benötigten Credentials. Konfiguriere danach die Aktualisierungs- und Bewegungsoptionen. Die Beta validiert Petromap-Credentials nicht beim Setup; der erste benötigte Runtime-Aufruf ist maßgeblich.
 
 ## Dashboard-Karte
 
@@ -119,7 +122,7 @@ navigation_provider: waze
 
 ## Upgrade von älteren Versionen
 
-Für das Upgrade von v0.3.1 auf v0.4.0 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Eine Migration ist nicht erforderlich. Der Tankerkönig-Radius ist auf 25 km begrenzt; bestehende Konfigurationen mit einem höheren gespeicherten Wert werden beim API-Aufruf defensiv auf 25 km begrenzt.
+Für das Upgrade von v0.4.0 auf v0.5.0-beta.1 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Bestehende Tankerkönig-Konfigurationen bleiben kompatibel. Der Tankerkönig-Radius ist auf 25 km begrenzt; bestehende Konfigurationen mit einem höheren gespeicherten Wert werden beim API-Aufruf defensiv auf 25 km begrenzt.
 
 Bei älteren v0.2.x-Installationen kann noch der frühere manuelle Lovelace-Resource-Eintrag `/mobile_fuel_stations/mobile-fuel-stations-card.js` vorhanden sein. Aktualisiere zuerst die Integration, starte Home Assistant neu und prüfe Karte und Card Picker. Entferne den alten Eintrag anschließend über die Home-Assistant-Oberfläche und lade Browser oder Companion-App vollständig neu. Bearbeite `.storage` niemals manuell.
 
@@ -157,11 +160,11 @@ Wenn der Fehler bleibt, prüfe Frontend-Logs und Browser-Konsole und erstelle ei
 
 ## Datenschutz und Sicherheit
 
-Der API-Key wird im Config Entry gespeichert und darf nicht veröffentlicht werden. Der Standort wird für die Tankstellensuche an Tankerkönig übertragen. Diagnostics sollten vor dem Teilen auf sensible Daten geprüft werden. Veröffentliche keine exakten Standortdaten oder Zugangsdaten in Issues.
+Provider-Credentials werden im Config Entry gespeichert und dürfen nicht veröffentlicht werden. Der konfigurierte Standort wird für die Tankstellensuche an den ausgewählten Provider übertragen. Diagnostics sollten vor dem Teilen auf sensible Daten geprüft werden. Veröffentliche keine exakten Standortdaten oder Zugangsdaten in Issues.
 
 ## API und Attribution
 
-Die Tankstellendaten stammen vom konfigurierten Tankerkönig-Dienst. Beachte dessen Nutzungsbedingungen und API-Limits.
+Die Tankstellendaten stammen vom konfigurierten Tankerkönig- oder Petromap-Dienst. Beachte die jeweiligen Nutzungsbedingungen, Berechtigungen und API-Limits. Petromap-Runtime-Unterstützung ist in der Beta enthalten; der reale Zugriff hängt von den Berechtigungen des konfigurierten Developer-Keys ab.
 
 ## Entwicklung und Beiträge
 
