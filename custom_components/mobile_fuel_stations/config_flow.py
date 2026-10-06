@@ -136,6 +136,37 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self._validation_error(err)
         return None
 
+    async def _async_create_user_entry(self, user_input):
+        """Validate an external credential and create the entry if allowed."""
+
+        provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+        api_key = user_input.get(CONF_API_KEY, "").strip()
+        errors = {}
+        if provider_mode in (PROVIDER_PETROMAP, PROVIDER_AUTO):
+            registration = PROVIDER_REGISTRY.get(provider_mode)
+            validation_error = await self._validate_petromap_key(api_key)
+            if validation_error:
+                errors["base"] = validation_error
+            elif registration is None:
+                errors["base"] = "unknown"
+            elif not registration.enabled or registration.factory is None:
+                errors["base"] = "provider_disabled"
+        if errors:
+            return self.async_show_form(
+                step_id="user", data_schema=_schema({}, True, True), errors=errors
+            )
+        await self.async_set_unique_id(
+            f"{user_input[CONF_LOCATION_ENTITY]}_{user_input[CONF_FUEL_TYPE]}"
+        )
+        self._abort_if_unique_id_configured()
+        data = dict(user_input)
+        data[CONF_PROVIDER_MODE] = provider_mode
+        data[CONF_API_KEY] = api_key
+        return self.async_create_entry(
+            title=f"Mobile Fuel Stations ({user_input[CONF_LOCATION_ENTITY]})",
+            data=data,
+        )
+
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
@@ -145,33 +176,40 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_API_KEY] = "api_key_required"
             elif not _validate_location(self.hass, user_input[CONF_LOCATION_ENTITY]):
                 errors[CONF_LOCATION_ENTITY] = "invalid_location"
-            elif provider_mode in (PROVIDER_PETROMAP, PROVIDER_AUTO):
-                registration = PROVIDER_REGISTRY.get(provider_mode)
-                validation_error = await self._validate_petromap_key(api_key)
-                if validation_error:
-                    errors["base"] = validation_error
-                elif registration is None:
-                    errors["base"] = "unknown"
-                elif not registration.enabled or registration.factory is None:
-                    errors["base"] = "provider_disabled"
             if not errors:
-                await self.async_set_unique_id(
-                    f"{user_input[CONF_LOCATION_ENTITY]}_{user_input[CONF_FUEL_TYPE]}"
-                )
-                self._abort_if_unique_id_configured()
-                data = dict(user_input)
-                data[CONF_PROVIDER_MODE] = provider_mode
-                data[CONF_API_KEY] = api_key
-                return self.async_create_entry(
-                    title=f"Mobile Fuel Stations ({user_input[CONF_LOCATION_ENTITY]})",
-                    data=data,
-                )
+                if provider_mode == PROVIDER_PETROMAP:
+                    self._pending_user_input = dict(user_input)
+                    return self.async_show_form(
+                        step_id="petromap_privacy", data_schema=vol.Schema({})
+                    )
+                if provider_mode == PROVIDER_AUTO:
+                    self._pending_user_input = dict(user_input)
+                    return self.async_show_form(
+                        step_id="auto_privacy", data_schema=vol.Schema({})
+                    )
+                return await self._async_create_user_entry(user_input)
         defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL, CONF_MOVEMENT_UPDATES: DEFAULT_MOVEMENT_UPDATES,
                     CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN}
         return self.async_show_form(
             step_id="user", data_schema=_schema(defaults, True, True), errors=errors
         )
+
+    async def async_step_petromap_privacy(self, user_input=None):
+        """Show the Petromap data-transfer disclosure before validation."""
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="petromap_privacy", data_schema=vol.Schema({})
+            )
+        return await self._async_create_user_entry(self._pending_user_input)
+
+    async def async_step_auto_privacy(self, user_input=None):
+        """Show the Auto/Petromap data-transfer disclosure before validation."""
+
+        if user_input is None:
+            return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
+        return await self._async_create_user_entry(self._pending_user_input)
 
     async def async_step_reauth(self, entry_data):
         """Start reauthentication for a Petromap entry."""

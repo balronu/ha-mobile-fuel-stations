@@ -178,7 +178,9 @@ def test_disabled_petromap_flow_never_creates_a_broken_entry(monkeypatch):
     validator = AsyncMock(return_value=None)
     flow._validate_petromap_key = validator
 
-    result = asyncio.run(flow.async_step_user(_user_input(PROVIDER_PETROMAP)))
+    privacy = asyncio.run(flow.async_step_user(_user_input(PROVIDER_PETROMAP)))
+    assert privacy["step_id"] == "petromap_privacy"
+    result = asyncio.run(flow.async_step_petromap_privacy({}))
 
     assert result["type"] == "form"
     assert result["errors"]["base"] == "provider_disabled"
@@ -190,7 +192,9 @@ def test_disabled_auto_flow_never_creates_a_broken_entry(monkeypatch):
     validator = AsyncMock(return_value=None)
     flow._validate_petromap_key = validator
 
-    result = asyncio.run(flow.async_step_user(_user_input(PROVIDER_AUTO)))
+    privacy = asyncio.run(flow.async_step_user(_user_input(PROVIDER_AUTO)))
+    assert privacy["step_id"] == "auto_privacy"
+    result = asyncio.run(flow.async_step_auto_privacy({}))
 
     assert result["type"] == "form"
     assert result["errors"]["base"] == "provider_disabled"
@@ -214,11 +218,26 @@ def test_enabled_external_provider_flow_validates_once_before_entry(monkeypatch,
     )
     monkeypatch.setattr(config_flow_module, "async_get_clientsession", lambda hass: object())
 
-    result = asyncio.run(flow.async_step_user(_user_input(provider_mode)))
+    privacy = asyncio.run(flow.async_step_user(_user_input(provider_mode)))
+    assert privacy["step_id"] in {"petromap_privacy", "auto_privacy"}
+    result = asyncio.run(
+        getattr(flow, f"async_step_{privacy['step_id']}")({})
+    )
 
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PROVIDER_MODE] == provider_mode
     validator.assert_awaited_once()
+
+
+def test_external_privacy_step_does_not_validate_or_request():
+    flow = _flow_with_location()
+    validator = AsyncMock(side_effect=AssertionError("validation is deferred"))
+    flow._validate_petromap_key = validator
+
+    result = asyncio.run(flow.async_step_user(_user_input(PROVIDER_PETROMAP)))
+
+    assert result["step_id"] == "petromap_privacy"
+    validator.assert_not_awaited()
 
 
 def test_config_flow_maps_validator_errors_without_leaking_key():
