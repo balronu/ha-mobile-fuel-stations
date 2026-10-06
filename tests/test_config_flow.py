@@ -77,6 +77,15 @@ def _data():
     }
 
 
+def _v2_data(provider_mode, **credentials):
+    """Return complete canonical V2 entry data without the legacy key."""
+
+    data = {key: value for key, value in _data().items() if key != CONF_API_KEY}
+    data[CONF_PROVIDER_MODE] = provider_mode
+    data.update(credentials)
+    return data
+
+
 def test_existing_entry_options_flow_starts_without_config_entry_setter_error():
     entry = _entry(_data())
     flow = _flow(entry)
@@ -340,7 +349,10 @@ def test_options_provider_switch_petromap_to_auto_preserves_pm_and_requires_tk()
 def test_provider_switch_rebuilds_canonical_credentials(
     source, target, source_credentials, new_credentials, expected
 ):
-    source_data = {**_data(), **source_credentials}
+    source_data = {
+        **(_v2_data(source) if source == PROVIDER_AUTO else _data()),
+        **source_credentials,
+    }
     if source is not None:
         source_data[CONF_PROVIDER_MODE] = source
     if source in (PROVIDER_PETROMAP, PROVIDER_AUTO):
@@ -384,13 +396,14 @@ def test_provider_switch_rebuilds_canonical_credentials(
 
 def test_options_reuses_known_inactive_provider_key_without_credential_form():
     entry = _entry(
-        {
-            **_data(),
-            CONF_PROVIDER_MODE: PROVIDER_TANKERKOENIG,
-            CONF_TANKERKOENIG_API_KEY: "tk-known",
-            CONF_PETROMAP_API_KEY: "pm-known",
-            CONF_PETROMAP_PRIVACY_ACCEPTED: True,
-        }
+        _v2_data(
+            PROVIDER_TANKERKOENIG,
+            **{
+                CONF_TANKERKOENIG_API_KEY: "tk-known",
+                CONF_PETROMAP_API_KEY: "pm-known",
+                CONF_PETROMAP_PRIVACY_ACCEPTED: True,
+            },
+        )
     )
     flow = _flow(entry)
     result = asyncio.run(
