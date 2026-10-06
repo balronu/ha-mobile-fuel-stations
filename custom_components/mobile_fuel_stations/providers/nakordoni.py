@@ -1,0 +1,207 @@
+"""Nakordoni v2 nearby fuel-stations provider."""
+
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass
+from datetime import datetime
+from math import isfinite
+from typing import Any
+
+from aiohttp import ClientConnectionError, ClientError, ClientSession, ClientTimeout
+
+from ..const import DEFAULT_TIMEOUT, MAX_API_RADIUS_KM, PROVIDER_NAKORDONI
+from .base import (
+    CountryPriceCoverage,
+    ProviderAuthError,
+    ProviderCapabilities,
+    ProviderNetworkError,
+    ProviderPermissionError,
+    ProviderRateLimitError,
+    ProviderResponseError,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+    ProviderUnsupportedFuelError,
+    Station,
+    StationSearchQuery,
+)
+
+NAKORDONI_API_URL = "https://nakordoni.eu/api/v2/data/fuel-stations"
+NAKORDONI_ATTRIBUTION_URL = "https://nakordoni.eu"
+NAKORDONI_FUELS = frozenset({"diesel", "e5", "e10", "lpg"})
+NAKORDONI_CAPABILITIES = ProviderCapabilities(
+    supported_fuel_types=NAKORDONI_FUELS,
+    max_radius_km=MAX_API_RADIUS_KM,
+    country_price_coverage=None,
+)
+
+
+@dataclass(slots=True, frozen=True)
+class NakordoniResponseMetadata:
+    """Non-sensitive response quality and quota metadata."""
+
+    quota_limit: int | None = None
+    quota_remaining: int | None = None
+    attribution_url: str = NAKORDONI_ATTRIBUTION_URL
+    notices: tuple[str, ...] = ()
+    total_found: int | None = None
+
+
+def _number(value: Any, field: str, *, optional: bool = False) -> float | None:
+    if value is None and optional:
+        return None
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as err:
+        raise ProviderResponseError(f"Nakordoni field is not numeric: {field}") from err
+    if not isfinite(result):
+        raise ProviderResponseError(f"Nakordoni field is not finite: {field}")
+    return result
+
+
+def _timestamp(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ProviderResponseError("Nakordoni timestamp is not a string")
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as err:
+        raise ProviderResponseError("Nakordoni timestamp is invalid") from err
+
+
+def _text(value: Any) -> str:
+    return value if isinstance(value, str) else ""
+
+
+def _error(status: int, payload: object) -> Exception:
+    error = payload.get("error") if isinstance(payload, dict) else None
+    code = error.get("code") if isinstance(error, dict) else error
+    code = str(code or "provider_error")
+    if status == 401 or code in {"missing_api_key", "invalid_api_key"}:
+        return ProviderAuthError(code)
+    if status == 403 or code in {"not_approved", "market_not_allowed"}:
+        return ProviderPermissionError(code)
+    if status == 429 or code in {"qps_exceeded", "quota_exceeded"}:
+        return ProviderRateLimitError(code)
+    if status in {500, 503, 504} or code in {
+        "internal_error", "product_unavailable", "status_unavailable", "timeout",
+    }:
+        return ProviderUnavailableError(code)
+    return ProviderResponseError(code)
+
+
+def _parse_station(item: object, fuel_type: str) -> Station:
+    if not isinstance(item, dict):
+        raise ProviderResponseError("Nakordoni station is not an object")
+    lat = _number(item.get("lat"), "station.lat", optional=True)
+    lon = _number(item.get("lng", item.get("lon")), "station.lng", optional=True)
+    station_ref = item.get("station_ref")
+    if not isinstance(station_ref, str) or not station_ref:
+        legacy_id = item.get("id")
+        station_ref = str(legacy_id) if legacy_id is not None else f"{_text(item.get('name'))}:{lat}:{lon}"
+    address = item.get("address")
+    address = address if isinstance(address, dict) else {}
+    prices = item.get("prices")
+    prices = prices if isinstance(prices, dict) else {}
+    quote = prices.get(fuel_type)
+    quote = quote if isinstance(quote, dict) else {}
+    return Station(
+        station_id=station_ref,
+        name=_text(item.get("name")),
+        brand=_text(item.get("brand")),
+        price=_number(quote.get("price"), "prices.price", optional=True),
+        distance=_number(item.get("distance_km"), "distance_km", optional=True),
+        is_open=None,
+        street=_text(address.get("street", item.get("street"))),
+        house_number=_text(address.get("house_number", address.get("houseNumber", item.get("house_number")))),
+        postcode=_text(address.get("postcode", address.get("postal_code", item.get("postcode")))),
+        place=_text(address.get("city", address.get("town", item.get("city")))),
+        latitude=lat,
+        longitude=lon,
+        currency=_text(quote.get("currency")) or None,
+        price_updated_at=_timestamp(quote.get("updated_at")),
+        country_code=_text(item.get("country")) or None,
+        provider=PROVIDER_NAKORDONI,
+        price_confirmed_at=_timestamp(quote.get("confirmed_at")),
+        price_age_hours=_number(quote.get("age_hours"), "prices.age_hours", optional=True),
+        price_stale=quote.get("stale") if isinstance(quote.get("stale"), bool) else None,
+    )
+
+
+class NakordoniProvider:
+    """One-request nearby search using Home Assistant's shared session."""
+
+    capabilities = NAKORDONI_CAPABILITIES
+
+    def __init__(
+        self,
+        session: ClientSession,
+        api_key: str,
+        *,
+        timeout: ClientTimeout | None = None,
+    ) -> None:
+        self._session = session
+        self._api_key = api_key
+        self._timeout = timeout or ClientTimeout(total=DEFAULT_TIMEOUT.total_seconds())
+        self.last_response_metadata: NakordoniResponseMetadata | None = None
+
+    async def async_search(self, query: StationSearchQuery) -> list[Station]:
+        if query.fuel_type not in NAKORDONI_FUELS:
+            raise ProviderUnsupportedFuelError(
+                f"Nakordoni fuel mapping is not verified: {query.fuel_type}"
+            )
+        radius = min(float(query.radius_km), MAX_API_RADIUS_KM)
+        limit = min(max(int(query.station_count), 1), 20)
+        params = {
+            "lat": f"{query.latitude:.7f}",
+            "lon": f"{query.longitude:.7f}",
+            "radius_km": f"{radius:g}",
+            "fuel_type": query.fuel_type,
+            "limit": str(limit),
+            "lang": "de",
+        }
+        try:
+            async with self._session.get(
+                NAKORDONI_API_URL,
+                params=params,
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                timeout=self._timeout,
+            ) as response:
+                try:
+                    payload = await response.json(content_type=None)
+                except (TypeError, ValueError) as err:
+                    raise ProviderResponseError("Nakordoni response is not valid JSON") from err
+                if response.status < 200 or response.status >= 300:
+                    raise _error(response.status, payload)
+                if not isinstance(payload, dict) or payload.get("ok") is not True:
+                    raise _error(response.status, payload)
+                data = payload.get("data")
+                if not isinstance(data, dict) or not isinstance(data.get("stations"), list):
+                    raise ProviderResponseError("Nakordoni response has no data.stations list")
+                notices = data.get("notices")
+                self.last_response_metadata = NakordoniResponseMetadata(
+                    quota_limit=_header_int(response.headers, "X-Devapi-Limit"),
+                    quota_remaining=_header_int(response.headers, "X-Devapi-Remaining"),
+                    notices=tuple(
+                        str(item.get("reason", item)) if isinstance(item, dict) else str(item)
+                        for item in notices
+                    ) if isinstance(notices, list) else (),
+                    total_found=data.get("total_found") if isinstance(data.get("total_found"), int) else None,
+                )
+                return [_parse_station(item, query.fuel_type) for item in data["stations"]]
+        except asyncio.TimeoutError as err:
+            raise ProviderTimeoutError("Nakordoni request timed out") from err
+        except ClientConnectionError as err:
+            raise ProviderNetworkError("Nakordoni connection failed") from err
+        except ClientError as err:
+            raise ProviderNetworkError("Nakordoni network request failed") from err
+
+
+def _header_int(headers: Any, name: str) -> int | None:
+    try:
+        value = headers.get(name)
+        return int(value) if value is not None else None
+    except (AttributeError, TypeError, ValueError):
+        return None
+

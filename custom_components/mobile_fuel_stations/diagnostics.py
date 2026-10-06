@@ -3,7 +3,12 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_API_KEY, CONF_PETROMAP_API_KEY, CONF_TANKERKOENIG_API_KEY
+from .const import (
+    CONF_API_KEY,
+    CONF_NAKORDONI_API_KEY,
+    CONF_PETROMAP_API_KEY,
+    CONF_TANKERKOENIG_API_KEY,
+)
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
@@ -17,6 +22,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
                 CONF_API_KEY,
                 CONF_TANKERKOENIG_API_KEY,
                 CONF_PETROMAP_API_KEY,
+                CONF_NAKORDONI_API_KEY,
             }
             and "coordinate" not in key
             and key not in {"latitude", "longitude"}

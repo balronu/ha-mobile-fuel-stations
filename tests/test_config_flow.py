@@ -14,6 +14,8 @@ from mobile_fuel_stations.const import (
     CONF_MOVEMENT_UPDATES,
     CONF_PETROMAP_API_KEY,
     CONF_PETROMAP_PRIVACY_ACCEPTED,
+    CONF_NAKORDONI_API_KEY,
+    CONF_NAKORDONI_PRIVACY_ACCEPTED,
     CONF_RADIUS,
     CONF_STATION_COUNT,
     CONF_TANKERKOENIG_API_KEY,
@@ -29,6 +31,7 @@ from mobile_fuel_stations.const import (
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
+    PROVIDER_NAKORDONI,
 )
 
 
@@ -253,6 +256,38 @@ def test_options_provider_switch_petromap_to_auto_preserves_pm_and_requires_tk()
     assert CONF_API_KEY not in entry.data
     assert CONF_API_KEY not in result["data"]
     assert entry.options[CONF_FUEL_TYPE] == "diesel"
+
+
+def test_options_provider_switch_to_nakordoni_requires_privacy_and_key_without_network():
+    entry = _entry({**_v2_data(PROVIDER_TANKERKOENIG, **{CONF_TANKERKOENIG_API_KEY: "tk-dummy"})})
+    flow = _flow(entry)
+    submitted = {**_v2_data(PROVIDER_NAKORDONI), CONF_PROVIDER_MODE: PROVIDER_NAKORDONI}
+    privacy = asyncio.run(flow.async_step_init(submitted))
+    assert privacy["step_id"] == "options_nakordoni_privacy"
+    credentials = asyncio.run(flow.async_step_options_nakordoni_privacy({}))
+    assert credentials["step_id"] == "provider_credentials"
+    result = asyncio.run(flow.async_step_provider_credentials({CONF_NAKORDONI_API_KEY: "nk-dummy"}))
+    assert result["type"] == "create_entry"
+    assert entry.data[CONF_PROVIDER_MODE] == PROVIDER_NAKORDONI
+    assert entry.data[CONF_TANKERKOENIG_API_KEY] == "tk-dummy"
+    assert entry.data[CONF_NAKORDONI_API_KEY] == "nk-dummy"
+    assert entry.data[CONF_NAKORDONI_PRIVACY_ACCEPTED] is True
+    assert CONF_NAKORDONI_API_KEY not in entry.options
+
+
+def test_known_nakordoni_key_is_reused_without_privacy_or_credential_step():
+    entry = _entry(_v2_data(
+        PROVIDER_NAKORDONI,
+        **{CONF_NAKORDONI_API_KEY: "nk-dummy", CONF_NAKORDONI_PRIVACY_ACCEPTED: True},
+    ))
+    flow = _flow(entry)
+    result = asyncio.run(flow.async_step_init({
+        **_v2_data(PROVIDER_TANKERKOENIG),
+        CONF_PROVIDER_MODE: PROVIDER_NAKORDONI,
+    }))
+    assert result["type"] == "create_entry"
+    assert entry.data[CONF_NAKORDONI_API_KEY] == "nk-dummy"
+    assert CONF_NAKORDONI_API_KEY not in result["data"]
 
 
 @pytest.mark.parametrize(

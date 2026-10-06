@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from mobile_fuel_stations.api import Station
-from mobile_fuel_stations.const import CONF_PROVIDER_MODE, PROVIDER_AUTO, PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
+from mobile_fuel_stations.const import CONF_PROVIDER_MODE, PROVIDER_AUTO, PROVIDER_NAKORDONI, PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
 from mobile_fuel_stations import sensor
 
 
@@ -154,6 +154,7 @@ def test_station_slot_name_follows_station_without_changing_unique_id():
         (PROVIDER_TANKERKOENIG, "Tankerkönig"),
         (PROVIDER_PETROMAP, "Petromap"),
         (PROVIDER_AUTO, "Mobile Fuel Stations"),
+        (PROVIDER_NAKORDONI, "Nakordoni"),
     ],
 )
 def test_device_manufacturer_follows_mode_without_changing_identifier(

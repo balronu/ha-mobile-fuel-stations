@@ -30,6 +30,7 @@ from .const import (
     MAX_API_RADIUS_KM,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
+    PROVIDER_NAKORDONI,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
@@ -262,15 +263,15 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                     longitude=position[1],
                     radius_km=min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
                     fuel_type=query_fuel,
+                    station_count=int(self.options[CONF_STATION_COUNT]),
                 )
             )
         except ProviderAuthError as err:
-            if provider_mode == PROVIDER_PETROMAP:
-                if self._is_auto:
-                    self.entry.async_start_reauth(
-                        self.hass,
-                        context=ProviderReauthContext(PROVIDER_PETROMAP).as_dict(),
-                    )
+            if provider_mode in (PROVIDER_PETROMAP, PROVIDER_NAKORDONI):
+                self.entry.async_start_reauth(
+                    self.hass,
+                    context=ProviderReauthContext(provider_mode).as_dict(),
+                )
                 raise ConfigEntryAuthFailed("API authentication failed") from err
             raise UpdateFailed("API authentication failed") from err
         except ProviderRateLimitError as err:

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0-beta.5 — Nakordoni provider
+
+- Added explicit Nakordoni support for diesel, E5, E10 and LPG.
+- Added persistent Nakordoni credentials, privacy consent and provider-specific reauthentication.
+- Added one-request nearby searches with price timestamps, stale metadata and quota headers.
+- Added conditional `Data by nakordoni.eu` attribution in the dashboard card.
+- Nakordoni is not part of Auto mode in this beta; HVO100 and multi-provider selection remain unsupported.
+
 ## 0.5.0-beta.4 — ConfigEntry migration version persistence
 
 - Fixed persistence of the ConfigEntry version during the 1→2 migration.

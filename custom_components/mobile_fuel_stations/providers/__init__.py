@@ -10,11 +10,13 @@ from aiohttp import ClientSession
 from ..const import (
     CONF_API_KEY,
     CONF_PETROMAP_API_KEY,
+    CONF_NAKORDONI_API_KEY,
     CONF_PROVIDER_MODE,
     CONF_TANKERKOENIG_API_KEY,
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
+    PROVIDER_NAKORDONI,
 )
 from .base import (
     CountryPriceCoverage,
@@ -25,6 +27,7 @@ from .base import (
     UnknownProviderError,
 )
 from .petromap import PETROMAP_CAPABILITIES, PetromapProvider
+from .nakordoni import NAKORDONI_CAPABILITIES, NakordoniProvider
 from .tankerkoenig import TankerkoenigProvider
 
 
@@ -39,7 +42,7 @@ class ProviderRegistration:
     is_strategy: bool = False
 
 
-CONCRETE_PROVIDER_IDS = frozenset({PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP})
+CONCRETE_PROVIDER_IDS = frozenset({PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI})
 STRATEGY_PROVIDER_IDS = frozenset({PROVIDER_AUTO})
 
 
@@ -68,6 +71,12 @@ PROVIDER_REGISTRY: dict[str, ProviderRegistration] = {
         capabilities=ProviderCapabilities(),
         is_strategy=True,
     ),
+    PROVIDER_NAKORDONI: ProviderRegistration(
+        provider_id=PROVIDER_NAKORDONI,
+        factory=NakordoniProvider,
+        enabled=True,
+        capabilities=NAKORDONI_CAPABILITIES,
+    ),
 }
 
 
@@ -79,12 +88,15 @@ def create_provider(session: ClientSession, config: dict[str, object]) -> FuelSt
         raise UnknownProviderError(f"Unknown provider mode: {mode}")
     if registration.is_strategy or not registration.enabled or registration.factory is None:
         raise ProviderDisabledError(f"Provider mode is disabled: {mode}")
-    key_name = (
-        CONF_PETROMAP_API_KEY
-        if mode == PROVIDER_PETROMAP
-        else CONF_TANKERKOENIG_API_KEY
-    )
-    api_key = config.get(key_name) or config.get(CONF_API_KEY)
+    key_name = {
+        PROVIDER_PETROMAP: CONF_PETROMAP_API_KEY,
+        PROVIDER_NAKORDONI: CONF_NAKORDONI_API_KEY,
+    }.get(mode, CONF_TANKERKOENIG_API_KEY)
+    # Nakordoni must never consume the generic legacy key: it could belong to
+    # Tankerkönig or Petromap and would violate provider credential isolation.
+    api_key = config.get(key_name)
+    if mode != PROVIDER_NAKORDONI:
+        api_key = api_key or config.get(CONF_API_KEY)
     if not api_key:
         raise ProviderConfigurationError(f"Missing credential for provider: {mode}")
     return registration.factory(session, str(api_key))
@@ -102,6 +114,8 @@ __all__ = [
     "PETROMAP_CAPABILITIES",
     "PROVIDER_REGISTRY",
     "TankerkoenigProvider",
+    "NakordoniProvider",
+    "NAKORDONI_CAPABILITIES",
     "UnknownProviderError",
     "create_provider",
 ]

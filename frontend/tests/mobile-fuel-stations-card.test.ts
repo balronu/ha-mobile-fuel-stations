@@ -90,6 +90,14 @@ describe("card", () => {
   it("renders required error states", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: "sensor.missing" }); card.hass = { states: {} }; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Overview entity not found"); card.hass = { states: { [overviewId]: state("unavailable") } }; card.setConfig({ entity: overviewId }); await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("nicht verfügbar"); });
   it("dispatches more-info with the station entity id", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); card.hass = hassFor(1); await card.updateComplete; let event: Event | undefined; card.addEventListener("hass-more-info", (value) => { event = value; }); (card.shadowRoot?.querySelector(".station") as HTMLElement).click(); expect((event as CustomEvent).detail.entityId).toBe("sensor.vehicle_station_1"); });
   it("keeps header metadata below the title on mobile", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); card.hass = hassFor(1, { radius: 20, fuel_type: "diesel" }); await card.updateComplete; expect(card.shadowRoot?.querySelector(".header h2")).toBeTruthy(); expect(card.shadowRoot?.querySelector(".header .summary")).toBeTruthy(); });
+  it("shows Nakordoni attribution only for Nakordoni data", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId });
+    card.hass = hassFor(1, { provider: "nakordoni" }); await card.updateComplete;
+    const attribution = card.shadowRoot?.querySelector("a[href='https://nakordoni.eu']") as HTMLAnchorElement;
+    expect(attribution?.textContent).toBe("Data by nakordoni.eu"); expect(attribution?.target).toBe("_blank");
+    card.hass = hassFor(1, { provider: "tankerkoenig" }); await card.updateComplete;
+    expect(card.shadowRoot?.querySelector("a[href='https://nakordoni.eu']")).toBeNull();
+  });
   it("shows navigation by default, can hide it, and keeps navigation separate from more-info", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(1, {}, { latitude: 49, longitude: 8 }); card.hass = hass; await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".navigate")).toBeTruthy(); let moreInfo = false; card.addEventListener("hass-more-info", () => { moreInfo = true; }); (card.shadowRoot?.querySelector(".navigate") as HTMLElement).click(); expect(moreInfo).toBe(false);

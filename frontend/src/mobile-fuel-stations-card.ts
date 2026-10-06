@@ -15,6 +15,7 @@ type HighlightStation = {
   station_name?: string;
   brand?: string;
   price?: number | null;
+  currency?: string | null;
   distance?: number | null;
   is_open?: boolean;
   street?: string;
@@ -23,6 +24,8 @@ type HighlightStation = {
   place?: string;
   latitude?: number | null;
   longitude?: number | null;
+  price_age_hours?: number | null;
+  price_stale?: boolean | null;
 };
 
 export type NavigationProvider = "auto" | "apple" | "google" | "waze";
@@ -30,11 +33,12 @@ type CardConfig = { type?: string; entity?: string; navigation?: boolean; naviga
 
 const unavailable = new Set(["unknown", "unavailable"]);
 
-export function formatPrice(value: unknown, locale = "de-DE"): string | null {
+export function formatPrice(value: unknown, locale = "de-DE", currency = "EUR"): string | null {
   if (value === null || value === undefined || value === "") return null;
   const number = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(number)) return null;
-  return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(number)} €/l`;
+  const unit = currency.toUpperCase() === "EUR" ? "€/l" : `${currency.toUpperCase()}/l`;
+  return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(number)} ${unit}`;
 }
 
 export function formatDistance(value: unknown, locale = "de-DE"): string | null {
@@ -205,6 +209,7 @@ export class MobileFuelStationsCard extends LitElement {
     return html`
       <ha-card>
         <div class="header"><h2>${this._text("title")}</h2><span class="summary">${this._summary(overview)}</span></div>
+        ${overview.attributes.provider === "nakordoni" ? html`<div class="secondary"><a href="https://nakordoni.eu" target="_blank" rel="noopener">Data by nakordoni.eu</a></div>` : nothing}
         ${this._highlights(overview, ids)}
         ${stations.length ? html`<div class="stations">${stations.map(({ id, state }) => this._station(id, state))}</div>` : html`<div class="message">${this._text("none")}</div>`}
       </ha-card>
@@ -225,7 +230,7 @@ export class MobileFuelStationsCard extends LitElement {
     const entityId = stationId ? visibleIds.find((id) => this._hass?.states[id]?.attributes.station_id === stationId) : undefined;
     const name = text(station.station_name) ?? text(station.brand) ?? stationId ?? this._text("notFound");
     const brand = text(station.brand);
-    const price = formatPrice(station.price, this._locale()) ?? this._text("noPrice");
+    const price = formatPrice(station.price, this._locale(), text(station.currency) ?? "EUR") ?? this._text("noPrice");
     const distance = formatDistance(station.distance, this._locale());
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(station.latitude, station.longitude, this._config?.navigation_provider ?? "auto") : null;
     const address = [station.street && station.house_number ? `${station.street} ${station.house_number}` : text(station.street), [station.postcode, station.place].filter(Boolean).join(" ")].filter(Boolean).join(", ");
@@ -257,15 +262,16 @@ export class MobileFuelStationsCard extends LitElement {
     const brand = text(a.brand);
     const addressParts = [a.street && a.house_number ? `${a.street} ${a.house_number}` : text(a.street), [a.postcode, a.place].filter(Boolean).join(" ")].filter(Boolean);
     const address = addressParts.join(", ");
-    const price = formatPrice(state.state, this._locale());
+    const price = formatPrice(state.state, this._locale(), text(a.currency) ?? "EUR");
     const distance = formatDistance(a.distance, this._locale());
     const open = typeof a.is_open === "boolean" ? a.is_open : undefined;
     const status = open === undefined ? null : open ? "Geöffnet" : "Geschlossen";
+    const freshness = a.price_stale === true ? this._text("stale") : a.price_age_hours != null ? `${this._text("priceAge")} ${a.price_age_hours}h` : null;
     const label = `${name}${price ? `, ${price}` : ""}`;
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
     return html`<div class="station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       <ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>
-      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}</div>
+      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
       <div><div class="price">${price ?? this._text("noPrice")}</div>${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
       ${navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing}
     </div>`;
@@ -273,9 +279,9 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _message(message: string) { return html`<ha-card><div class="message">${message}</div></ha-card>`; }
   private _locale(): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? "en-US" : "de-DE"; }
-  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest"): string {
+  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "priceAge"): string {
     const english = this._locale() === "en-US";
-    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigate to station", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste" };
+    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Price stale", priceAge: "Confirmed" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigate to station", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Preis veraltet", priceAge: "Bestätigt" };
     return values[key];
   }
   private _keyActivate(event: KeyboardEvent, id: string) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this._moreInfo(id); } }

@@ -29,6 +29,10 @@ class Station:
     currency: str | None = None
     price_updated_at: datetime | None = None
     country_code: str | None = None
+    provider: str | None = None
+    price_confirmed_at: datetime | None = None
+    price_age_hours: float | None = None
+    price_stale: bool | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -39,6 +43,7 @@ class StationSearchQuery:
     longitude: float
     radius_km: float
     fuel_type: str
+    station_count: int = 5
 
 
 class CountryPriceCoverage(StrEnum):

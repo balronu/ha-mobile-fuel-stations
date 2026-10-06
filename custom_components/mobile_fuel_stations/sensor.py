@@ -17,6 +17,7 @@ from .const import (
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
+    PROVIDER_NAKORDONI,
 )
 from .coordinator import MobileFuelStationsCoordinator
 
@@ -51,6 +52,7 @@ def _device_info(entry: ConfigEntry) -> DeviceInfo:
         PROVIDER_TANKERKOENIG: "Tankerkönig",
         PROVIDER_PETROMAP: "Petromap",
         PROVIDER_AUTO: "Mobile Fuel Stations",
+        PROVIDER_NAKORDONI: "Nakordoni",
     }.get(provider_mode, "Mobile Fuel Stations")
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
@@ -105,13 +107,19 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "distance_since_last_search": self.coordinator.current_distance_km,
             "nearest_station": station_attributes(self.coordinator.nearest_station),
             "cheapest_station": station_attributes(self.coordinator.cheapest_station),
+            "provider": self.coordinator.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
+            "attribution_name": "Data by nakordoni.eu"
+            if self.coordinator.options.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
+            else None,
+            "attribution_url": "https://nakordoni.eu"
+            if self.coordinator.options.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
+            else None,
         }
 
 
 class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEntity):
     """A stable slot containing the station currently assigned to it."""
 
-    _attr_native_unit_of_measurement = "EUR/L"
     _attr_suggested_display_precision = 3
 
     def __init__(self, coordinator, entry, index: int) -> None:
@@ -136,6 +144,10 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
         return self.station.price if self.station else None
 
     @property
+    def native_unit_of_measurement(self) -> str:
+        return f"{self.station.currency}/L" if self.station and self.station.currency else "EUR/L"
+
+    @property
     def available(self) -> bool:
         return self.station is not None and super().available
 
@@ -152,6 +164,7 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
             "station_id": station.station_id,
             "station_name": station.name,
             "brand": station.brand,
+            "currency": station.currency,
             "distance": station.distance,
             "is_open": station.is_open,
             "street": station.street,
@@ -160,4 +173,9 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
             "place": station.place,
             "latitude": station.latitude,
             "longitude": station.longitude,
+            "provider": station.provider,
+            "price_updated_at": station.price_updated_at.isoformat() if station.price_updated_at else None,
+            "price_confirmed_at": station.price_confirmed_at.isoformat() if station.price_confirmed_at else None,
+            "price_age_hours": station.price_age_hours,
+            "price_stale": station.price_stale,
         }

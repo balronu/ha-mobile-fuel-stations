@@ -4,9 +4,10 @@
 
 Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration für nahegelegene Tankstellen anhand einer frei wählbaren Standort-Entity. Sie eignet sich besonders für Fahrzeuge, Wohnmobile, GPS-Tracker und andere bewegliche Objekte.
 
-Die Beta unterstützt **Tankerkönig** und **Petromap v2**. Im Auto-Modus wird
-der Provider anhand des bestätigten Landes gewählt. Petromap-Zugriff hängt von
-den Berechtigungen des konfigurierten Developer-Keys ab.
+Die Beta unterstützt **Tankerkönig**, **Petromap v2** und explizit **Nakordoni**.
+Im Auto-Modus wird weiterhin nur die bestehende Tankerkönig-/Petromap-Policy
+verwendet. Nakordoni-Zugriff hängt von API-Key, genehmigtem Markt und
+Providerquoten ab.
 
 ## Funktionen
 
@@ -14,6 +15,8 @@ den Berechtigungen des konfigurierten Developer-Keys ab.
 - frei wählbare Standort-Entity mit `latitude`- und `longitude`-Attributen
 - Diesel, E5, E10 und LPG / Autogas
 - HVO100 ist noch nicht auswählbar, weil kein verifizierter providerbezogener API-Selektor vorliegt.
+- Nakordoni unterstützt in dieser Beta explizit Diesel, E5, E10 und LPG; HVO/HVO100 bleibt blockiert.
+- Nakordoni begrenzt den Radius auf 25 km, verwendet eine Anfrage pro Refresh und verlangt sichtbare Attribution: **Data by nakordoni.eu**.
 - Suchradius von 1 bis 25 km
 - 1 bis 10 stabile Stations-Slots
 - regelmäßige Aktualisierung und optionale Bewegungsupdates
@@ -32,7 +35,7 @@ den Berechtigungen des konfigurierten Developer-Keys ab.
 
 - Home Assistant mit HACS oder Zugriff auf eine manuelle Custom-Integration-Installation
 - eine Standort-Entity mit `latitude` und `longitude`
-- ein Tankerkönig-API-Key, ein Petromap-v2-API-Key oder beide je nach Provider-Modus
+- ein Tankerkönig-, Petromap-v2- oder Nakordoni-API-Key je nach Provider-Modus
 
 ## Installation
 
@@ -46,7 +49,7 @@ den Berechtigungen des konfigurierten Developer-Keys ab.
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.4`
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.5`
 enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
 eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
 einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
@@ -60,7 +63,7 @@ Lade das Repository herunter und kopiere den Ordner `custom_components/mobile_fu
 
 ## Einrichtung
 
-Wähle die Standort-Entity, den Radius, den Kraftstofftyp und die Anzahl der Stations-Slots. Wähle anschließend Tankerkönig, Petromap oder Auto und hinterlege die dafür benötigten Credentials. Konfiguriere danach die Aktualisierungs- und Bewegungsoptionen. Die Beta validiert Petromap-Credentials nicht beim Setup; der erste benötigte Runtime-Aufruf ist maßgeblich.
+Wähle die Standort-Entity, den Radius, den Kraftstofftyp und die Anzahl der Stations-Slots. Wähle anschließend Tankerkönig, Petromap, Nakordoni oder Auto und hinterlege die dafür benötigten Credentials. Bei der ersten Aktivierung von Petromap bzw. Nakordoni wird die jeweilige Privacy-Erklärung angezeigt. Config Flow und Options Flow bleiben network-free; der erste Provider-Aufruf erfolgt im normalen Runtime-Refresh.
 
 ## Dashboard-Karte
 
@@ -121,9 +124,20 @@ navigation: true
 navigation_provider: waze
 ```
 
+## Nakordoni
+
+Nakordoni überträgt für die Tankstellensuche Standortkoordinaten, Suchradius
+und Kraftstofftyp an den externen Anbieter; eine Device-ID wird von dieser
+Integration nicht übertragen. Die Daten können abhängig von Account und Markt
+verzögert oder unvollständig sein. Preise behalten den Provider-Zeitstempel und
+das Stale-/Qualitätsmerkmal. Die Karte zeigt bei Nakordoni-Daten die klickbare
+Attribution **[Data by nakordoni.eu](https://nakordoni.eu)**. Eine Nakordoni-
+Credential wird niemals in Options, Entity-Attributen, Diagnostics oder
+Frontend-Code gespeichert.
+
 ## Upgrade von älteren Versionen
 
-Für das Upgrade auf v0.5.0-beta.4 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.4 behebt ausschließlich die Persistierung der ConfigEntry-Version bei der Migration von 1 auf 2; Provider- und Runtime-Verhalten bleiben unverändert.
+Für das Upgrade auf v0.5.0-beta.5 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.5 ergänzt den expliziten Nakordoni-Provider; bestehende beta.4-Entries bleiben ohne Migration kompatibel.
 
 Für das Upgrade von v0.5.0-beta.2 auf v0.5.0-beta.3 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Bestehende Tankerkönig-Konfigurationen bleiben kompatibel. Der Tankerkönig-Radius ist auf 25 km begrenzt; bestehende Konfigurationen mit einem höheren gespeicherten Wert werden beim API-Aufruf defensiv auf 25 km begrenzt.
 

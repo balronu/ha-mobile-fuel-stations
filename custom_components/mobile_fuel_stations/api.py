@@ -66,6 +66,7 @@ def station_attributes(station: Station | None) -> dict[str, object] | None:
         "station_name": station.name,
         "brand": station.brand,
         "price": station.price,
+        "currency": station.currency,
         "distance": station.distance,
         "is_open": station.is_open,
         "street": station.street,
@@ -74,4 +75,9 @@ def station_attributes(station: Station | None) -> dict[str, object] | None:
         "place": station.place,
         "latitude": station.latitude,
         "longitude": station.longitude,
+        "provider": station.provider,
+        "price_updated_at": station.price_updated_at.isoformat() if station.price_updated_at else None,
+        "price_confirmed_at": station.price_confirmed_at.isoformat() if station.price_confirmed_at else None,
+        "price_age_hours": station.price_age_hours,
+        "price_stale": station.price_stale,
     }
