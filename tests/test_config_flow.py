@@ -1,6 +1,8 @@
 import asyncio
 from types import SimpleNamespace
 
+import pytest
+
 from mobile_fuel_stations.config_flow import MobileFuelStationsConfigFlow
 from mobile_fuel_stations.const import (
     CONF_API_KEY,
