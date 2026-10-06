@@ -1,3 +1,5 @@
+import pytest
+
 from mobile_fuel_stations.const import PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
 from mobile_fuel_stations.providers import PROVIDER_REGISTRY, create_provider
 from mobile_fuel_stations.providers.base import (
