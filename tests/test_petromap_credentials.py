@@ -185,7 +185,8 @@ def test_tankerkoenig_flow_does_not_validate_petromap(monkeypatch):
 
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PROVIDER_MODE] == PROVIDER_TANKERKOENIG
-    assert result["data"][CONF_API_KEY] == "provider-secret"
+    assert result["data"][CONF_TANKERKOENIG_API_KEY] == "provider-secret"
+    assert CONF_API_KEY not in result["data"]
     validator.assert_not_awaited()
 
 
@@ -204,7 +205,9 @@ def test_enabled_petromap_flow_creates_entry_without_network_request(monkeypatch
 
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PROVIDER_MODE] == PROVIDER_PETROMAP
-    assert result["data"][CONF_API_KEY] == "provider-secret"
+    assert result["data"][CONF_PETROMAP_API_KEY] == "provider-secret"
+    assert result["data"]["petromap_privacy_accepted"] is True
+    assert CONF_API_KEY not in result["data"]
     validator.assert_not_awaited()
 
 
@@ -330,7 +333,7 @@ def test_reauth_updates_only_explicit_key_without_usage_validation():
     )
 
     assert result["type"] == "abort"
-    assert result["data_updates"] == {CONF_API_KEY: "NEW_SECRET"}
+    assert result["data_updates"] == {CONF_PETROMAP_API_KEY: "NEW_SECRET"}
     assert entry.data[CONF_API_KEY] == "OLD_SECRET"
     flow._validate_petromap_key.assert_not_awaited()
 

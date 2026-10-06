@@ -11,6 +11,7 @@ PLATFORMS = ["sensor"]
 CONF_API_KEY = "api_key"
 CONF_TANKERKOENIG_API_KEY = "tankerkoenig_api_key"
 CONF_PETROMAP_API_KEY = "petromap_api_key"
+CONF_PETROMAP_PRIVACY_ACCEPTED = "petromap_privacy_accepted"
 CONF_PROVIDER_MODE = "provider_mode"
 CONF_LOCATION_ENTITY = "location_entity"
 CONF_RADIUS = "radius"

@@ -10,7 +10,17 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, FRONTEND_URL
+from .const import (
+    CONF_API_KEY,
+    CONF_PETROMAP_API_KEY,
+    CONF_PETROMAP_PRIVACY_ACCEPTED,
+    CONF_PROVIDER_MODE,
+    CONF_TANKERKOENIG_API_KEY,
+    DOMAIN,
+    FRONTEND_URL,
+    PROVIDER_PETROMAP,
+    PROVIDER_TANKERKOENIG,
+)
 from .coordinator import MobileFuelStationsCoordinator
 from .providers.base import FuelFallbackBlockedError, NoSuitableProviderError
 
@@ -19,6 +29,34 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 type MobileFuelStationsConfigEntry = ConfigEntry[MobileFuelStationsCoordinator]
 
 _FRONTEND_DIR = Path(__file__).parent / "frontend"
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate legacy generic credentials without losing ambiguous data."""
+
+    if entry.version > 1:
+        return True
+    data = dict(entry.data)
+    mode = data.get(CONF_PROVIDER_MODE)
+    api_key = data.get(CONF_API_KEY)
+    tankerkoenig_key = data.get(CONF_TANKERKOENIG_API_KEY)
+    petromap_key = data.get(CONF_PETROMAP_API_KEY)
+
+    if mode in (None, PROVIDER_TANKERKOENIG) and api_key and not tankerkoenig_key:
+        data[CONF_TANKERKOENIG_API_KEY] = api_key
+        data[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+        data.pop(CONF_API_KEY, None)
+    elif mode == PROVIDER_PETROMAP and api_key and not petromap_key:
+        data[CONF_PETROMAP_API_KEY] = api_key
+        data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
+        data.pop(CONF_API_KEY, None)
+    elif mode == PROVIDER_AUTO and petromap_key:
+        data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
+        # An unexpected generic key is retained rather than guessed or dropped.
+
+    if data != entry.data:
+        hass.config_entries.async_update_entry(entry, data=data)
+    return True
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:

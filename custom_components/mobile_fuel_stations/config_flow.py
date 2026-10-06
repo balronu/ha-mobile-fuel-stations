@@ -13,6 +13,7 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_API_KEY,
     CONF_PETROMAP_API_KEY,
+    CONF_PETROMAP_PRIVACY_ACCEPTED,
     CONF_TANKERKOENIG_API_KEY,
     CONF_COOLDOWN,
     CONF_FUEL_TYPE,
@@ -143,7 +144,7 @@ def _validate_location(hass: HomeAssistant, entity_id: str) -> bool:
 class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     def _validation_error(error: ProviderError) -> str:
@@ -210,8 +211,14 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data.pop(CONF_API_KEY, None)
             data[CONF_TANKERKOENIG_API_KEY] = user_input[CONF_TANKERKOENIG_API_KEY].strip()
             data[CONF_PETROMAP_API_KEY] = user_input[CONF_PETROMAP_API_KEY].strip()
+            data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
+        elif provider_mode == PROVIDER_PETROMAP:
+            data.pop(CONF_API_KEY, None)
+            data[CONF_PETROMAP_API_KEY] = api_key
+            data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
         else:
-            data[CONF_API_KEY] = api_key
+            data.pop(CONF_API_KEY, None)
+            data[CONF_TANKERKOENIG_API_KEY] = api_key
         return self.async_create_entry(
             title=f"Mobile Fuel Stations ({user_input[CONF_LOCATION_ENTITY]})",
             data=data,
@@ -349,7 +356,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 return self.async_update_reload_and_abort(
                     reauth_entry,
-                    data_updates={CONF_API_KEY: api_key},
+                    data_updates={CONF_PETROMAP_API_KEY: api_key},
                 )
         return self.async_show_form(
             step_id="reauth_confirm",
@@ -380,9 +387,8 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG
             )
             target_mode = user_input.get(CONF_PROVIDER_MODE, current_mode)
-            if target_mode in (PROVIDER_PETROMAP, PROVIDER_AUTO) and current_mode not in (
-                PROVIDER_PETROMAP,
-                PROVIDER_AUTO,
+            if target_mode in (PROVIDER_PETROMAP, PROVIDER_AUTO) and not self.config_entry.data.get(
+                CONF_PETROMAP_PRIVACY_ACCEPTED, False
             ):
                 return self.async_show_form(
                     step_id="options_petromap_privacy", data_schema=vol.Schema({})
@@ -404,6 +410,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             return self.async_show_form(
                 step_id="options_petromap_privacy", data_schema=vol.Schema({})
             )
+        self._petromap_privacy_accepted = True
         return await self._async_options_credentials({})
 
     async def async_step_provider_credentials(self, user_input=None):
@@ -417,16 +424,16 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
         current_mode = current_data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
         target_mode = pending.get(CONF_PROVIDER_MODE, current_mode)
 
-        if current_mode == PROVIDER_AUTO:
-            source_tankerkoenig_key = current_data.get(CONF_TANKERKOENIG_API_KEY, "")
-            source_petromap_key = current_data.get(CONF_PETROMAP_API_KEY, "")
-        elif current_mode == PROVIDER_PETROMAP:
-            source_tankerkoenig_key = ""
-            source_petromap_key = current_data.get(CONF_API_KEY, "")
-        else:
-            # Explicit Tankerkönig and legacy entries both use CONF_API_KEY.
-            source_tankerkoenig_key = current_data.get(CONF_API_KEY, "")
-            source_petromap_key = ""
+        source_tankerkoenig_key = current_data.get(CONF_TANKERKOENIG_API_KEY, "")
+        source_petromap_key = current_data.get(CONF_PETROMAP_API_KEY, "")
+        legacy_api_key = current_data.get(CONF_API_KEY, "")
+        legacy_key_is_unambiguous = False
+        if current_mode in (None, PROVIDER_TANKERKOENIG) and not source_tankerkoenig_key:
+            source_tankerkoenig_key = legacy_api_key
+            legacy_key_is_unambiguous = bool(legacy_api_key)
+        if current_mode == PROVIDER_PETROMAP and not source_petromap_key:
+            source_petromap_key = legacy_api_key
+            legacy_key_is_unambiguous = bool(legacy_api_key)
 
         missing: set[str] = set()
         if target_mode == PROVIDER_AUTO:
@@ -441,17 +448,23 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             if not petromap_key:
                 missing.add(CONF_PETROMAP_API_KEY)
         elif target_mode == PROVIDER_PETROMAP:
-            api_key = credentials.get(CONF_API_KEY, "").strip()
+            api_key = (
+                credentials.get(CONF_PETROMAP_API_KEY)
+                or credentials.get(CONF_API_KEY, "")
+            ).strip()
             if not api_key:
                 api_key = source_petromap_key
             if not api_key:
-                missing.add(CONF_API_KEY)
+                missing.add(CONF_PETROMAP_API_KEY)
         else:
-            api_key = credentials.get(CONF_API_KEY, "").strip()
+            api_key = (
+                credentials.get(CONF_TANKERKOENIG_API_KEY)
+                or credentials.get(CONF_API_KEY, "")
+            ).strip()
             if not api_key:
                 api_key = source_tankerkoenig_key
             if not api_key:
-                missing.add(CONF_API_KEY)
+                missing.add(CONF_TANKERKOENIG_API_KEY)
 
         if missing:
             return self.async_show_form(
@@ -471,11 +484,26 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             }
         }
         new_data[CONF_PROVIDER_MODE] = target_mode
-        if target_mode == PROVIDER_AUTO:
+        if target_mode == PROVIDER_PETROMAP:
+            petromap_key = api_key
+        elif target_mode == PROVIDER_TANKERKOENIG:
+            tankerkoenig_key = api_key
+        if tankerkoenig_key:
             new_data[CONF_TANKERKOENIG_API_KEY] = tankerkoenig_key
+        if petromap_key:
             new_data[CONF_PETROMAP_API_KEY] = petromap_key
-        else:
-            new_data[CONF_API_KEY] = api_key
+        if legacy_api_key and not legacy_key_is_unambiguous:
+            # Preserve an unexpected generic key until its provider can be
+            # identified; dropping it here could destroy a user's credential.
+            new_data[CONF_API_KEY] = legacy_api_key
+        if current_data.get(CONF_PETROMAP_PRIVACY_ACCEPTED, False) or getattr(
+            self, "_petromap_privacy_accepted", False
+        ):
+            new_data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
+        elif CONF_PETROMAP_PRIVACY_ACCEPTED in current_data:
+            new_data[CONF_PETROMAP_PRIVACY_ACCEPTED] = current_data[
+                CONF_PETROMAP_PRIVACY_ACCEPTED
+            ]
 
         options = {
             key: value

@@ -7,7 +7,15 @@ from typing import Callable
 
 from aiohttp import ClientSession
 
-from ..const import CONF_PROVIDER_MODE, PROVIDER_AUTO, PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
+from ..const import (
+    CONF_API_KEY,
+    CONF_PETROMAP_API_KEY,
+    CONF_PROVIDER_MODE,
+    CONF_TANKERKOENIG_API_KEY,
+    PROVIDER_AUTO,
+    PROVIDER_PETROMAP,
+    PROVIDER_TANKERKOENIG,
+)
 from .base import (
     CountryPriceCoverage,
     FuelStationProvider,
@@ -71,7 +79,15 @@ def create_provider(session: ClientSession, config: dict[str, object]) -> FuelSt
         raise UnknownProviderError(f"Unknown provider mode: {mode}")
     if registration.is_strategy or not registration.enabled or registration.factory is None:
         raise ProviderDisabledError(f"Provider mode is disabled: {mode}")
-    return registration.factory(session, str(config["api_key"]))
+    key_name = (
+        CONF_PETROMAP_API_KEY
+        if mode == PROVIDER_PETROMAP
+        else CONF_TANKERKOENIG_API_KEY
+    )
+    api_key = config.get(key_name) or config.get(CONF_API_KEY)
+    if not api_key:
+        raise ProviderConfigurationError(f"Missing credential for provider: {mode}")
+    return registration.factory(session, str(api_key))
 
 
 __all__ = [

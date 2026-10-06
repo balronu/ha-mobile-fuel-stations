@@ -2,7 +2,13 @@ import asyncio
 
 import pytest
 
-from mobile_fuel_stations.const import CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG
+from mobile_fuel_stations.const import (
+    CONF_PETROMAP_API_KEY,
+    CONF_PROVIDER_MODE,
+    CONF_TANKERKOENIG_API_KEY,
+    PROVIDER_PETROMAP,
+    PROVIDER_TANKERKOENIG,
+)
 from mobile_fuel_stations.providers import PROVIDER_REGISTRY, create_provider
 from mobile_fuel_stations.providers.base import (
     ProviderDisabledError,
@@ -59,6 +65,30 @@ def test_explicit_tankerkoenig_mode_uses_same_provider():
     )
 
     assert isinstance(provider, TankerkoenigProvider)
+
+
+def test_explicit_provider_modes_use_only_their_provider_key():
+    tk_provider = create_provider(
+        object(),
+        {
+            CONF_PROVIDER_MODE: PROVIDER_TANKERKOENIG,
+            CONF_TANKERKOENIG_API_KEY: "tk-secret-dummy",
+            CONF_PETROMAP_API_KEY: "pm-secret-dummy",
+        },
+    )
+    pm_provider = create_provider(
+        object(),
+        {
+            CONF_PROVIDER_MODE: PROVIDER_PETROMAP,
+            CONF_TANKERKOENIG_API_KEY: "tk-secret-dummy",
+            CONF_PETROMAP_API_KEY: "pm-secret-dummy",
+        },
+    )
+
+    assert isinstance(tk_provider, TankerkoenigProvider)
+    assert tk_provider._api_key == "tk-secret-dummy"
+    assert isinstance(pm_provider, PetromapProvider)
+    assert pm_provider._api_key == "pm-secret-dummy"
 
 
 def test_petromap_construction_injects_shared_session_without_io_or_close():
