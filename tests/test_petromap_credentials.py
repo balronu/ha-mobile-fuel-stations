@@ -217,7 +217,8 @@ def test_disabled_auto_flow_never_creates_a_broken_entry(monkeypatch):
 
     assert result["type"] == "form"
     assert result["errors"]["base"] == "provider_disabled"
-    validator.assert_awaited_once_with("provider-secret")
+    validator.assert_awaited_once_with("petromap-secret")
+    assert validator.await_args.args[0] != "tankerkoenig-secret"
 
 
 def test_auto_credential_model_requires_both_keys_before_validation():
