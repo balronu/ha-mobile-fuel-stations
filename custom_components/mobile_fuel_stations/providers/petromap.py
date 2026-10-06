@@ -1,8 +1,7 @@
-"""Non-transport Petromap v2 contract helpers.
+"""Petromap v2 contract and injected-session transport helpers.
 
-This module deliberately has no HTTP client.  R2C-2 only validates the
-documented request and response contract; the provider remains disabled in
-the registry until credentials, licensing, and budget policy are approved.
+The provider remains disabled in the registry until credentials, licensing,
+and budget policy are approved.
 """
 
 from __future__ import annotations
@@ -33,6 +32,7 @@ from .base import (
 
 PETROMAP_API_BASE_URL = "https://api.petromap.eu/v2"
 PETROMAP_PLACES_PATH = "/places"
+PETROMAP_USAGE_PATH = "/usage"
 MFS_RADIUS_LIMIT_KM = MAX_API_RADIUS_KM
 
 _FUEL_PARAMS: dict[str, dict[str, str]] = {
@@ -294,3 +294,36 @@ def _optional_header_int(headers: Any, name: str) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
+
+
+async def async_validate_petromap_credentials(
+    session: ClientSession,
+    api_key: str,
+    *,
+    timeout: ClientTimeout | None = None,
+) -> None:
+    """Validate a Petromap credential without making a billable search.
+
+    The usage endpoint only proves that the credential is accepted for that
+    endpoint.  It does not prove that the credential has Places scope.
+    """
+
+    try:
+        async with session.get(
+            f"{PETROMAP_API_BASE_URL}{PETROMAP_USAGE_PATH}",
+            headers={"x-api-key": api_key},
+            timeout=timeout or ClientTimeout(total=DEFAULT_TIMEOUT.total_seconds()),
+        ) as response:
+            if 200 <= response.status < 300:
+                return
+            try:
+                payload = await response.json(content_type=None)
+            except (TypeError, ValueError, ClientError):
+                payload = {}
+            raise map_error(response.status, payload)
+    except asyncio.TimeoutError as err:
+        raise ProviderTimeoutError("Petromap credential validation timed out") from err
+    except ClientConnectionError as err:
+        raise ProviderNetworkError("Petromap credential validation connection failed") from err
+    except ClientError as err:
+        raise ProviderNetworkError("Petromap credential validation failed") from err
