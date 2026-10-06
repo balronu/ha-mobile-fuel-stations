@@ -365,7 +365,9 @@ def test_first_refresh_expected_auto_state_is_accepted(monkeypatch, expected):
                 raise integration.ConfigEntryNotReady("mobile") from update_error
 
     entry = SimpleNamespace(
+        entry_id="test-auto-entry",
         data={CONF_PROVIDER_MODE: PROVIDER_AUTO},
+        options={},
         runtime_data=None,
         add_update_listener=lambda listener: listener,
         async_on_unload=lambda unsubscribe: None,
@@ -393,6 +395,7 @@ def test_first_refresh_real_network_failure_is_not_swallowed(monkeypatch):
     entry = SimpleNamespace(
         entry_id="test-auto-entry",
         data={CONF_PROVIDER_MODE: PROVIDER_AUTO},
+        options={},
         runtime_data=None,
     )
     hass = SimpleNamespace(
