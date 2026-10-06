@@ -16,6 +16,7 @@ from .base import (
     ProviderDisabledError,
     UnknownProviderError,
 )
+from .petromap import PetromapProvider
 from .tankerkoenig import TankerkoenigProvider
 
 
@@ -41,11 +42,10 @@ PROVIDER_REGISTRY: dict[str, ProviderRegistration] = {
             country_price_coverage={"DE": CountryPriceCoverage.PER_STATION},
         ),
     ),
-    # Deliberately no factory or concrete capabilities: Petromap is not implemented in R2B.
     PROVIDER_PETROMAP: ProviderRegistration(
         provider_id=PROVIDER_PETROMAP,
-        factory=None,
-        enabled=False,
+        factory=PetromapProvider,
+        enabled=True,
         capabilities=ProviderCapabilities(),
     ),
     PROVIDER_AUTO: ProviderRegistration(

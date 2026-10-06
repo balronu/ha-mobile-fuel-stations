@@ -173,7 +173,7 @@ def test_tankerkoenig_flow_does_not_validate_petromap(monkeypatch):
     validator.assert_not_awaited()
 
 
-def test_disabled_petromap_flow_never_creates_a_broken_entry(monkeypatch):
+def test_enabled_petromap_flow_creates_entry_after_privacy_and_usage(monkeypatch):
     flow = _flow_with_location()
     validator = AsyncMock(return_value=None)
     flow._validate_petromap_key = validator
@@ -182,8 +182,8 @@ def test_disabled_petromap_flow_never_creates_a_broken_entry(monkeypatch):
     assert privacy["step_id"] == "petromap_privacy"
     result = asyncio.run(flow.async_step_petromap_privacy({}))
 
-    assert result["type"] == "form"
-    assert result["errors"]["base"] == "provider_disabled"
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_PROVIDER_MODE] == PROVIDER_PETROMAP
     validator.assert_awaited_once_with("provider-secret")
 
 

@@ -8,7 +8,7 @@ import logging
 from math import asin, cos, radians, sin, sqrt
 from typing import Any, Callable
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryAuthFailed
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_state_change_event
@@ -25,6 +25,7 @@ from .const import (
     CONF_RADIUS,
     CONF_STATION_COUNT,
     CONF_UPDATE_INTERVAL,
+    CONF_PROVIDER_MODE,
     DOMAIN,
     MAX_API_RADIUS_KM,
     PROVIDER_PETROMAP,
@@ -173,6 +174,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                 )
             )
         except ProviderAuthError as err:
+            if self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG) == PROVIDER_PETROMAP:
+                raise ConfigEntryAuthFailed("API authentication failed") from err
             raise UpdateFailed("API authentication failed") from err
         except ProviderRateLimitError as err:
             raise UpdateFailed("API rate limit reached") from err

@@ -74,10 +74,12 @@ def test_petromap_construction_injects_shared_session_without_io_or_close():
     assert secret not in repr(provider.last_response_metadata)
 
 
-def test_unactivated_provider_mode_fails_without_network_access():
+def test_petromap_mode_uses_enabled_provider_without_network_at_construction():
     session = FakeSession()
-    with pytest.raises(ProviderDisabledError):
-        create_provider(session, {"api_key": "secret", CONF_PROVIDER_MODE: "petromap"})
+    provider = create_provider(session, {"api_key": "secret", CONF_PROVIDER_MODE: "petromap"})
+    assert isinstance(provider, PetromapProvider)
+    assert provider._session is session
+    assert provider._api_key == "secret"
     assert session.calls == []
 
 
@@ -89,8 +91,17 @@ def test_unknown_provider_mode_fails_before_network_access():
 
 
 def test_disabled_registry_entries_have_no_factory():
-    assert PROVIDER_REGISTRY["petromap"].enabled is False
-    assert PROVIDER_REGISTRY["petromap"].factory is None
+    assert PROVIDER_REGISTRY["petromap"].enabled is True
+    assert PROVIDER_REGISTRY["petromap"].factory is PetromapProvider
+    assert PROVIDER_REGISTRY["auto"].enabled is False
+    assert PROVIDER_REGISTRY["auto"].factory is None
+
+
+def test_auto_mode_remains_disabled_before_network_access():
+    session = FakeSession()
+    with pytest.raises(ProviderDisabledError):
+        create_provider(session, {"api_key": "secret", CONF_PROVIDER_MODE: "auto"})
+    assert session.calls == []
 
 
 def test_tankerkoenig_request_parameters_remain_unchanged():
