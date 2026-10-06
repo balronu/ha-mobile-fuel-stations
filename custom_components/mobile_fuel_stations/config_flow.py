@@ -488,5 +488,13 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 CONF_PETROMAP_API_KEY,
             }
         }
-        self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
+        # Update data and options together.  The OptionsFlowManager applies the
+        # returned options mapping after this step; passing the same mapping here
+        # makes the entry update atomic and prevents the update listener from
+        # reloading a coordinator with a half-applied configuration.
+        self.hass.config_entries.async_update_entry(
+            self.config_entry,
+            data=new_data,
+            options=options,
+        )
         return self.async_create_entry(title="", data=options)

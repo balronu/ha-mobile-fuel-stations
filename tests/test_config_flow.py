@@ -44,11 +44,18 @@ def _flow(entry):
     # handler set by Home Assistant's flow manager.  Do not assign the
     # read-only ``_config_entry_id`` implementation detail directly.
     flow.handler = entry.entry_id
+
+    def async_update_entry(current, *, data, options=None):
+        current.data = dict(data)
+        if options is not None:
+            current.options = dict(options)
+        return True
+
     flow.hass = SimpleNamespace(
         config_entries=SimpleNamespace(
             async_get_known_entry=lambda entry_id: entry,
             async_get_entry=lambda entry_id: entry,
-            async_update_entry=lambda current, data: setattr(current, "data", dict(data)),
+            async_update_entry=async_update_entry,
         )
     )
     return flow
@@ -115,6 +122,38 @@ def test_options_save_preserves_api_key_in_data_and_excludes_it_from_options():
     assert result["data"][CONF_RADIUS] == 25.0
     assert CONF_API_KEY not in result["data"]
     assert entry.data[CONF_API_KEY] == "secret-not-for-options"
+    assert entry.options[CONF_RADIUS] == 25.0
+
+
+def test_options_save_updates_data_and_options_in_one_entry_update():
+    entry = _entry(_data())
+    calls = []
+
+    class ConfigEntries:
+        def async_get_known_entry(self, entry_id):
+            return entry
+
+        def async_get_entry(self, entry_id):
+            return entry
+
+        def async_update_entry(self, current, *, data, options):
+            calls.append((dict(data), dict(options)))
+            current.data = dict(data)
+            current.options = dict(options)
+            return True
+
+    flow = MobileFuelStationsConfigFlow.async_get_options_flow(entry)
+    flow.handler = entry.entry_id
+    flow.hass = SimpleNamespace(config_entries=ConfigEntries())
+    submitted = {**_data(), CONF_FUEL_TYPE: "lpg"}
+
+    result = asyncio.run(flow.async_step_init(submitted))
+
+    assert result["type"] == "create_entry"
+    assert len(calls) == 1
+    assert calls[0][0][CONF_API_KEY] == "secret-not-for-options"
+    assert calls[0][1][CONF_FUEL_TYPE] == "lpg"
+    assert entry.options[CONF_FUEL_TYPE] == "lpg"
 
 
 def test_legacy_entry_with_empty_options_gets_a_complete_form():
@@ -197,6 +236,7 @@ def test_options_provider_switch_petromap_to_auto_preserves_pm_and_requires_tk()
     assert entry.data[CONF_PETROMAP_API_KEY] == "pm-old"
     assert CONF_API_KEY not in entry.data
     assert CONF_API_KEY not in result["data"]
+    assert entry.options[CONF_FUEL_TYPE] == "diesel"
 
 
 @pytest.mark.parametrize(
@@ -315,3 +355,4 @@ def test_provider_switch_rebuilds_canonical_credentials(
     assert not credential_keys.intersection(result["data"])
     assert entry.data[CONF_LOCATION_ENTITY] == "device_tracker.vehicle"
     assert result["data"][CONF_RADIUS] == 20.0
+    assert entry.options[CONF_RADIUS] == 20.0

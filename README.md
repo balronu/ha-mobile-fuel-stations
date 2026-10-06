@@ -46,7 +46,7 @@ den Berechtigungen des konfigurierten Developer-Keys ab.
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.2`
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.3`
 enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
 eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
 einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
@@ -123,7 +123,7 @@ navigation_provider: waze
 
 ## Upgrade von älteren Versionen
 
-Für das Upgrade von v0.5.0-beta.1 auf v0.5.0-beta.2 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Bestehende Tankerkönig-Konfigurationen bleiben kompatibel. Der Tankerkönig-Radius ist auf 25 km begrenzt; bestehende Konfigurationen mit einem höheren gespeicherten Wert werden beim API-Aufruf defensiv auf 25 km begrenzt.
+Für das Upgrade von v0.5.0-beta.2 auf v0.5.0-beta.3 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Bestehende Tankerkönig-Konfigurationen bleiben kompatibel. Der Tankerkönig-Radius ist auf 25 km begrenzt; bestehende Konfigurationen mit einem höheren gespeicherten Wert werden beim API-Aufruf defensiv auf 25 km begrenzt.
 
 Bei älteren v0.2.x-Installationen kann noch der frühere manuelle Lovelace-Resource-Eintrag `/mobile_fuel_stations/mobile-fuel-stations-card.js` vorhanden sein. Aktualisiere zuerst die Integration, starte Home Assistant neu und prüfe Karte und Card Picker. Entferne den alten Eintrag anschließend über die Home-Assistant-Oberfläche und lade Browser oder Companion-App vollständig neu. Bearbeite `.storage` niemals manuell.
 

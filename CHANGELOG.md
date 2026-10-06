@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0-beta.3 — Atomic options and provider reloads
+
+- Options changes now become active immediately after saving.
+- Provider switches reload using the final persisted configuration.
+- Fixed stale runtime state where saved LPG/provider settings could leave the previous coordinator active.
+
 ## 0.5.0-beta.2 — LPG fuel support
 
 ### Deutsch
