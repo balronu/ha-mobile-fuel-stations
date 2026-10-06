@@ -7,10 +7,12 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, FRONTEND_URL
 from .coordinator import MobileFuelStationsCoordinator
+from .providers.base import FuelFallbackBlockedError, NoSuitableProviderError
 
 PLATFORMS = [Platform.SENSOR]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -34,7 +36,18 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfigEntry) -> bool:
     coordinator = MobileFuelStationsCoordinator(hass, entry)
     await coordinator.async_setup()
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except ConfigEntryNotReady as err:
+        cause = err.__cause__
+        while cause is not None and cause.__cause__ is not None:
+            cause = cause.__cause__
+        is_auto = entry.data.get("provider_mode") == "auto"
+        if not (
+            is_auto
+            and isinstance(cause, (NoSuitableProviderError, FuelFallbackBlockedError))
+        ):
+            raise
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

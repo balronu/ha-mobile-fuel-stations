@@ -176,13 +176,8 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 validation_error = await self._validate_petromap_key(petromap_key)
                 if validation_error:
                     errors[CONF_PETROMAP_API_KEY] = validation_error
-            registration = PROVIDER_REGISTRY.get(provider_mode)
-            if not errors and registration is None:
+            if not errors and PROVIDER_REGISTRY.get(PROVIDER_PETROMAP) is None:
                 errors["base"] = "unknown"
-            elif not errors and (
-                not registration.enabled or registration.factory is None
-            ):
-                errors["base"] = "provider_disabled"
         elif provider_mode == PROVIDER_PETROMAP:
             if not api_key:
                 errors[CONF_API_KEY] = "api_key_required"
@@ -301,9 +296,45 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_reauth(self, entry_data):
-        """Start reauthentication for a Petromap entry."""
+        """Start reauthentication for an explicit or Auto Petromap entry."""
 
+        if self.context.get("provider_mode") == PROVIDER_PETROMAP and entry_data.get(
+            CONF_PROVIDER_MODE
+        ) == PROVIDER_AUTO:
+            return await self.async_step_reauth_auto_confirm()
         return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_auto_confirm(self, user_input=None):
+        """Replace only the Auto Petromap credential after validation."""
+
+        errors = {}
+        if user_input is not None:
+            api_key = user_input.get(CONF_PETROMAP_API_KEY, "").strip()
+            reauth_entry = self._get_reauth_entry()
+            if not api_key:
+                errors[CONF_PETROMAP_API_KEY] = "api_key_required"
+            elif reauth_entry is None:
+                errors["base"] = "unknown"
+            else:
+                validation_error = await self._validate_petromap_key(api_key)
+                if validation_error:
+                    errors[CONF_PETROMAP_API_KEY] = validation_error
+                else:
+                    return self.async_update_reload_and_abort(
+                        reauth_entry,
+                        data_updates={CONF_PETROMAP_API_KEY: api_key},
+                    )
+        return self.async_show_form(
+            step_id="reauth_auto_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_PETROMAP_API_KEY): selector.TextSelector(
+                        selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                    )
+                }
+            ),
+            errors=errors,
+        )
 
     async def async_step_reauth_confirm(self, user_input=None):
         """Replace only the Petromap credential after successful validation."""

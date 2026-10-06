@@ -34,9 +34,24 @@ from .const import (
     STORAGE_VERSION,
 )
 from .providers import create_provider
-from .providers.base import ProviderAuthError, ProviderError, ProviderRateLimitError, StationSearchQuery
+from .providers.base import (
+    CountryPriceCoverage,
+    FuelFallbackBlockedError,
+    NoSuitableProviderError,
+    ProviderAuthError,
+    ProviderError,
+    ProviderRateLimitError,
+    ProviderReauthContext,
+    StationSearchQuery,
+)
 from .providers import PROVIDER_REGISTRY
-from .providers.policy import AutoProviderDecision, CountryHysteresis, choose_auto_provider
+from .providers.policy import (
+    AutoProviderDecision,
+    AutoRuntimeState,
+    CountryHysteresis,
+    choose_auto_provider,
+    validate_direct_fuel_runtime,
+)
 from .country_resolver import resolve
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,7 +132,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             update_interval=timedelta(minutes=interval),
             config_entry=entry,
         )
-        self.client = create_provider(async_get_clientsession(hass), self.options)
+        self._session = async_get_clientsession(hass)
+        self._providers: dict[str, Any] = {}
+        self.client = None
+        if self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG) != "auto":
+            self.client = create_provider(self._session, self.options)
         self.stations: list[Station] = []
         self.nearest_station: Station | None = None
         self.cheapest_station: Station | None = None
@@ -128,6 +147,46 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._movement_refresh_scheduled = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
         self.country_auto_context = CountryAutoContext(self.options[CONF_FUEL_TYPE])
+        self.auto_runtime_state: AutoRuntimeState | None = None
+
+    @property
+    def _is_auto(self) -> bool:
+        return self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG) == "auto"
+
+    def _get_provider(self, provider_mode: str):
+        """Return one cached concrete provider for Auto runtime."""
+
+        if provider_mode not in (PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP):
+            raise ValueError(f"Auto selected non-concrete provider: {provider_mode}")
+        provider = self._providers.get(provider_mode)
+        if provider is not None:
+            return provider
+        registration = PROVIDER_REGISTRY[provider_mode]
+        key_name = (
+            "tankerkoenig_api_key"
+            if provider_mode == PROVIDER_TANKERKOENIG
+            else "petromap_api_key"
+        )
+        provider = registration.factory(self._session, self.options[key_name])
+        self._providers[provider_mode] = provider
+        return provider
+
+    def _set_auto_runtime_state(
+        self,
+        decision: AutoProviderDecision,
+        *,
+        effective_provider: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        self.auto_runtime_state = AutoRuntimeState(
+            configured_provider_mode="auto",
+            effective_provider=effective_provider,
+            raw_country=self.country_auto_context.raw_country,
+            confirmed_country=self.country_auto_context.confirmed_country,
+            coverage=decision.coverage,
+            fuel_resolution=decision.fuel_resolution,
+            reason=reason or decision.reason,
+        )
 
     async def async_setup(self) -> None:
         stored = await self._store.async_load()
@@ -158,29 +217,58 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
     async def _async_update_data(self) -> list[Station]:
         position = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         if position is None:
+            if self._is_auto:
+                decision = AutoProviderDecision(
+                    None, None, CountryPriceCoverage.UNKNOWN, "location_unavailable"
+                )
+                self._set_auto_runtime_state(decision)
+                raise UpdateFailed("Auto location is unavailable") from NoSuitableProviderError(
+                    decision.reason
+                )
             if self.stations:
                 return self.stations
             raise UpdateFailed("Location entity has no valid GPS coordinates")
-        self.country_auto_context.observe_position(position)
+        if self._is_auto:
+            decision = self.country_auto_context.observe_position(position)
+            self._set_auto_runtime_state(decision)
+            try:
+                validate_direct_fuel_runtime(decision)
+            except (NoSuitableProviderError, FuelFallbackBlockedError) as err:
+                raise UpdateFailed(str(err)) from err
+            provider_mode = decision.provider_mode
+            provider = self._get_provider(provider_mode)
+            query_fuel = decision.fuel_resolution.effective_fuel
+        else:
+            provider_mode = self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+            provider = self.client
+            query_fuel = self.options[CONF_FUEL_TYPE]
         now = datetime.now().astimezone()
         self.last_request = now
+        if self._is_auto:
+            self._set_auto_runtime_state(decision, effective_provider=provider_mode)
         try:
-            result = await self.client.async_search(
+            result = await provider.async_search(
                 StationSearchQuery(
                     latitude=position[0],
                     longitude=position[1],
                     radius_km=min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
-                    fuel_type=self.options[CONF_FUEL_TYPE],
+                    fuel_type=query_fuel,
                 )
             )
         except ProviderAuthError as err:
-            if self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG) == PROVIDER_PETROMAP:
+            if provider_mode == PROVIDER_PETROMAP:
+                if self._is_auto:
+                    self.entry.async_start_reauth(
+                        self.hass,
+                        context=ProviderReauthContext(PROVIDER_PETROMAP).as_dict(),
+                    )
                 raise ConfigEntryAuthFailed("API authentication failed") from err
             raise UpdateFailed("API authentication failed") from err
         except ProviderRateLimitError as err:
             raise UpdateFailed("API rate limit reached") from err
         except ProviderError as err:
-            raise UpdateFailed("Tankerkönig request failed") from err
+            provider_label = provider_mode or "provider"
+            raise UpdateFailed(f"{provider_label} request failed") from err
         self.nearest_station = nearest_station(result)
         self.cheapest_station = cheapest_station(result)
         self.stations = sort_stations(result, int(self.options[CONF_STATION_COUNT]))

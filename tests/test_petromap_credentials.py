@@ -204,7 +204,7 @@ def test_enabled_petromap_flow_creates_entry_after_privacy_and_usage(monkeypatch
     validator.assert_awaited_once_with("provider-secret")
 
 
-def test_disabled_auto_flow_never_creates_a_broken_entry(monkeypatch):
+def test_auto_flow_creates_entry_with_dual_credentials(monkeypatch):
     flow = _flow_with_location()
     validator = AsyncMock(return_value=None)
     flow._validate_petromap_key = validator
@@ -215,8 +215,11 @@ def test_disabled_auto_flow_never_creates_a_broken_entry(monkeypatch):
     assert credentials["step_id"] == "auto_credentials"
     result = asyncio.run(flow.async_step_auto_credentials(_credential_input(PROVIDER_AUTO)))
 
-    assert result["type"] == "form"
-    assert result["errors"]["base"] == "provider_disabled"
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_PROVIDER_MODE] == PROVIDER_AUTO
+    assert result["data"][CONF_TANKERKOENIG_API_KEY] == "tankerkoenig-secret"
+    assert result["data"][CONF_PETROMAP_API_KEY] == "petromap-secret"
+    assert CONF_API_KEY not in result["data"]
     validator.assert_awaited_once_with("petromap-secret")
     assert validator.await_args.args[0] != "tankerkoenig-secret"
 
