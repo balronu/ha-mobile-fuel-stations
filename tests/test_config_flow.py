@@ -48,7 +48,7 @@ def _flow(entry):
         config_entries=SimpleNamespace(
             async_get_known_entry=lambda entry_id: entry,
             async_get_entry=lambda entry_id: entry,
-            async_update_entry=lambda current, data: current.data.update(data),
+            async_update_entry=lambda current, data: setattr(current, "data", dict(data)),
         )
     )
     return flow
@@ -313,3 +313,5 @@ def test_provider_switch_rebuilds_canonical_credentials(
         key: entry.data[key] for key in credential_keys if key in entry.data
     } == expected
     assert not credential_keys.intersection(result["data"])
+    assert entry.data[CONF_LOCATION_ENTITY] == "device_tracker.vehicle"
+    assert result["data"][CONF_RADIUS] == 20.0
