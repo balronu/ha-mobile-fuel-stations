@@ -9,6 +9,16 @@ Im Auto-Modus wird weiterhin nur die bestehende Tankerkönig-/Petromap-Policy
 verwendet. Nakordoni-Zugriff hängt von API-Key, genehmigtem Markt und
 Providerquoten ab.
 
+## Stable und Pre-Release
+
+- **Stable:** `v0.4.0` ist die stabile Version für normale Nutzer.
+- **Beta:** `v0.5.0-beta.6` ist die aktuelle Pre-Release-Version mit den neuen
+  Provider- und Diagnosefunktionen.
+
+Wenn du die Beta testen möchtest, wähle in HACS bei Bedarf die **aktuelle
+Pre-Release-Version**. Eine Pre-Release kann sich ändern und ist nicht für
+produktive Installationen gedacht.
+
 ## Funktionen
 
 - Einrichtung und Optionen über die Home-Assistant-Oberfläche
@@ -30,6 +40,17 @@ Providerquoten ab.
 - Navigation mit Apple Maps, Google Maps oder Waze
 - Highlights für die nächste und günstigste offene Tankstelle
 - Auto-Provider-Auswahl mit getrennten Tankerkönig- und Petromap-Credentials
+
+## Unterstützte Provider
+
+| Provider | Einsatz | API-Key | Kraftstoffe in MFS | Hinweise |
+| --- | --- | --- | --- | --- |
+| [Tankerkönig](https://creativecommons.tankerkoenig.de/) | Deutschland | Ja | Diesel, E5, E10 | LPG ist im Tankerkönig-Adapter nicht unterstützt; Radius maximal 25 km. |
+| [Petromap](https://developer.petromap.eu/) | Länder- und Preisabdeckung gemäß dem aktuellen Petromap-Vertrag | Ja | Diesel, E5, LPG | Abdeckung und Preisqualität unterscheiden sich je Land; E10 ist im aktuellen MFS-Petromap-Modus nicht als expliziter Kraftstoff verfügbar. |
+| [Nakordoni](https://nakordoni.dev/) | Explizit auswählbarer Provider in beta.6 | Ja | Diesel, E5, E10, LPG | Nicht Bestandteil von Auto; maximal 25 km; Marktfreigabe und Quoten können erforderlich sein; sichtbare Attribution ist Pflicht. |
+
+HVO und HVO100 werden derzeit von MFS nicht unterstützt. HVO wird nicht
+stillschweigend als Diesel behandelt.
 
 ## Voraussetzungen
 
@@ -64,6 +85,46 @@ Lade das Repository herunter und kopiere den Ordner `custom_components/mobile_fu
 ## Einrichtung
 
 Wähle die Standort-Entity, den Radius, den Kraftstofftyp und die Anzahl der Stations-Slots. Wähle anschließend Tankerkönig, Petromap, Nakordoni oder Auto und hinterlege die dafür benötigten Credentials. Bei der ersten Aktivierung von Petromap bzw. Nakordoni wird die jeweilige Privacy-Erklärung angezeigt. Config Flow und Options Flow bleiben network-free; der erste Provider-Aufruf erfolgt im normalen Runtime-Refresh.
+
+Die Provider-Auswahl und die übrigen Einstellungen werden im Config Flow bzw.
+später im Options Flow von Home Assistant vorgenommen. Die Integration liest
+die gewählte Standort-Entity, den Radius, den Kraftstoff und die Stationszahl
+aus dieser Konfiguration. Es gibt keine YAML-Konfiguration für die
+Integration.
+
+### API-Schlüssel
+
+Die Schlüssel werden direkt im Home-Assistant-Dialog eingegeben. Sie gehören
+nicht in YAML, README, GitHub oder Logs.
+
+- **Tankerkönig:** Einen persönlichen Schlüssel kannst du über das
+  [offizielle Onboarding](https://onboarding.tankerkoenig.de/) beantragen. Die
+  [offizielle API-Dokumentation](https://creativecommons.tankerkoenig.de/?page=info)
+  beschreibt die Nutzung und die Bedingungen.
+- **Petromap:** Developer-Zugang und API-Key werden über das
+  [offizielle Petromap-Developer-Portal](https://developer.petromap.eu/)
+  beantragt bzw. verwaltet. Die [API-Dokumentation](https://developer.petromap.eu/docs/v2)
+  und der [Developer Agreement](https://developer.petromap.eu/terms) gelten für
+  die Nutzung.
+- **Nakordoni:** Erstelle bzw. verwalte den Zugang über das
+  [offizielle Developer-Portal](https://nakordoni.dev/), die
+  [Dokumentation](https://nakordoni.dev/de/docs) und – sofern für deinen
+  Account verfügbar – das [Dashboard](https://nakordoni.dev/de/dashboard).
+  Der benötigte Markt kann eine separate Freigabe erfordern. MFS verwendet den
+  Schlüssel nur im normalen Runtime-Refresh.
+
+Provider-spezifische Schlüssel werden getrennt gespeichert. Ein Wechsel des
+Providers löscht die bereits gespeicherten Schlüssel der anderen Provider
+nicht; beim Zurückwechseln muss ein vorhandener Schlüssel normalerweise nicht
+erneut eingegeben werden. Eine Reauthentifizierung ersetzt nur den Schlüssel
+des betroffenen Providers.
+
+### Provider wechseln
+
+Provider werden im Options Flow gewechselt. Tankerkönig, Petromap, Nakordoni
+und Auto sind getrennte Modi. Beim erstmaligen Aktivieren von Petromap oder
+Nakordoni wird die jeweilige Datenschutzbestätigung angezeigt. Fehlende
+Credentials werden anschließend nur für den gewählten Modus abgefragt.
 
 ## Dashboard-Karte
 
@@ -135,6 +196,12 @@ Attribution **[Data by nakordoni.eu](https://nakordoni.eu)**. Eine Nakordoni-
 Credential wird niemals in Options, Entity-Attributen, Diagnostics oder
 Frontend-Code gespeichert.
 
+Bei Providerfehlern stellt beta.6 sichere technische Diagnosedaten bereit,
+beispielsweise Provider, HTTP-Status, normalisierten Fehlercode,
+`Retry-After` sowie Quota-Limit und Remaining. Credentials, Authorization-
+Header, exakte Koordinaten, Request-URLs und rohe Providerantworten werden
+nicht in diesen Diagnosen gespeichert.
+
 ## Upgrade von älteren Versionen
 
 Für das Upgrade auf v0.5.0-beta.6 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.6 ergänzt sichere Nakordoni-Fehlerdiagnostik für Rate-/Quota-/Berechtigungsfehler; es werden keine zusätzlichen Providerrequests ausgeführt und keine Credentials oder Standortdaten protokolliert.
@@ -148,6 +215,18 @@ Bei älteren v0.2.x-Installationen kann noch der frühere manuelle Lovelace-Reso
 ## Standort-Entity
 
 Die Standort-Entity muss die numerischen Attribute `latitude` und `longitude` bereitstellen. Bei Bewegungsupdates werden die Suche und der Cooldown anhand der konfigurierten Bewegungsschwelle gesteuert.
+
+## Auto-Modus
+
+Auto wählt anhand von Land und Kraftstoff nach der aktuellen MFS-Policy. Für
+Deutschland wird Tankerkönig bevorzugt, wenn die Kombination unterstützt wird;
+Petromap kann für dafür geeignete Länder und Kraftstoffe verwendet werden.
+Nakordoni ist in beta.6 **nicht** Bestandteil des Auto-Modus. Auto fragt nicht
+automatisch alle Provider parallel ab und führt keine unnötigen Fallback-
+Requests für nicht unterstützte Kombinationen aus.
+
+Eine spätere Multi-Provider-Auswahl ist nur geplant und in beta.6 nicht
+vorhanden.
 
 ## Erzeugte Entities
 
@@ -183,11 +262,21 @@ Provider-Credentials werden im Config Entry gespeichert und dürfen nicht veröf
 
 ## API und Attribution
 
-Die Tankstellendaten stammen vom konfigurierten Tankerkönig- oder Petromap-Dienst. Beachte die jeweiligen Nutzungsbedingungen, Berechtigungen und API-Limits. Petromap-Runtime-Unterstützung ist in der Beta enthalten; der reale Zugriff hängt von den Berechtigungen des konfigurierten Developer-Keys ab.
+Die Tankstellendaten stammen vom konfigurierten Provider. Beachte die
+jeweiligen Nutzungsbedingungen, Berechtigungen, Quoten und API-Limits.
+Petromap-Runtime-Unterstützung ist in der Beta enthalten; der reale Zugriff
+hängt von den Berechtigungen des konfigurierten Developer-Keys und der
+Länderabdeckung ab.
+
+Für Nakordoni zeigt die Karte bei Nakordoni-Daten sichtbar und klickbar
+**[Data by nakordoni.eu](https://nakordoni.eu/)** an. Für Petromap gelten der
+aktuelle [Developer Agreement](https://developer.petromap.eu/terms) und die
+jeweiligen Providerbedingungen; eine separate Petromap-Attribution wird von
+MFS derzeit nicht in der Karte dargestellt.
 
 ## Entwicklung und Beiträge
 
-Entwicklungs- und Testhinweise stehen in [CONTRIBUTING.md](CONTRIBUTING.md). Benutzerrelevante Änderungen werden in `README.md` und `README.en.md` synchron gehalten.
+Entwicklungs- und Testhinweise stehen in [CONTRIBUTING.md](CONTRIBUTING.md). Die deutsche und englische Dokumentation werden als separate README-Dateien gepflegt.
 
 ## Lizenz
 
