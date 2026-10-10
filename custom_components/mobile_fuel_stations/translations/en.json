@@ -43,6 +43,7 @@
     },
     "error": {
       "api_key_required": "Enter an API key.",
+      "credential_conflict": "Enter a new key or select removal, not both.",
       "provider_required": "Select at least one data provider.",
       "invalid_location": "The selected entity has no valid latitude/longitude.",
       "invalid_auth": "The API key is invalid or expired.",
@@ -58,8 +59,10 @@
     "step": {
       "init": {
         "title": "Mobile Fuel Stations options",
+        "description": "{provider_mode_status}\n{provider_status}\n{credentials_hint}",
         "data": {
           "provider_modes": "Data providers",
+          "manage_credentials": "Manage credentials",
           "location_entity": "Vehicle location",
           "radius": "Search radius (km)",
           "fuel_type": "Fuel types",

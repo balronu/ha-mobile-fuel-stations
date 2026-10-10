@@ -85,7 +85,7 @@ def test_frontend_bundle_and_versioned_resource_url():
 
 
 def test_frontend_resource_url_is_stable_across_updates():
-    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10"
+    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.11"
 
 
 def test_versions_are_synchronized():
@@ -94,7 +94,7 @@ def test_versions_are_synchronized():
         (root / "custom_components" / DOMAIN / "manifest.json").read_text()
     )
     package = json.loads((root / "frontend" / "package.json").read_text())
-    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.5.0-beta.10"
-    assert json.loads((root / "frontend" / "package-lock.json").read_text())["version"] == "0.5.0-beta.10"
-    assert json.loads((root / "frontend" / "package-lock.json").read_text())["packages"][""]["version"] == "0.5.0-beta.10"
-    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.5.0-beta.10"
+    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.5.0-beta.11"
+    assert json.loads((root / "frontend" / "package-lock.json").read_text())["version"] == "0.5.0-beta.11"
+    assert json.loads((root / "frontend" / "package-lock.json").read_text())["packages"][""]["version"] == "0.5.0-beta.11"
+    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.5.0-beta.11"

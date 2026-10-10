@@ -3,8 +3,8 @@
 from datetime import timedelta
 
 DOMAIN = "mobile_fuel_stations"
-CONFIG_ENTRY_VERSION = 3
-FRONTEND_VERSION = "0.5.0-beta.10"
+CONFIG_ENTRY_VERSION = 4
+FRONTEND_VERSION = "0.5.0-beta.11"
 FRONTEND_FILENAME = "mobile-fuel-stations-card.js"
 FRONTEND_URL = f"/{DOMAIN}/{FRONTEND_FILENAME}?v={FRONTEND_VERSION}"
 FRONTEND_RESOURCE_URL = FRONTEND_URL
@@ -28,6 +28,8 @@ CONF_MOVEMENT_THRESHOLD = "movement_threshold"
 CONF_COOLDOWN = "cooldown"
 CONF_SORT_MODE = "sort_mode"
 CONF_SORT_FUEL = "sort_fuel"
+CONF_MANAGE_CREDENTIALS = "manage_credentials"
+CONF_PROVIDER_STATUS = "provider_status"
 
 DEFAULT_RADIUS = 20.0
 DEFAULT_FUEL_TYPE = "diesel"

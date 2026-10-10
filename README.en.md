@@ -9,7 +9,7 @@ stations based on a vehicle or device entity exposing `latitude` and
 | Channel | Version | Purpose |
 | --- | --- | --- |
 | Stable | `v0.4.0` | Recommended for production installations |
-| Pre-release | `v0.5.0-beta.10` | Current beta with multi-provider selection and compact mobile cards |
+| Pre-release | `v0.5.0-beta.11` | Current beta with separate credential management and API status |
 
 Beta versions can change. Stable is the safer choice for production systems.
 
@@ -26,6 +26,7 @@ Beta versions can change. Stable is the safer choice for production systems.
 - Stable station entities and configurable 1–10 station slots
 - Movement updates with threshold and cooldown
 - Local Home Assistant branding in `custom_components/mobile_fuel_stations/brand/`
+- General options can be saved independently of credential management
 
 ## Providers and coverage
 
@@ -50,10 +51,23 @@ Each provider used by the integration needs its own key. The official sources
 are linked above. Keys are entered in the setup or options flow and are never
 shown in full in the UI, logs, diagnostics, or Git files.
 
-The options flow shows a per-provider stored-key status. Leaving a key field
-empty keeps an existing key; replacement requires entering a new value, and
-removal requires an explicit remove option. Existing credentials are preserved
-during updates.
+The options flow shows a non-sensitive status for each provider:
+
+- No API key stored
+- API key stored – not checked yet
+- Access successfully checked
+- Authentication failed
+- Access cannot be checked right now
+- API approval pending
+- Not selected
+
+“API key stored” explicitly does not mean “access successfully checked”. A
+successful runtime provider request records the check status; opening the
+options flow never starts a network request. General settings save directly.
+The **Manage credentials** control opens the separate credential manager.
+Leaving a key field empty keeps an existing key; replacement requires entering a
+new value, removal requires an explicit remove option, and a key change resets
+that provider's check status.
 
 ## HACS installation
 
@@ -67,7 +81,7 @@ during updates.
 The dashboard card registers automatically. Beta.10 uses the versioned resource
 URL:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.11`
 
 The local icon/logo is Home Assistant integration branding. A HACS repository
 icon and Home Assistant integration branding are separate mechanisms; no extra
@@ -126,7 +140,7 @@ attribution: **Data by nakordoni.eu**.
 - **Stale card after update:** Restart Home Assistant completely. The versioned
   resource URL normally prevents stale card JavaScript from being reused.
 - **Nakordoni:** Live approval, market permission, and quotas remain external
-  prerequisites and are not claimed as available in beta.10.
+  prerequisites and are not claimed as available in beta.11.
 
 ## Known limitations
 

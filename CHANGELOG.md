@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0-beta.11 — Separate credential management and provider status
+
+- Save general options without forcing an API-key form; credential management
+  is an explicit separate step.
+- Show localized, non-secret provider status on the first options page.
+- Persist only status and timestamp metadata from real provider requests;
+  stored keys are never treated as validated automatically.
+- Reset a provider's status after explicit key replacement or removal.
+- Retain the beta.10 multi-provider, fuel, mobile-card, branding, and
+  backwards-compatibility behavior.
+
 ## 0.5.0-beta.10 — Compact multi-provider mobile cards
 
 - Kept the tested multi-provider checkbox flow and secure API-key status,

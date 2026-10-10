@@ -10,7 +10,7 @@ bewegliche Objekte geeignet.
 | Kanal | Version | Zweck |
 | --- | --- | --- |
 | Stable | `v0.4.0` | Empfohlene Version für produktive Installationen |
-| Pre-Release | `v0.5.0-beta.10` | Aktueller Beta-Stand mit Multi-Provider-Auswahl und kompakter mobiler Karte |
+| Pre-Release | `v0.5.0-beta.11` | Aktueller Beta-Stand mit getrenntem Credential-Manager und API-Status |
 
 Beta-Versionen können sich ändern. Für produktive Systeme ist Stable die
 sicherere Wahl.
@@ -33,6 +33,7 @@ sicherere Wahl.
 - Bewegungsupdates mit Schwelle und Cooldown
 - Lokales Home-Assistant-Branding unter
   `custom_components/mobile_fuel_stations/brand/`
+- Allgemeine Optionen werden unabhängig von der Zugangsdatenverwaltung gespeichert
 
 ## Datenanbieter und Abdeckung
 
@@ -60,11 +61,27 @@ Bezugsquellen sind oben verlinkt. Schlüssel werden im Einrichtungs- oder
 Options-Flow eingetragen und niemals vollständig in der Oberfläche, in Logs,
 Diagnosen oder Git-Dateien angezeigt.
 
-Im Options-Flow wird pro Anbieter angezeigt, ob ein Schlüssel hinterlegt ist.
+Im Options-Flow wird pro Anbieter ein nicht-sensibler Status angezeigt:
+
+- Kein API-Schlüssel hinterlegt
+- API-Schlüssel hinterlegt – noch nicht geprüft
+- Zugang erfolgreich geprüft
+- Authentifizierung fehlgeschlagen
+- Zugang derzeit nicht prüfbar
+- API-Freigabe ausstehend
+- Nicht ausgewählt
+
+„API-Schlüssel hinterlegt“ bedeutet ausdrücklich nicht „Zugang erfolgreich
+geprüft“. Ein erfolgreicher Runtime-Provideraufruf setzt den Prüfstatus; beim
+bloßen Öffnen des Options-Flows werden keine Netzwerkanfragen gestartet.
+
+Die allgemeinen Einstellungen werden direkt gespeichert. Über **Zugangsdaten
+verwalten** kann anschließend der separate Credential-Manager geöffnet werden.
 Ein leeres Eingabefeld lässt einen vorhandenen Schlüssel unverändert; Ersetzen
 erfolgt durch Eingabe eines neuen Werts, Entfernen nur über die ausdrückliche
-Entfernen-Option. Die gespeicherten Schlüssel werden bei einer Aktualisierung
-nicht neu erfunden oder ungefragt überschrieben.
+Entfernen-Option. Status wird nach Schlüsseländerungen invalidiert. Die
+gespeicherten Schlüssel werden bei einer Aktualisierung nicht neu erfunden oder
+ungefragt überschrieben.
 
 ## Installation über HACS
 
@@ -80,7 +97,7 @@ nicht neu erfunden oder ungefragt überschrieben.
 Die Dashboard-Karte wird automatisch registriert. Beta.10 verwendet die
 versionierte Resource-URL:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.11`
 
 Das lokale Icon/Logo ist Home-Assistant-Branding. Ein HACS-Repository-Icon und
 das Home-Assistant-Integrationsbranding sind getrennte Dinge; zusätzliche
@@ -153,7 +170,7 @@ nakordoni.eu** erhalten bleiben.
   versionierte Resource-URL verhindert normalerweise die Wiederverwendung
   alter Card-Skripte.
 - **Nakordoni:** Live-Freigabe, Marktberechtigung und Quoten sind weiterhin
-  externe Voraussetzungen und in beta.10 nicht als erfolgreich verfügbar
+  externe Voraussetzungen und in beta.11 nicht als erfolgreich verfügbar
   behauptet.
 
 ## Bekannte Einschränkungen

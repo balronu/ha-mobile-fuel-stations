@@ -6,12 +6,13 @@ from pathlib import Path
 import pytest
 
 import mobile_fuel_stations as integration
-from mobile_fuel_stations.config_flow import MobileFuelStationsConfigFlow
+from mobile_fuel_stations.config_flow import MobileFuelStationsConfigFlow, _credential_status_placeholders
 from mobile_fuel_stations.const import (
     CONF_API_KEY,
     CONF_COOLDOWN,
     CONF_FUEL_TYPE,
     CONF_LOCATION_ENTITY,
+    CONF_MANAGE_CREDENTIALS,
     CONF_MOVEMENT_THRESHOLD,
     CONF_MOVEMENT_UPDATES,
     CONF_PETROMAP_API_KEY,
@@ -180,6 +181,37 @@ def test_options_multi_provider_mode_uses_only_selected_providers_and_shows_safe
     assert CONF_PETROMAP_API_KEY not in result["data"]
 
 
+def test_options_general_settings_save_without_opening_credential_manager():
+    entry = _entry({**_v2_data(PROVIDER_TANKERKOENIG, **{CONF_TANKERKOENIG_API_KEY: "tk-secret"})})
+    flow = _flow(entry)
+    submitted = {**_data(), CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG], CONF_MANAGE_CREDENTIALS: False, CONF_RADIUS: 12.0}
+    result = asyncio.run(flow.async_step_init(submitted))
+    assert result["type"] == "create_entry"
+    assert entry.data[CONF_TANKERKOENIG_API_KEY] == "tk-secret"
+    assert entry.options[CONF_RADIUS] == 12.0
+
+
+def test_options_explicit_credential_manager_remains_a_separate_step():
+    entry = _entry({**_v2_data(PROVIDER_TANKERKOENIG, **{CONF_TANKERKOENIG_API_KEY: "tk-secret"})})
+    flow = _flow(entry)
+    submitted = {**_data(), CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG], CONF_MANAGE_CREDENTIALS: True}
+    result = asyncio.run(flow.async_step_init(submitted))
+    assert result["step_id"] == "provider_credentials"
+    assert "tk-secret" not in str(result)
+
+
+def test_provider_status_placeholders_are_localized_and_never_show_credentials():
+    entry = _entry({**_v2_data(PROVIDER_AUTO, **{CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP], CONF_TANKERKOENIG_API_KEY: "tk-secret"})})
+    hass = SimpleNamespace(
+        config=SimpleNamespace(language="de"),
+        data={"mobile_fuel_stations": {"provider_status": {"entry-a": {PROVIDER_TANKERKOENIG: {"status": "success"}}}}},
+    )
+    placeholders = _credential_status_placeholders({**entry.data, **entry.options}, hass, entry)
+    assert "Tankerkönig: Zugang erfolgreich geprüft" in placeholders["provider_status"]
+    assert "Petromap: Kein API-Schlüssel hinterlegt" in placeholders["provider_status"]
+    assert "tk-secret" not in str(placeholders)
+
+
 def test_options_explicit_remove_removes_only_requested_provider_key():
     entry = _entry(
         {
@@ -203,6 +235,15 @@ def test_options_explicit_remove_removes_only_requested_provider_key():
     assert result["type"] == "create_entry"
     assert CONF_TANKERKOENIG_API_KEY not in entry.data
     assert entry.data[CONF_PETROMAP_API_KEY] == "pm-secret"
+
+
+def test_options_rejects_replacing_and_removing_same_key_together():
+    entry = _entry({**_v2_data(PROVIDER_TANKERKOENIG, **{CONF_TANKERKOENIG_API_KEY: "tk-secret"})})
+    flow = _flow(entry)
+    asyncio.run(flow.async_step_init({**_data(), CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG], CONF_MANAGE_CREDENTIALS: True}))
+    result = asyncio.run(flow.async_step_provider_credentials({CONF_TANKERKOENIG_API_KEY: "new", "remove_tankerkoenig_api_key": True}))
+    assert result["type"] == "form"
+    assert result["errors"][CONF_TANKERKOENIG_API_KEY] == "credential_conflict"
 
 
 def test_options_form_limits_price_sort_fuel_to_selected_fuels_and_repairs_invalid_default():

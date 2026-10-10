@@ -9,6 +9,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import selector
+from homeassistant.helpers.storage import Store
 
 from .const import (
     CONFIG_ENTRY_VERSION,
@@ -22,6 +23,7 @@ from .const import (
     CONF_FUEL_TYPE,
     CONF_FUEL_TYPES,
     CONF_LOCATION_ENTITY,
+    CONF_MANAGE_CREDENTIALS,
     CONF_MOVEMENT_THRESHOLD,
     CONF_MOVEMENT_UPDATES,
     CONF_RADIUS,
@@ -42,6 +44,7 @@ from .const import (
     MAX_API_RADIUS_KM,
     CONF_PROVIDER_MODE,
     CONF_PROVIDER_MODES,
+    CONF_PROVIDER_STATUS,
     CONF_SORT_FUEL,
     CONF_SORT_MODE,
     PROVIDER_AUTO,
@@ -102,7 +105,8 @@ def _provider_key(provider: str) -> str:
 
 
 def _schema(
-    defaults: dict[str, Any], include_key: bool, include_provider: bool = False
+    defaults: dict[str, Any], include_key: bool, include_provider: bool = False,
+    include_credentials_management: bool = False,
 ) -> vol.Schema:
     schema: dict[Any, Any] = {}
     radius_default = min(float(defaults.get(CONF_RADIUS, DEFAULT_RADIUS)), MAX_API_RADIUS_KM)
@@ -116,6 +120,8 @@ def _schema(
         provider_modes = _normalize_provider_modes(
             defaults.get(CONF_PROVIDER_MODES), defaults.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
         )
+    if include_credentials_management:
+        schema[vol.Optional(CONF_MANAGE_CREDENTIALS, default=False)] = bool
         schema[vol.Required(CONF_PROVIDER_MODES, default=provider_modes)] = selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=list(PROVIDER_CHOICES),
@@ -242,11 +248,82 @@ def _options_credential_schema(provider_modes: list[str], current_data: dict[str
     return vol.Schema(fields)
 
 
-def _credential_status_placeholders(data: dict[str, Any]) -> dict[str, str]:
-    return {
-        f"{provider}_status": "API key stored" if data.get(_provider_key(provider)) else "No API key stored"
+_STATUS_LABELS = {
+    "de": {
+        "no_key": "Kein API-Schlüssel hinterlegt",
+        "untested": "API-Schlüssel hinterlegt – noch nicht geprüft",
+        "success": "Zugang erfolgreich geprüft",
+        "auth_failed": "Authentifizierung fehlgeschlagen",
+        "uncheckable": "Zugang derzeit nicht prüfbar",
+        "approval_pending": "API-Freigabe ausstehend",
+        "not_selected": "Nicht ausgewählt",
+    },
+    "en": {
+        "no_key": "No API key stored",
+        "untested": "API key stored – not checked yet",
+        "success": "Access successfully checked",
+        "auth_failed": "Authentication failed",
+        "uncheckable": "Access cannot be checked right now",
+        "approval_pending": "API approval pending",
+        "not_selected": "Not selected",
+    },
+}
+
+_PROVIDER_LABELS = {
+    PROVIDER_TANKERKOENIG: "Tankerkönig",
+    PROVIDER_PETROMAP: "Petromap",
+    PROVIDER_NAKORDONI: "Nakordoni",
+}
+
+
+def _language(hass: HomeAssistant | None) -> str:
+    language = getattr(getattr(hass, "config", None), "language", "en")
+    return "de" if str(language).lower().startswith("de") else "en"
+
+
+def _status_for_provider(hass: HomeAssistant | None, entry: Any, data: dict[str, Any], provider: str) -> str:
+    modes = _normalize_provider_modes(data.get(CONF_PROVIDER_MODES), data.get(CONF_PROVIDER_MODE))
+    if provider not in modes:
+        return "not_selected"
+    if not data.get(_provider_key(provider)):
+        return "no_key"
+    statuses = hass.data.get(DOMAIN, {}).get("provider_status", {}) if hass is not None else {}
+    stored = statuses.get(entry.entry_id, {}).get(provider, {}) if entry is not None else {}
+    return stored.get("status", "untested") if isinstance(stored, dict) else "untested"
+
+
+def _credential_status_placeholders(data: dict[str, Any], hass: HomeAssistant | None = None, entry: Any = None) -> dict[str, str]:
+    language = _language(hass)
+    labels = _STATUS_LABELS[language]
+    statuses = {
+        provider: labels[_status_for_provider(hass, entry, data, provider)]
         for provider in PROVIDER_CHOICES
     }
+    selected = _normalize_provider_modes(data.get(CONF_PROVIDER_MODES), data.get(CONF_PROVIDER_MODE))
+    if len(selected) > 1:
+        mode_status = "Automatic provider selection active" if language == "en" else "Automatische Anbieterauswahl aktiv"
+    else:
+        mode_status = "Only the selected provider is used" if language == "en" else "Es wird ausschließlich der ausgewählte Anbieter verwendet"
+    status_line = " · ".join(f"{_PROVIDER_LABELS[provider]}: {statuses[provider]}" for provider in PROVIDER_CHOICES)
+    hint = "Credentials can be changed or removed in the credential manager." if language == "en" else "Zugangsdaten können unter Zugangsdaten verwalten geändert oder entfernt werden."
+    return {
+        **{f"{provider}_status": statuses[provider] for provider in PROVIDER_CHOICES},
+        "provider_mode_status": mode_status,
+        "provider_status": status_line,
+        "credentials_hint": hint,
+    }
+
+
+async def _reset_provider_status(hass: HomeAssistant, entry_id: str, providers: set[str], data: dict[str, Any]) -> None:
+    """Invalidate only providers whose credentials were explicitly changed."""
+
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    all_status = domain_data.setdefault("provider_status", {}).setdefault(entry_id, {})
+    for provider in providers:
+        all_status[provider] = {
+            "status": "untested" if data.get(_provider_key(provider)) else "no_key",
+        }
+    await Store(hass, 1, f"{DOMAIN}.provider_status.{entry_id}").async_save(all_status)
 
 
 def _validate_location(hass: HomeAssistant, entity_id: str) -> bool:
@@ -588,11 +665,18 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                     errors={CONF_PROVIDER_MODES: "provider_required"},
                 )
             self._pending_options = _normalize_sorting_input(user_input)
+            # HA submits the optional checkbox as False from the native form.
+            # Keeping an omitted key on the legacy path preserves callers that
+            # used the pre-beta.11 flow contract.
+            manage_credentials = bool(user_input.get(CONF_MANAGE_CREDENTIALS, False))
+            direct_save = CONF_MANAGE_CREDENTIALS in user_input and not manage_credentials
             legacy_ui = CONF_PROVIDER_MODES not in user_input
             target_modes = _normalize_provider_modes(
                 self._pending_options.get(CONF_PROVIDER_MODES),
                 self.config_entry.data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
             )
+            if direct_save:
+                return await self._async_save_general_options()
             if PROVIDER_PETROMAP in target_modes and not self.config_entry.data.get(
                 CONF_PETROMAP_PRIVACY_ACCEPTED, False
             ):
@@ -612,8 +696,37 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 {**self.config_entry.data, **self.config_entry.options},
                 False,
                 True,
+                True,
+            ),
+            description_placeholders=_credential_status_placeholders(
+                {**self.config_entry.data, **self.config_entry.options}, self.hass, self.config_entry
             ),
         )
+
+    async def _async_save_general_options(self):
+        """Save general settings without entering credential management."""
+
+        pending = {
+            key: value for key, value in getattr(self, "_pending_options", {}).items()
+            if key not in {CONF_MANAGE_CREDENTIALS, CONF_PROVIDER_MODE, CONF_PROVIDER_MODES}
+        }
+        selected_fuels = _normalize_fuel_types(pending.get(CONF_FUEL_TYPES, pending.get(CONF_FUEL_TYPE)))
+        provider_modes = _normalize_provider_modes(
+            getattr(self, "_pending_options", {}).get(CONF_PROVIDER_MODES),
+            self.config_entry.data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
+        )
+        provider_mode = _effective_provider_mode(provider_modes)
+        pending[CONF_FUEL_TYPE] = _stored_fuel_value(selected_fuels)
+        pending[CONF_FUEL_TYPES] = selected_fuels
+        pending[CONF_PROVIDER_MODE] = provider_mode
+        pending[CONF_PROVIDER_MODES] = provider_modes
+        current_data = dict(self.config_entry.data)
+        current_data[CONF_PROVIDER_MODE] = provider_mode
+        current_data[CONF_PROVIDER_MODES] = provider_modes
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, data=current_data, options=pending
+        )
+        return self.async_create_entry(title="", data=pending)
 
     async def async_step_options_petromap_privacy(self, user_input=None):
         """Show the Petromap disclosure before a provider switch activates it."""
@@ -654,9 +767,9 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
         )
         current = {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(
-            step_id="provider_credentials",
-            data_schema=_options_credential_schema(modes, current),
-            description_placeholders=_credential_status_placeholders(current),
+                step_id="provider_credentials",
+                data_schema=_options_credential_schema(list(PROVIDER_CHOICES), current),
+            description_placeholders=_credential_status_placeholders(current, self.hass, self.config_entry),
         )
 
     async def async_step_provider_credentials(self, user_input=None):
@@ -689,27 +802,38 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             CONF_NAKORDONI_API_KEY: source_nakordoni_key,
         }
         updated_keys: dict[str, str] = dict(source_keys)
+        changed_providers: set[str] = set()
         missing: set[str] = set()
-        for provider in target_modes:
+        for provider in PROVIDER_CHOICES:
             key = _provider_key(provider)
             remove = credentials.get(f"remove_{key}", False)
             replacement = str(
                 credentials.get(key)
                 or (credentials.get(CONF_API_KEY, "") if len(target_modes) == 1 else "")
             ).strip()
+            if remove and replacement:
+                return self.async_show_form(
+                    step_id="provider_credentials",
+                    data_schema=_options_credential_schema(list(PROVIDER_CHOICES), current_data),
+                    errors={key: "credential_conflict"},
+                    description_placeholders=_credential_status_placeholders(current_data, self.hass, self.config_entry),
+                )
             if remove:
                 updated_keys.pop(key, None)
+                changed_providers.add(provider)
                 continue
+            if replacement:
+                changed_providers.add(provider)
             updated_keys[key] = replacement or source_keys[key]
-            if not updated_keys[key]:
+            if provider in target_modes and not updated_keys[key]:
                 missing.add(key)
 
         if missing:
             return self.async_show_form(
                 step_id="provider_credentials",
-                data_schema=_options_credential_schema(target_modes, current_data),
+                data_schema=_options_credential_schema(list(PROVIDER_CHOICES), current_data),
                 errors={key: "api_key_required" for key in missing},
-                description_placeholders=_credential_status_placeholders(current_data),
+                description_placeholders=_credential_status_placeholders(current_data, self.hass, self.config_entry),
             )
 
         new_data = {
@@ -721,6 +845,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 CONF_TANKERKOENIG_API_KEY,
                 CONF_PETROMAP_API_KEY,
                 CONF_NAKORDONI_API_KEY,
+                CONF_MANAGE_CREDENTIALS,
             }
         }
         new_data[CONF_PROVIDER_MODE] = target_mode
@@ -777,4 +902,5 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             data=new_data,
             options=options,
         )
+        await _reset_provider_status(self.hass, self.config_entry.entry_id, changed_providers, new_data)
         return self.async_create_entry(title="", data=options)

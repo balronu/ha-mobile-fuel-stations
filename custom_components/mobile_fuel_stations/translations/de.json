@@ -43,6 +43,7 @@
     },
     "error": {
       "api_key_required": "Bitte einen API-Key eingeben.",
+      "credential_conflict": "Bitte neuen Schlüssel eingeben oder Entfernen auswählen, nicht beides.",
       "provider_required": "Bitte mindestens einen Datenanbieter auswählen.",
       "invalid_location": "Die Entity liefert keine gültigen Latitude-/Longitude-Werte.",
       "invalid_auth": "Der API-Key ist ungültig oder abgelaufen.",
@@ -58,8 +59,10 @@
     "step": {
       "init": {
         "title": "Optionen Mobile Tankstellen",
+        "description": "{provider_mode_status}\n{provider_status}\n{credentials_hint}",
         "data": {
           "provider_modes": "Datenanbieter",
+          "manage_credentials": "Zugangsdaten verwalten",
           "location_entity": "Standort des Fahrzeugs",
           "radius": "Suchradius (km)",
           "fuel_type": "Kraftstoffarten",

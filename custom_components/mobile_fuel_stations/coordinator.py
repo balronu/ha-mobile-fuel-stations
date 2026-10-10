@@ -156,7 +156,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._providers: dict[str, Any] = {}
         self.client = None
         if self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG) != "auto":
-            self.client = create_provider(self._session, self.options)
+            provider_mode = self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+            key_name = {
+                PROVIDER_TANKERKOENIG: "tankerkoenig_api_key",
+                PROVIDER_PETROMAP: "petromap_api_key",
+                PROVIDER_NAKORDONI: "nakordoni_api_key",
+            }.get(provider_mode)
+            if key_name and self.options.get(key_name):
+                self.client = create_provider(self._session, self.options)
         self.stations: list[Station] = []
         self.nearest_station: Station | None = None
         self.cheapest_station: Station | None = None
@@ -167,6 +174,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._unsub_position = None
         self._movement_refresh_scheduled = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
+        self._provider_status_store = Store(hass, 1, f"{DOMAIN}.provider_status.{entry.entry_id}")
         self.fuel_types = self._configured_fuels(self.options)
         self.provider_modes = self._configured_provider_modes(self.options)
         self.available_provider_modes = frozenset(
@@ -299,10 +307,26 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             lat, lon = stored.get("reference_latitude"), stored.get("reference_longitude")
             if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
                 self.reference_position = (float(lat), float(lon))
+        provider_status = await self._provider_status_store.async_load()
+        domain_data = self.hass.data.setdefault(DOMAIN, {})
+        domain_data.setdefault("provider_status", {})[self.entry.entry_id] = (
+            provider_status if isinstance(provider_status, dict) else {}
+        )
         if self.options.get(CONF_MOVEMENT_UPDATES, True):
             self._unsub_position = async_track_state_change_event(
                 self.hass, [self.options[CONF_LOCATION_ENTITY]], self._async_position_changed
             )
+
+    async def _set_provider_status(self, provider: str, status: str) -> None:
+        """Persist only non-sensitive result state from a real provider call."""
+
+        domain_data = self.hass.data.setdefault(DOMAIN, {})
+        all_status = domain_data.setdefault("provider_status", {}).setdefault(self.entry.entry_id, {})
+        all_status[provider] = {
+            "status": status,
+            "checked_at": datetime.now().astimezone().isoformat(),
+        }
+        await self._provider_status_store.async_save(all_status)
 
     async def async_shutdown(self) -> None:
         if self._unsub_position:
@@ -364,6 +388,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             provider = requests[0][1]
         else:
             provider_mode = self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+            if provider_mode not in self.available_provider_modes or self.client is None:
+                raise UpdateFailed("Selected provider has no configured API key")
             provider = self.client
             capabilities = PROVIDER_REGISTRY[provider_mode].capabilities
             requests = []
@@ -382,8 +408,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         if self._is_auto:
             self._set_auto_runtime_state(decision, effective_provider=provider_mode)
         result: list[Station] = []
+        active_provider_mode = provider_mode
         try:
             for request_mode, request_provider, requested_fuel, effective_fuel in requests:
+                active_provider_mode = request_mode
                 found = await request_provider.async_search(
                     StationSearchQuery(
                         latitude=position[0],
@@ -393,6 +421,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                         station_count=int(self.options[CONF_STATION_COUNT]),
                     )
                 )
+                await self._set_provider_status(request_mode, "success")
                 if len(requests) > 1 or requested_fuel != effective_fuel:
                     found = [replace(
                         station,
@@ -404,25 +433,32 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                     ) for station in found]
                 result.extend(found)
         except ProviderAuthError as err:
-            if provider_mode == PROVIDER_NAKORDONI:
+            await self._set_provider_status(active_provider_mode, "auth_failed")
+            if active_provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)
-            if provider_mode in (PROVIDER_PETROMAP, PROVIDER_NAKORDONI):
+            if active_provider_mode in (PROVIDER_PETROMAP, PROVIDER_NAKORDONI):
                 self.entry.async_start_reauth(
                     self.hass,
-                    context=ProviderReauthContext(provider_mode).as_dict(),
+                    context=ProviderReauthContext(active_provider_mode).as_dict(),
                 )
                 raise ConfigEntryAuthFailed("API authentication failed") from err
             raise UpdateFailed("API authentication failed") from err
         except ProviderRateLimitError as err:
-            if provider_mode == PROVIDER_NAKORDONI:
+            await self._set_provider_status(active_provider_mode, "uncheckable")
+            if active_provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)
                 raise UpdateFailed(self._nakordoni_error_message(err)) from err
             raise UpdateFailed("API rate limit reached") from err
         except ProviderError as err:
-            if provider_mode == PROVIDER_NAKORDONI:
+            diagnostics = getattr(err, "diagnostics", None)
+            status = "approval_pending" if getattr(diagnostics, "error_code", None) == "not_approved" else "uncheckable"
+            if isinstance(err, ProviderAuthError):
+                status = "auth_failed"
+            await self._set_provider_status(active_provider_mode, status)
+            if active_provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)
                 raise UpdateFailed(self._nakordoni_error_message(err)) from err
-            provider_label = provider_mode or "provider"
+            provider_label = active_provider_mode or "provider"
             raise UpdateFailed(f"{provider_label} request failed") from err
         result = merge_stations(result)
         self.nearest_station = nearest_station(result)
