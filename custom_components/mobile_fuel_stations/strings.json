@@ -146,17 +146,6 @@
           "hvo100": "HVO100"
         }
       }
-    },
-    "fuel_type": {
-      "select": {
-        "options": {
-          "e5": "Super E5",
-          "e10": "Super E10",
-          "diesel": "Diesel",
-          "lpg": "Autogas (LPG)",
-          "hvo100": "HVO100"
-        }
-      }
     }
   },
   "entity": {
