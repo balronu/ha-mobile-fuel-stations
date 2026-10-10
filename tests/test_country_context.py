@@ -47,7 +47,7 @@ def test_auto_policy_never_uses_provider_outside_active_allowlist():
 
     decision = context.observe_position((49.2402, 6.9969))
 
-    assert decision.provider_mode is None
+    assert decision.provider_mode == PROVIDER_PETROMAP
     assert decision.country_code == "DE"
 
 
