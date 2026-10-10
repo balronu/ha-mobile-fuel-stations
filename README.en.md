@@ -1,200 +1,143 @@
 # Mobile Fuel Stations
 
-**[Deutsche Version](README.md)**
+Mobile Fuel Stations is a Home Assistant custom integration for nearby fuel
+stations based on a vehicle or device entity exposing `latitude` and
+`longitude`. It is designed for cars, motorhomes, and other moving objects.
 
-Mobile Fuel Stations is a Home Assistant custom integration that finds nearby fuel stations using a configurable location entity. It is suited to vehicles, motorhomes, GPS trackers, and other moving objects.
+## Versions
 
-The beta supports **Tankerkönig**, **Petromap v2**, and explicit **Nakordoni**. In Auto mode, the
-provider is selected from the confirmed country. Petromap access depends on
-the permissions of the configured developer key.
+| Channel | Version | Purpose |
+| --- | --- | --- |
+| Stable | `v0.4.0` | Recommended for production installations |
+| Pre-release | `v0.5.0-beta.10` | Current beta with multi-provider selection and compact mobile cards |
 
-## Beta 0.5.0-beta.10
-
-Beta.10 retains the tested multi-provider checkbox flow and adds secure API-key
-status, replacement, explicit removal, and beta.9 migration behavior. The
-mobile card uses tighter spacing, keeps long station details wrapping without
-horizontal overflow, and merges nearest/per-fuel-cheapest highlights only when
-the stable station identity matches. Nakordoni live authorization remains
-provider-dependent.
-
-## Beta 0.5.0-beta.9
-
-Beta.9 retains the beta.8 multi-fuel behavior and loads the offline country
-dataset once through Home Assistant's executor during entry setup. Subsequent
-location updates resolve countries from memory and do not perform synchronous
-file I/O in the event loop. Missing or corrupt country data fails open without
-repeated file reads. The station list remains distance-sorted by default;
-price sorting requires an explicit fuel type, so Diesel and E10 are never
-compared in one price ranking.
+Beta versions can change. Stable is the safer choice for production systems.
 
 ## Features
 
-- setup and options through the Home Assistant UI
-- configurable location entity with `latitude` and `longitude` attributes
-- selectable Super E5, Super E10, Diesel, LPG / Autogas, and HVO100
-- HVO100 remains unavailable unless a provider capability is verified; it is never silently treated as diesel.
-- multiple fuel types can be selected, with fuel type and original currency retained per station
-- search radius from 1 to 25 km
-- 1 to 10 stable station slots
-- regular refreshes and optional movement-triggered updates
-- movement threshold and cooldown
-- a price-oriented station list plus separate selection of the nearest and cheapest open station
-- overview sensor with station data and search status
-- diagnostics without exposing an API key or exact location
-- German and English translations
-- supplied dashboard card with visual editor
-- automatic frontend registration
-- navigation with Apple Maps, Google Maps, or Waze
-- highlights for the nearest and cheapest open station
-- automatic provider selection with separate Tankerkönig and Petromap credentials
-- explicit Nakordoni support for diesel, E5, E10 and LPG; HVO/HVO100 remains blocked
+- Select E5, E10, Diesel, LPG/autogas, and HVO100 together
+- One station card containing every available selected-fuel price
+- Independent price evaluation per fuel; different fuels are never mixed in one ranking
+- Nearest station by distance and cheapest station per fuel
+- Merged highlight cards only when the same station has a matching stable station ID
+- Distance sorting or price sorting for one explicitly selected fuel
+- Compact responsive dashboard card for phones, tablets, and desktop
+- Opening status, price age, missing-price states, E10/E5 fallback notices, and navigation
+- Stable station entities and configurable 1–10 station slots
+- Movement updates with threshold and cooldown
+- Local Home Assistant branding in `custom_components/mobile_fuel_stations/brand/`
 
-## Requirements
+## Providers and coverage
 
-- Home Assistant with HACS, or access to a manual custom-integration installation
-- a location entity exposing `latitude` and `longitude`
-- a Tankerkönig, Petromap v2, or Nakordoni API key as required by the selected provider mode
+Providers are selected with the official Home Assistant checkbox selector. One
+selected provider runs directly. With two or more enabled providers, automatic
+selection considers only those enabled and configured providers; a disabled or
+unauthenticated provider is never used as a silent fallback.
 
-## Installation
+| Provider | Key | Current implementation coverage |
+| --- | --- | --- |
+| [Tankerkönig](https://creativecommons.tankerkoenig.de/) | Yes | Germany; Diesel, E5, and E10; API radius up to 25 km |
+| [Petromap v2](https://developer.petromap.eu/) | Yes | DE/AT station prices for Diesel, E5, and LPG; other countries depend on verified Petromap coverage |
+| [Nakordoni](https://nakordoni.dev/) | Yes | Implemented for Diesel, E5, E10, and LPG; live API/market approval is still pending |
 
-### HACS (custom repository)
+HVO100 is a real selectable fuel type. Prices depend on a verified provider and
+country capability; HVO100 is not documented as universally unsupported and is
+never silently represented as Diesel.
+
+### API keys
+
+Each provider used by the integration needs its own key. The official sources
+are linked above. Keys are entered in the setup or options flow and are never
+shown in full in the UI, logs, diagnostics, or Git files.
+
+The options flow shows a per-provider stored-key status. Leaving a key field
+empty keeps an existing key; replacement requires entering a new value, and
+removal requires an explicit remove option. Existing credentials are preserved
+during updates.
+
+## HACS installation
 
 1. Open **HACS → Integrations**.
-2. Open the three-dot menu and select **Custom repositories**.
-3. Add `https://github.com/balronu/ha-mobile-fuel-stations` with category **Integration**.
-4. Install **Mobile Fuel Stations**.
-5. Restart Home Assistant completely.
-6. Add the integration through **Settings → Devices & services → Add integration**.
+2. Search for **Mobile Fuel Stations**. If it is not listed, add
+   `https://github.com/balronu/ha-mobile-fuel-stations` under **Custom
+   repositories** with category **Integration**.
+3. Install it and restart Home Assistant completely.
+4. Add it under **Settings → Devices & services → Add integration**.
 
-The dashboard card is registered automatically. The automatically registered
-frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10`
-includes the integration version. Each integration version therefore gets its
-own resource URL, so stale card JavaScript from caches is not reused after a
-version update. After a HACS update, a complete Home Assistant restart is
-sufficient; current installations do not require manually clearing the
-browser cache or changing the Lovelace resource.
+The dashboard card registers automatically. Beta.10 uses the versioned resource
+URL:
 
-### Manual installation
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10`
 
-Download the repository and copy `custom_components/mobile_fuel_stations` to `config/custom_components/`. Restart Home Assistant completely, then set up the integration through **Settings → Devices & services**.
+The local icon/logo is Home Assistant integration branding. A HACS repository
+icon and Home Assistant integration branding are separate mechanisms; no extra
+unsupported manifest field is required.
 
 ## Setup
 
-Choose the location entity, radius, fuel type, and number of station slots. Then select one or more of Tankerkönig, Petromap, and Nakordoni and provide the required credentials. One provider runs directly; multiple selected providers activate the existing automatic country/fuel policy within that allowlist. The first Petromap or Nakordoni activation shows its privacy disclosure. Config and options flows remain network-free; the first provider request occurs during the normal runtime refresh.
+Choose the vehicle location entity, radius from 1 to 25 km, one or more fuel
+types, 1–10 station slots, refresh interval, movement updates, threshold and
+cooldown, distance or fuel-price sorting, and one or more providers.
 
-## Dashboard card
+Automatic provider selection starts with two enabled providers. It considers
+country, fuel capability, station-price coverage, and available keys. With one
+provider selected, only that provider is used.
 
-### Add it through the card picker
+In countries without verified E10 coverage, E5 may be used as the documented
+E10 fallback and is shown as **E5 instead of E10**. No fallback is applied to
+Diesel, LPG, or HVO100, or merely because one API/station price is temporarily
+missing.
 
-After installation and restart:
+## Prices, card, and navigation
 
-1. Edit the dashboard and select **Add card**.
-2. Search for **Mobile Fuel Stations**.
-3. Select the card.
-4. Select the overview entity or accept the suggested entity.
-5. Save the card.
+Distance ascending is the default. Price sorting requires an explicit sorting
+fuel; stations without a valid price for that fuel are placed last. Diesel,
+E10, E5, LPG, and HVO100 never compete in one cross-fuel price ranking.
 
-### Minimal YAML example
+The card shows station name, address, opening status, distance, all available
+prices, fallback notices, and a navigation button. Long names and addresses
+wrap without horizontal overflow. Navigation supports Apple Maps, Google Maps,
+Waze, or automatic selection.
 
-```yaml
-type: custom:mobile-fuel-stations-card
-entity: sensor.<overview_entity>
-```
+No current UI screenshot is stored in the repository. The approved branding
+preview is available at [`assets/branding/preview.png`](assets/branding/preview.png).
 
-### Options
+## Updating an existing installation
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `entity` | entity ID | required | Overview sensor provided by the integration |
-| `navigation` | Boolean | `true` | Show the separate navigation button |
-| `navigation_provider` | `auto`, `apple`, `google`, `waze` | `auto` | Map provider used by the navigation button |
+Create a Home Assistant backup, update through HACS, and restart Home Assistant
+completely. Existing config entries, credentials, station slots, sensor entity
+IDs, dashboard resources, and compatible sensor attributes are retained. Legacy
+single-provider values migrate losslessly to the provider selection.
 
-The station block still opens More Info. Navigation is started through the separate button.
+## Privacy and attribution
 
-### Nearest and cheapest station
-
-The card optionally shows two highlights above the station list: **Nearest** and **Cheapest**. Both are selected from the complete Tankerkönig result set before the list is limited to the configured station slots. The nearest station does not require a valid price; when its price is missing, the card displays “Price unavailable”. If no suitable open station exists, the corresponding highlight is omitted.
-
-Existing station slots retain their price-oriented behavior and their entity IDs
-remain unchanged. If a highlight is not part of the visible slots, navigation
-remains available; More Info is opened only when the station can be safely
-mapped to a visible station entity.
-
-### Navigation
-
-With `navigation_provider: auto`:
-
-- iOS/iPadOS: Apple Maps
-- Android: Google Maps
-- desktop and other devices: Google Maps
-
-Use `apple`, `google`, or `waze` to select a provider explicitly. Waze is never selected automatically. Set `navigation: false` to hide the button.
-
-Navigation starts only after a user action. The card does not put a fixed starting position into the URL; the browser, companion app, and operating system determine how an installed map app receives the destination. Sygic is currently not supported.
-
-Waze example:
-
-```yaml
-type: custom:mobile-fuel-stations-card
-entity: sensor.<overview_entity>
-navigation: true
-navigation_provider: waze
-```
-
-## Upgrading from older versions
-
-For the upgrade to v0.5.0-beta.7, update through HACS and restart Home Assistant completely. Beta.7 migrates the former single-fuel value without loss and exposes all five fuels as a multi-select. Providers are evaluated per fuel using verified capabilities; credentials and location data are not logged in diagnostics.
-
-For the upgrade to v0.5.0-beta.5, update through HACS and restart Home Assistant completely. Beta.5 adds the explicit Nakordoni provider; existing beta.4 entries remain compatible without migration.
-
-For an upgrade from v0.5.0-beta.2 to v0.5.0-beta.3, update through HACS and restart Home Assistant completely. Existing Tankerkönig configurations remain compatible. The Tankerkönig radius is limited to 25 km; existing configurations with a higher stored value are defensively capped at 25 km for the API request.
-
-Older v0.2.x installations may still contain the former manual Lovelace resource `/mobile_fuel_stations/mobile-fuel-stations-card.js`. Update the integration first, restart Home Assistant, and verify the card and card picker. Then remove the old entry through the Home Assistant UI and fully reload the browser or companion app. Never edit `.storage` manually.
-
-## Location entity
-
-The location entity must provide numeric `latitude` and `longitude` attributes. For movement-triggered updates, the configured movement threshold and cooldown control when a new search is performed.
-
-## Generated entities
-
-The overview sensor exposes attributes including:
-
-`radius`, `fuel_type`, `location_entity`, `station_count`, `station_entities`, `last_successful_update`, `reference_latitude`, `reference_longitude`, `distance_since_last_search`, `nearest_station`, `cheapest_station`
-
-Station slots expose attributes including:
-
-`station_id`, `station_name`, `brand`, `price`, `distance`, `is_open`, `street`, `house_number`, `postcode`, `place`, `latitude`, `longitude`
-
-Station-slot entity IDs and unique IDs remain stable. The station currently shown in a slot may change after an update, and its display name follows the current station. An empty slot is `unavailable`. Prices use `EUR/L`.
-
-## Alternative dashboard examples
-
-The supplied Mobile Fuel Stations card is the recommended default. The generated sensors can also be displayed with standard Home Assistant cards. Mushroom Cards are an optional additional custom-card dependency.
+Depending on the selected provider, vehicle coordinates, radius, and selected
+fuels may be sent to that provider. Full API keys are not logged and exact
+locations are not exposed in diagnostics. Nakordoni requires visible
+attribution: **Data by nakordoni.eu**.
 
 ## Troubleshooting
 
-- **No stations:** Check the location, radius, fuel type, and API access.
-- **Location unavailable:** Check that the location entity provides current numeric `latitude` and `longitude` attributes.
-- **Prices do not update:** Check the overview sensor, last successful update, and Home Assistant logs.
-- **The card is missing from Add card:** Update the integration, restart Home Assistant completely, fully reload the browser or companion app, and check that an overview sensor exists. A manual resource entry is not required for current installations.
-- **API errors:** Check the configured provider credentials, permissions, and log messages.
-- **Movement updates:** Check the movement threshold and cooldown.
-- **Entity IDs:** Review the generated entities under **Settings → Devices & services → Entities**.
+- **No stations:** Check the location entity, coordinates, radius, provider
+  capability, and API key.
+- **Price unavailable:** No valid price exists for that exact station and fuel;
+  another fuel is not substituted.
+- **Provider inactive:** Check the provider checkbox and stored-key status.
+- **Stale card after update:** Restart Home Assistant completely. The versioned
+  resource URL normally prevents stale card JavaScript from being reused.
+- **Nakordoni:** Live approval, market permission, and quotas remain external
+  prerequisites and are not claimed as available in beta.10.
 
-If the problem persists, inspect frontend logs and the browser console, then open a GitHub issue with relevant redacted logs.
+## Known limitations
 
-## Privacy and security
+- Nakordoni live API approval is still pending.
+- Provider and country coverage can change with external API contracts,
+  permissions, quotas, and station data.
+- HVO100 is shown with prices only when a provider/country capability is verified.
 
-Provider credentials are stored in the config entry and must not be published. The configured location is sent to the selected provider for station searches. Review diagnostics for sensitive data before sharing them. Do not publish exact locations or credentials in issues.
+## Development and tests
 
-## API and attribution
-
-Station data is provided by the configured Tankerkönig, Petromap, or Nakordoni service. Follow the relevant terms of use, approved markets, permissions, attribution, and API limits. Nakordoni data displays [Data by nakordoni.eu](https://nakordoni.eu) and preserves provider timestamps and stale metadata.
-
-## Development and contributions
-
-Development and testing information is available in [CONTRIBUTING.md](CONTRIBUTING.md). Keep user-facing changes synchronized between `README.md` and `README.en.md`.
-
-## License
-
-See [LICENSE](LICENSE).
+Beta.10 is checked with Python tests, frontend tests, the production build,
+Hassfest, JSON/syntax checks, bundle-diff validation, and `git diff --check`.
+Provider/API tests also use mocks and fixtures; unapproved live access is never
+claimed as successful.

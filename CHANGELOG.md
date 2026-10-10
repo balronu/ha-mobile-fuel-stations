@@ -10,6 +10,9 @@
   when its stable station identity matches; different stations remain separate.
 - Added frontend regressions for highlight deduplication and long station
   details. Nakordoni live authorization remains provider-dependent.
+- Reworked the German and English README files to document the beta.10
+  provider coverage, API-key lifecycle, HACS setup, mobile card, privacy, and
+  known limitations.
 
 ## 0.5.0-beta.9 — Non-blocking country initialization
 

@@ -1,327 +1,172 @@
 # Mobile Fuel Stations
 
-**[English version](README.en.md)**
+Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration für nahe
+gelegene Tankstellen anhand einer Fahrzeug- oder Geräte-Entity mit
+`latitude`/`longitude`. Die Integration ist für Autos, Wohnmobile und andere
+bewegliche Objekte geeignet.
 
-Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration für nahegelegene Tankstellen anhand einer frei wählbaren Standort-Entity. Sie eignet sich besonders für Fahrzeuge, Wohnmobile, GPS-Tracker und andere bewegliche Objekte.
+## Versionen
 
-Die Beta unterstützt **Tankerkönig**, **Petromap v2** und explizit **Nakordoni**.
-Im Auto-Modus wird weiterhin nur die bestehende Tankerkönig-/Petromap-Policy
-verwendet. Nakordoni-Zugriff hängt von API-Key, genehmigtem Markt und
-Providerquoten ab.
+| Kanal | Version | Zweck |
+| --- | --- | --- |
+| Stable | `v0.4.0` | Empfohlene Version für produktive Installationen |
+| Pre-Release | `v0.5.0-beta.10` | Aktueller Beta-Stand mit Multi-Provider-Auswahl und kompakter mobiler Karte |
 
-## Stable und Pre-Release
-
-- **Stable:** `v0.4.0` ist die stabile Version für normale Nutzer.
-- **Beta:** `v0.5.0-beta.10` ist die aktuelle Pre-Release-Version mit
-  Multi-Provider-Auswahl, sicherer API-Key-Verwaltung und kompakter mobiler
-  Tankstellenkarte.
-
-Wenn du die Beta testen möchtest, wähle in HACS bei Bedarf die **aktuelle
-Pre-Release-Version**. Eine Pre-Release kann sich ändern und ist nicht für
-produktive Installationen gedacht.
+Beta-Versionen können sich ändern. Für produktive Systeme ist Stable die
+sicherere Wahl.
 
 ## Funktionen
 
-- Einrichtung und Optionen über die Home-Assistant-Oberfläche
-- frei wählbare Standort-Entity mit `latitude`- und `longitude`-Attributen
-- Super E5, Super E10, Diesel, LPG / Autogas und HVO100 sind auswählbar.
-- HVO100 bleibt ohne verifizierte Provider-Capability korrekt als nicht verfügbar; es wird niemals stillschweigend als Diesel behandelt.
-- Mehrfachauswahl von Kraftstoffarten ist möglich; jede Tankstelle trägt ihre Kraftstoffart und Originalwährung.
-- Nakordoni unterstützt in dieser Beta explizit Diesel, E5, E10 und LPG; HVO/HVO100 bleibt blockiert.
-- Nakordoni begrenzt den Radius auf 25 km, verwendet eine Anfrage pro Refresh und verlangt sichtbare Attribution: **Data by nakordoni.eu**.
-- Suchradius von 1 bis 25 km
-- 1 bis 10 stabile Stations-Slots
-- regelmäßige Aktualisierung und optionale Bewegungsupdates
-- Bewegungsschwelle und Cooldown
-- Entfernungssortierung als Standard sowie Preissortierung nach einer ausdrücklich gewählten Kraftstoffart
-- eine Tankstellenkarte pro Station mit allen verfügbaren Preisen der ausgewählten Kraftstoffarten
-- separate Ermittlung der nächsten Tankstelle und der günstigsten Tankstelle je Kraftstoffart
-- Overview-Sensor mit Stationsdaten und Suchstatus
-- Diagnostics ohne API-Key oder exakte Standortdaten
-- Deutsch und Englisch
-- mitgelieferte Dashboard-Karte mit Visual Editor
-- automatische Frontend-Registrierung
-- Navigation mit Apple Maps, Google Maps oder Waze
-- Highlights für die nächste und günstigste offene Tankstelle
-- Auto-Provider-Auswahl mit getrennten Tankerkönig- und Petromap-Credentials
+- E5, E10, Diesel, LPG/Autogas und HVO100 gleichzeitig auswählbar
+- Eine Tankstellenkarte pro Station mit allen verfügbaren ausgewählten Preisen
+- Fachlich getrennte Preisbewertung je Kraftstoffart; unterschiedliche
+  Kraftstoffe werden niemals in einer Rangliste vermischt
+- Nächste Tankstelle nach Entfernung und günstigste Tankstelle je Kraftstoff
+- Zusammengeführte Highlight-Karten, wenn dieselbe Station sicher anhand ihrer
+  stabilen Stations-ID identifiziert wird
+- Sortierung nach Entfernung oder nach dem Preis einer ausdrücklich gewählten
+  Kraftstoffart
+- Kompakte responsive Dashboard-Karte für Smartphones, Tablets und Desktop
+- Öffnungsstatus, Preisalter, fehlende Preise, E10/E5-Ersatzhinweise und
+  Navigation zu einer Station
+- Stabile Stations-Entities und konfigurierbare Anzahl von 1 bis 10 Slots
+- Bewegungsupdates mit Schwelle und Cooldown
+- Lokales Home-Assistant-Branding unter
+  `custom_components/mobile_fuel_stations/brand/`
 
-## Unterstützte Provider
+## Datenanbieter und Abdeckung
 
-| Provider | Einsatz | API-Key | Kraftstoffe in MFS | Hinweise |
-| --- | --- | --- | --- | --- |
-| [Tankerkönig](https://creativecommons.tankerkoenig.de/) | Deutschland | Ja | Diesel, E5, E10 | LPG ist im Tankerkönig-Adapter nicht unterstützt; Radius maximal 25 km. |
-| [Petromap](https://developer.petromap.eu/) | Länder- und Preisabdeckung gemäß dem aktuellen Petromap-Vertrag | Ja | Diesel, E5, LPG | Abdeckung und Preisqualität unterscheiden sich je Land; E10 ist im aktuellen MFS-Petromap-Modus nicht als expliziter Kraftstoff verfügbar. |
-| [Nakordoni](https://nakordoni.dev/) | Explizit auswählbarer Provider in beta.7 | Ja | Diesel, E5, E10, LPG | Auto-Auswahl nur bei bestätigter Capability; maximal 25 km; API-Freischaltung und Quoten können erforderlich sein; sichtbare Attribution ist Pflicht. |
+Die Anbieter werden über offizielle Home-Assistant-Checkboxen ausgewählt. Ein
+Anbieter wird direkt verwendet. Sind mindestens zwei Anbieter aktiviert, nutzt
+die automatische Auswahl ausschließlich diese aktivierten und konfigurierten
+Anbieter; deaktivierte oder nicht authentifizierte Anbieter werden nicht als
+stiller Fallback verwendet.
 
-HVO100 ist im Config-/Options-Flow auswählbar und wird intern eindeutig als
-eigener Kraftstoff geführt. Es wird aktuell jedoch von keinem verifiziert
-aktivierten Provider angeboten; deshalb werden dafür keine Dieselpreise
-angezeigt und es findet keine stille Substitution statt. Mehrfachauswahl ist
-pro Kraftstoff capability-basiert: verfügbare Kraftstoffe bleiben sichtbar,
-unverfügbare unterdrücken die übrigen nicht.
+| Anbieter | Schlüssel | Aktuelle Implementierungsabdeckung |
+| --- | --- | --- |
+| [Tankerkönig](https://creativecommons.tankerkoenig.de/) | Ja | Deutschland; Diesel, E5 und E10; API-Radius maximal 25 km |
+| [Petromap v2](https://developer.petromap.eu/) | Ja | DE/AT mit Stationspreisen für Diesel, E5 und LPG; weitere Länder sind abhängig von der verifizierten Petromap-Abdeckung |
+| [Nakordoni](https://nakordoni.dev/) | Ja | Implementiert für Diesel, E5, E10 und LPG; Marktfreigabe und Live-API-Zugang sind noch ausstehend |
 
-## Voraussetzungen
-
-- Home Assistant mit HACS oder Zugriff auf eine manuelle Custom-Integration-Installation
-- eine Standort-Entity mit `latitude` und `longitude`
-- ein Tankerkönig-, Petromap-v2- oder Nakordoni-API-Key je nach Provider-Modus
-
-## Installation
-
-### Branding
-
-Das freigegebene Mobile-Fuel-Stations-Motiv liegt als lokale Home-Assistant-
-Branding-Dateien unter
-`custom_components/mobile_fuel_stations/brand/`. Damit verwenden Home-
-Assistant-Versionen ab 2026.3 das Icon und Logo direkt aus der Custom
-Integration; zusätzliche Manifest-Felder sind nicht erforderlich. Die
-Ausgangsdatei, Varianten und eine visuelle Übersicht liegen unter
-`assets/branding/`. Details zur HACS-Darstellung und zum vorbereiteten
-Home-Assistant-Brands-Upload stehen in
-[`BRANDING.md`](BRANDING.md).
-
-### HACS (Custom Repository)
-
-1. Öffne **HACS → Integrationen**.
-2. Öffne das Drei-Punkte-Menü und wähle **Benutzerdefinierte Repositories**.
-3. Füge `https://github.com/balronu/ha-mobile-fuel-stations` als Repository mit der Kategorie **Integration** hinzu.
-4. Installiere **Mobile Fuel Stations**.
-5. Starte Home Assistant vollständig neu.
-6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
-
-Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10`
-enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
-eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
-einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
-genügt ein vollständiger Home-Assistant-Neustart; ein manuelles Leeren des
-Browser-Caches oder Ändern der Lovelace-Resource ist bei aktuellen
-Installationen nicht erforderlich.
-
-### Manuelle Installation
-
-Lade das Repository herunter und kopiere den Ordner `custom_components/mobile_fuel_stations` nach `config/custom_components/`. Starte Home Assistant anschließend vollständig neu und richte die Integration über **Einstellungen → Geräte & Dienste** ein.
-
-## Einrichtung
-
-Wähle die Standort-Entity, den Radius, den Kraftstofftyp und die Anzahl der Stations-Slots. Wähle anschließend Tankerkönig, Petromap, Nakordoni oder Auto und hinterlege die dafür benötigten Credentials. Bei der ersten Aktivierung von Petromap bzw. Nakordoni wird die jeweilige Privacy-Erklärung angezeigt. Config Flow und Options Flow bleiben network-free; der erste Provider-Aufruf erfolgt im normalen Runtime-Refresh.
-
-Die Provider-Auswahl und die übrigen Einstellungen werden im Config Flow bzw.
-später im Options Flow von Home Assistant vorgenommen. Die Integration liest
-die gewählte Standort-Entity, den Radius, den Kraftstoff und die Stationszahl
-aus dieser Konfiguration. Es gibt keine YAML-Konfiguration für die
-Integration.
-
-### Optionen auf mobilen Geräten
-
-Die Anbieter-, Sortier- und Kraftstoffauswahl verwendet die offiziellen
-Home-Assistant-Selectoren. Die sichtbaren Bezeichnungen werden über die
-deutschen und englischen Übersetzungsdateien bereitgestellt; gespeicherte
-Werte bleiben unverändert. Die Auswahl „Tankstellenplätze“ ist ein Slider mit
-dem aktuellen Zahlenwert. Bei der Preissortierung werden nur die aktuell
-ausgewählten Kraftstoffarten angeboten. Wenn eine ältere Konfiguration einen
-ungültigen Sortierkraftstoff enthält, wird beim Speichern automatisch der
-erste gültige ausgewählte Kraftstoff verwendet. Die dynamische Ausblendung
-des Feldes bei Entfernungssortierung wird von HA-Formularen nicht zuverlässig
-unterstützt, daher bleibt das Feld sichtbar und wird robust validiert.
-
-Beta.10 erlaubt die gleichzeitige Aktivierung von Tankerkönig, Petromap und
-Nakordoni. Bei einem Anbieter wird dieser direkt verwendet; ab zwei aktivierten
-Anbietern wählt die bestehende Länder-/Kraftstoff-Policy automatisch nur aus
-dieser Allowlist. API-Key-Status wird maskiert angezeigt; leere Eingaben
-behalten vorhandene Schlüssel, und eine Entfernung erfolgt nur ausdrücklich.
-Die mobile Karte zeigt jede Station einmal, führt mehrere Preise kompakt auf
-und fasst identische Highlights anhand der stabilen Stations-ID zusammen.
+HVO100 ist eine echte, auswählbare Kraftstoffart. Ob dafür Preise erscheinen,
+hängt von einer tatsächlich verifizierten Provider- und Länder-Capability ab;
+HVO100 wird nicht pauschal als grundsätzlich unmöglich dokumentiert und nie
+still als Diesel ausgegeben.
 
 ### API-Schlüssel
 
-Die Schlüssel werden direkt im Home-Assistant-Dialog eingegeben. Sie gehören
-nicht in YAML, README, GitHub oder Logs.
+Jeder verwendete Anbieter benötigt seinen eigenen Schlüssel. Die offiziellen
+Bezugsquellen sind oben verlinkt. Schlüssel werden im Einrichtungs- oder
+Options-Flow eingetragen und niemals vollständig in der Oberfläche, in Logs,
+Diagnosen oder Git-Dateien angezeigt.
 
-- **Tankerkönig:** Einen persönlichen Schlüssel kannst du über das
-  [offizielle Onboarding](https://onboarding.tankerkoenig.de/) beantragen. Die
-  [offizielle API-Dokumentation](https://creativecommons.tankerkoenig.de/?page=info)
-  beschreibt die Nutzung und die Bedingungen.
-- **Petromap:** Developer-Zugang und API-Key werden über das
-  [offizielle Petromap-Developer-Portal](https://developer.petromap.eu/)
-  beantragt bzw. verwaltet. Die [API-Dokumentation](https://developer.petromap.eu/docs/v2)
-  und der [Developer Agreement](https://developer.petromap.eu/terms) gelten für
-  die Nutzung.
-- **Nakordoni:** Erstelle bzw. verwalte den Zugang über das
-  [offizielle Developer-Portal](https://nakordoni.dev/), die
-  [Dokumentation](https://nakordoni.dev/de/docs) und – sofern für deinen
-  Account verfügbar – das [Dashboard](https://nakordoni.dev/de/dashboard).
-  Der benötigte Markt kann eine separate Freigabe erfordern. MFS verwendet den
-  Schlüssel nur im normalen Runtime-Refresh.
+Im Options-Flow wird pro Anbieter angezeigt, ob ein Schlüssel hinterlegt ist.
+Ein leeres Eingabefeld lässt einen vorhandenen Schlüssel unverändert; Ersetzen
+erfolgt durch Eingabe eines neuen Werts, Entfernen nur über die ausdrückliche
+Entfernen-Option. Die gespeicherten Schlüssel werden bei einer Aktualisierung
+nicht neu erfunden oder ungefragt überschrieben.
 
-Provider-spezifische Schlüssel werden getrennt gespeichert. Ein Wechsel des
-Providers löscht die bereits gespeicherten Schlüssel der anderen Provider
-nicht; beim Zurückwechseln muss ein vorhandener Schlüssel normalerweise nicht
-erneut eingegeben werden. Eine Reauthentifizierung ersetzt nur den Schlüssel
-des betroffenen Providers.
+## Installation über HACS
 
-### Provider wechseln
+1. **HACS → Integrationen** öffnen.
+2. Nach **Mobile Fuel Stations** suchen. Falls das Repository nicht gelistet
+   ist, unter **Benutzerdefinierte Repositories**
+   `https://github.com/balronu/ha-mobile-fuel-stations` als **Integration**
+   hinzufügen.
+3. Installieren und Home Assistant vollständig neu starten.
+4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** die
+   Integration einrichten.
 
-Provider werden im Options Flow gewechselt. Tankerkönig, Petromap, Nakordoni
-und Auto sind getrennte Modi. Beim erstmaligen Aktivieren von Petromap oder
-Nakordoni wird die jeweilige Datenschutzbestätigung angezeigt. Fehlende
-Credentials werden anschließend nur für den gewählten Modus abgefragt.
+Die Dashboard-Karte wird automatisch registriert. Beta.10 verwendet die
+versionierte Resource-URL:
 
-## Dashboard-Karte
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10`
 
-### Über den Card Picker
+Das lokale Icon/Logo ist Home-Assistant-Branding. Ein HACS-Repository-Icon und
+das Home-Assistant-Integrationsbranding sind getrennte Dinge; zusätzliche
+Manifest-Felder sind dafür nicht erforderlich.
 
-Nach Installation und Neustart:
+## Einrichtung
 
-1. Öffne das Dashboard und wähle **Bearbeiten → Karte hinzufügen**.
-2. Suche nach **Mobile Fuel Stations**.
-3. Wähle die Karte aus.
-4. Wähle die Overview-Entity aus oder übernimm den Vorschlag.
-5. Speichere die Karte.
+Im Flow werden gewählt:
 
-### YAML-Minimalbeispiel
+- Standort-Entity des Fahrzeugs
+- Suchradius von 1 bis 25 km
+- eine oder mehrere Kraftstoffarten
+- 1 bis 10 Tankstellenplätze
+- Aktualisierungsintervall
+- Bewegungsupdates, Bewegungsschwelle und Cooldown
+- Sortierung nach Entfernung oder Kraftstoffpreis
+- ein oder mehrere Datenanbieter
 
-```yaml
-type: custom:mobile-fuel-stations-card
-entity: sensor.<overview_entity>
-```
+Die automatische Auswahl startet ab zwei aktivierten Anbietern. Sie berücksichtigt
+Land, Kraftstoff-Capability, Stationspreis-Abdeckung und vorhandene Schlüssel.
+Bei nur einem Anbieter wird ausschließlich dieser Anbieter verwendet.
 
-### Optionen
+E10 kann in Ländern ohne verifizierte E10-Abdeckung durch E5 ersetzt werden.
+Die Karte kennzeichnet dies als **E5 statt E10**. Kein E5-Ersatz erfolgt für
+Diesel, LPG oder HVO100 und auch nicht allein wegen eines temporären API- oder
+Stationsfehlers.
 
-| Option | Typ | Standard | Beschreibung |
-| --- | --- | --- | --- |
-| `entity` | Entity-ID | erforderlich | Overview-Sensor der Integration |
-| `navigation` | Boolean | `true` | Separaten Navigationsbutton anzeigen |
-| `navigation_provider` | `auto`, `apple`, `google`, `waze` | `auto` | Kartendienst für den Navigationsbutton |
+## Preise, Karte und Navigation
 
-Der Stationsblock öffnet weiterhin More Info. Navigation wird ausschließlich über den separaten Button gestartet.
+Die Standardreihenfolge ist Entfernung aufsteigend. Für eine Preissortierung
+muss die maßgebliche Kraftstoffart eindeutig gewählt werden; Stationen ohne
+gültigen Preis dafür stehen am Ende. Bei mehreren Kraftstoffen konkurrieren
+Diesel, E10, E5, LPG und HVO100 nicht miteinander.
 
-### Nächste und günstigste Tankstelle
+Die Custom Card zeigt je Station Name, Adresse, Öffnungsstatus, Entfernung,
+alle verfügbaren Preise, Ersatzhinweise und einen Navigationsbutton. Lange
+Namen und Adressen umbrechen ohne horizontalen Überlauf. Navigation kann als
+Apple Maps, Google Maps, Waze oder automatisch konfiguriert werden.
 
-Die Karte zeigt oberhalb der Stationsliste zwei optionale Highlights: **Nächste** und **Günstigste**. Beide werden aus der vollständigen Tankerkönig-Ergebnismenge bestimmt, bevor die Liste auf die konfigurierten Stations-Slots begrenzt wird. Die nächste Station benötigt keinen gültigen Preis; bei fehlendem Preis wird „Preis nicht verfügbar“ angezeigt. Wenn keine passende offene Station vorhanden ist, wird das jeweilige Highlight nicht angezeigt.
+Eine aktuelle UI-Screenshot-Datei ist im Repository nicht vorhanden. Die
+freigegebene Branding-Vorschau ist unter
+[`assets/branding/preview.png`](assets/branding/preview.png) verfügbar.
 
-Die bestehenden Stations-Slots bleiben preisorientiert und ihre Entity-IDs
-bleiben unverändert. Wenn ein Highlight nicht in den sichtbaren Slots enthalten
-ist, bleibt die Navigation verfügbar; More Info wird nur geöffnet, wenn eine
-sichere Zuordnung zu einer sichtbaren Stations-Entity existiert.
+## Aktualisierung bestehender Installationen
 
-### Navigation
+Vor dem Update ein Home-Assistant-Backup erstellen, über HACS aktualisieren und
+Home Assistant vollständig neu starten. Bestehende Config Entries,
+Credentials, Stations-Slots, Sensor-Entity-IDs, Dashboard-Ressourcen und
+kompatible Sensorattribute bleiben erhalten. Alte einzelne Providerwerte werden
+verlustfrei in die neue Anbieterauswahl übernommen.
 
-Bei `navigation_provider: auto` gilt:
+## Datenschutz und Attribution
 
-- iOS/iPadOS: Apple Maps
-- Android: Google Maps
-- Desktop und andere Geräte: Google Maps
-
-Mit `apple`, `google` oder `waze` kann der Provider explizit gewählt werden. Waze wird nicht automatisch ausgewählt. `navigation: false` blendet den Button aus.
-
-Die Navigation startet nur durch Nutzeraktion. Die Karte schreibt keine feste Startposition in die URL; Browser, Companion-App und Betriebssystem entscheiden über die tatsächliche Übergabe an eine installierte Karten-App. Sygic wird derzeit nicht unterstützt.
-
-Beispiel für Waze:
-
-```yaml
-type: custom:mobile-fuel-stations-card
-entity: sensor.<overview_entity>
-navigation: true
-navigation_provider: waze
-```
-
-## Nakordoni
-
-Nakordoni überträgt für die Tankstellensuche Standortkoordinaten, Suchradius
-und Kraftstofftyp an den externen Anbieter; eine Device-ID wird von dieser
-Integration nicht übertragen. Die Daten können abhängig von Account und Markt
-verzögert oder unvollständig sein. Preise behalten den Provider-Zeitstempel und
-das Stale-/Qualitätsmerkmal. Die Karte zeigt bei Nakordoni-Daten die klickbare
-Attribution **[Data by nakordoni.eu](https://nakordoni.eu)**. Eine Nakordoni-
-Credential wird niemals in Options, Entity-Attributen, Diagnostics oder
-Frontend-Code gespeichert.
-
-Bei Providerfehlern stellt beta.7 sichere technische Diagnosedaten bereit,
-beispielsweise Provider, HTTP-Status, normalisierten Fehlercode,
-`Retry-After` sowie Quota-Limit und Remaining. Credentials, Authorization-
-Header, exakte Koordinaten, Request-URLs und rohe Providerantworten werden
-nicht in diesen Diagnosen gespeichert.
-
-## Upgrade von älteren Versionen
-
-Für das Upgrade auf v0.5.0-beta.7 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.7 migriert den bisherigen Einzelkraftstoff verlustfrei und bietet die fünf Kraftstoffe als Mehrfachauswahl. Provider werden je Kraftstoff anhand verifizierter Capabilities bewertet; Credentials und Standortdaten werden nicht in Diagnosen protokolliert.
-
-Für das Upgrade auf v0.5.0-beta.5 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.5 ergänzt den expliziten Nakordoni-Provider; bestehende beta.4-Entries bleiben ohne Migration kompatibel.
-
-Für das Upgrade von v0.5.0-beta.2 auf v0.5.0-beta.3 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Bestehende Tankerkönig-Konfigurationen bleiben kompatibel. Der Tankerkönig-Radius ist auf 25 km begrenzt; bestehende Konfigurationen mit einem höheren gespeicherten Wert werden beim API-Aufruf defensiv auf 25 km begrenzt.
-
-Bei älteren v0.2.x-Installationen kann noch der frühere manuelle Lovelace-Resource-Eintrag `/mobile_fuel_stations/mobile-fuel-stations-card.js` vorhanden sein. Aktualisiere zuerst die Integration, starte Home Assistant neu und prüfe Karte und Card Picker. Entferne den alten Eintrag anschließend über die Home-Assistant-Oberfläche und lade Browser oder Companion-App vollständig neu. Bearbeite `.storage` niemals manuell.
-
-## Standort-Entity
-
-Die Standort-Entity muss die numerischen Attribute `latitude` und `longitude` bereitstellen. Bei Bewegungsupdates werden die Suche und der Cooldown anhand der konfigurierten Bewegungsschwelle gesteuert.
-
-## Auto-Modus
-
-Auto wählt anhand von Land und Kraftstoff nach der aktuellen MFS-Policy. Für
-Deutschland wird Tankerkönig bevorzugt, wenn die Kombination unterstützt wird;
-Petromap kann für dafür geeignete Länder und Kraftstoffe verwendet werden.
-Nakordoni wird nur ausgewählt, wenn die konfigurierte und dokumentierte
-Capability-Kombination Land/Kraftstoff/Preisabdeckung dies erlaubt. Eine noch
-nicht freigeschaltete Nakordoni-Credential liefert keine vorgetäuschten
-Live-Daten; die externe Freigabe bleibt für den Live-Test offen.
-
-Auto bewertet die Kraftstoffe einzeln. Tankerkönig wird in Deutschland für
-E5, E10 und Diesel bevorzugt. E10 darf ausschließlich dann als E5 angezeigt
-werden, wenn für das Land keine ausdrücklich unterstützten E10-Preisdaten
-verfügbar sind; der Ersatz wird an Station und Frontend gekennzeichnet.
-
-## Erzeugte Entities
-
-Der Overview-Sensor stellt unter anderem folgende Attribute bereit:
-
-`radius`, `fuel_type`, `fuel_types`, `location_entity`, `station_count`, `station_entities`, `last_successful_update`, `reference_latitude`, `reference_longitude`, `distance_since_last_search`, `nearest_station`, `cheapest_station`
-
-Die Stations-Slots stellen unter anderem bereit:
-
-`station_id`, `station_name`, `brand`, `price`, `distance`, `is_open`, `street`, `house_number`, `postcode`, `place`, `latitude`, `longitude`
-
-Die Slot-Entity-ID und Unique-ID bleiben stabil. Die Tankstelle in einem Slot kann sich nach einer Aktualisierung ändern; der Anzeigename folgt der aktuellen Tankstelle. Ein leerer Slot ist `unavailable`. Preiswerte verwenden `EUR/L`.
-
-## Alternative Dashboard-Beispiele
-
-Die mitgelieferte Mobile Fuel Stations Card ist der empfohlene Standardweg. Alternativ können die erzeugten Sensoren mit normalen Home-Assistant-Karten dargestellt werden. Mushroom Cards sind eine optionale zusätzliche Custom-Card-Abhängigkeit.
+Je nach ausgewähltem Anbieter können Standortkoordinaten, Radius und
+Kraftstoffauswahl an den Anbieter gesendet werden. Die Integration protokolliert
+keine vollständigen API-Schlüssel und gibt keine exakten Standortdaten in
+Diagnosen aus. Bei Nakordoni muss die sichtbare Attribution **Data by
+nakordoni.eu** erhalten bleiben.
 
 ## Fehlerbehebung
 
-- **Keine Tankstellen:** Standort, Radius, Kraftstofftyp und API-Zugang prüfen.
-- **Standort nicht verfügbar:** Prüfen, ob die Standort-Entity aktuelle `latitude`- und `longitude`-Attribute liefert.
-- **Preise aktualisieren sich nicht:** Overview-Sensor, letzte erfolgreiche Aktualisierung und Home-Assistant-Logs prüfen.
-- **Card Picker zeigt die Karte nicht:** Integration aktualisieren, Home Assistant vollständig neu starten, Browser oder Companion-App vollständig neu laden und prüfen, ob der Overview-Sensor existiert. Ein manueller Resource-Eintrag ist bei aktuellen Installationen nicht erforderlich.
-- **API-Probleme:** Tankerkönig-API-Key und Fehlermeldungen in den Logs prüfen.
-- **Bewegungsupdates:** Bewegungsschwelle und Cooldown kontrollieren.
-- **Entity-IDs:** Die erzeugten Entity-IDs in **Einstellungen → Geräte & Dienste → Entitäten** prüfen.
+- **Keine Tankstellen:** Standort-Entity, Koordinaten, Radius, Provider-Capability
+  und API-Key prüfen.
+- **Preis nicht verfügbar:** Das bedeutet, dass für genau diese Station und
+  Kraftstoffart kein gültiger Preis vorliegt; es wird kein anderer Kraftstoff
+  eingesetzt.
+- **Provider nicht aktiv:** Prüfen, ob der Anbieter in der Checkbox-Auswahl
+  aktiviert und ein Schlüssel hinterlegt ist.
+- **Karte nach Update veraltet:** Home Assistant vollständig neu starten. Die
+  versionierte Resource-URL verhindert normalerweise die Wiederverwendung
+  alter Card-Skripte.
+- **Nakordoni:** Live-Freigabe, Marktberechtigung und Quoten sind weiterhin
+  externe Voraussetzungen und in beta.10 nicht als erfolgreich verfügbar
+  behauptet.
 
-Wenn der Fehler bleibt, prüfe Frontend-Logs und Browser-Konsole und erstelle ein GitHub Issue mit relevanten, redigierten Logs.
+## Bekannte Einschränkungen
 
-## Datenschutz und Sicherheit
+- Nakordoni-Live-Freigabe ist noch ausstehend.
+- Provider- und Länderabdeckung kann sich durch externe API-Verträge,
+  Berechtigungen, Quoten und Stationsdaten ändern.
+- HVO100 wird nur bei verifizierter Provider-/Länder-Capability mit Preisen
+  angezeigt.
 
-Provider-Credentials werden im Config Entry gespeichert und dürfen nicht veröffentlicht werden. Der konfigurierte Standort wird für die Tankstellensuche an den ausgewählten Provider übertragen. Diagnostics sollten vor dem Teilen auf sensible Daten geprüft werden. Veröffentliche keine exakten Standortdaten oder Zugangsdaten in Issues.
+## Entwicklung und Tests
 
-## API und Attribution
-
-Die Tankstellendaten stammen vom konfigurierten Provider. Beachte die
-jeweiligen Nutzungsbedingungen, Berechtigungen, Quoten und API-Limits.
-Petromap-Runtime-Unterstützung ist in der Beta enthalten; der reale Zugriff
-hängt von den Berechtigungen des konfigurierten Developer-Keys und der
-Länderabdeckung ab.
-
-Für Nakordoni zeigt die Karte bei Nakordoni-Daten sichtbar und klickbar
-**[Data by nakordoni.eu](https://nakordoni.eu/)** an. Für Petromap gelten der
-aktuelle [Developer Agreement](https://developer.petromap.eu/terms) und die
-jeweiligen Providerbedingungen; eine separate Petromap-Attribution wird von
-MFS derzeit nicht in der Karte dargestellt.
-
-## Entwicklung und Beiträge
-
-Entwicklungs- und Testhinweise stehen in [CONTRIBUTING.md](CONTRIBUTING.md). Die deutsche und englische Dokumentation werden als separate README-Dateien gepflegt.
-
-## Lizenz
-
-Siehe [LICENSE](LICENSE).
+Die Beta.10-Prüfung umfasst Python-Tests, Frontend-Tests, Produktions-Build,
+Hassfest, JSON-/Syntaxprüfung, Bundle-Diff und `git diff --check`. Provider-
+und API-Tests verwenden zusätzlich Mocks und Fixtures; unbestätigte Live-
+Zugänge werden nicht als erfolgreich simuliert.

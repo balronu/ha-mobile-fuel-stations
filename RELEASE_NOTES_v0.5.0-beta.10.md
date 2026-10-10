@@ -9,6 +9,8 @@
   visible prices and status, and accessible navigation targets.
 - Duplicate nearest/cheapest highlights are merged only for the same stable
   station identity; different fuel highlights remain correctly labeled.
+- Updated the German and English README files with current beta.10 setup,
+  provider coverage, API-key handling, HACS guidance, privacy, and limitations.
 
 ## Compatibility
 
