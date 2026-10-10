@@ -175,6 +175,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._movement_refresh_scheduled = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
         self._provider_status_store = Store(hass, 1, f"{DOMAIN}.provider_status.{entry.entry_id}")
+        # Keep the status in the runtime object as well as hass.data.  The
+        # options flow can be opened while the integration is being reloaded;
+        # reading the runtime copy avoids a transient "untested" display when
+        # the persisted result has already been loaded for this coordinator.
+        self.provider_status: dict[str, dict[str, str]] = {}
         self.fuel_types = self._configured_fuels(self.options)
         self.provider_modes = self._configured_provider_modes(self.options)
         self.available_provider_modes = frozenset(
@@ -308,10 +313,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
                 self.reference_position = (float(lat), float(lon))
         provider_status = await self._provider_status_store.async_load()
-        domain_data = self.hass.data.setdefault(DOMAIN, {})
-        domain_data.setdefault("provider_status", {})[self.entry.entry_id] = (
+        self.provider_status = (
             provider_status if isinstance(provider_status, dict) else {}
         )
+        domain_data = self.hass.data.setdefault(DOMAIN, {})
+        domain_data.setdefault("provider_status", {})[self.entry.entry_id] = self.provider_status
         if self.options.get(CONF_MOVEMENT_UPDATES, True):
             self._unsub_position = async_track_state_change_event(
                 self.hass, [self.options[CONF_LOCATION_ENTITY]], self._async_position_changed
@@ -324,10 +330,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             return
         domain_data = self.hass.data.setdefault(DOMAIN, {})
         all_status = domain_data.setdefault("provider_status", {}).setdefault(self.entry.entry_id, {})
-        all_status[provider] = {
+        status_record = {
             "status": status,
             "checked_at": datetime.now().astimezone().isoformat(),
         }
+        all_status[provider] = status_record
+        self.provider_status = all_status
         await self._provider_status_store.async_save(all_status)
 
     async def async_shutdown(self) -> None:

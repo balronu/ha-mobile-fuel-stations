@@ -289,6 +289,13 @@ def _status_for_provider(hass: HomeAssistant | None, entry: Any, data: dict[str,
         return "no_key"
     statuses = getattr(hass, "data", {}).get(DOMAIN, {}).get("provider_status", {}) if hass is not None else {}
     stored = statuses.get(entry.entry_id, {}).get(provider, {}) if entry is not None else {}
+    # During an options-flow/reload boundary hass.data can briefly lag behind
+    # the already initialized coordinator.  Prefer its non-sensitive runtime
+    # status before falling back to the legacy in-memory map.
+    runtime = getattr(entry, "runtime_data", None) if entry is not None else None
+    runtime_statuses = getattr(runtime, "provider_status", {}) if runtime is not None else {}
+    if not isinstance(stored, dict) or not stored.get("status"):
+        stored = runtime_statuses.get(provider, {}) if isinstance(runtime_statuses, dict) else {}
     return stored.get("status", "untested") if isinstance(stored, dict) else "untested"
 
 

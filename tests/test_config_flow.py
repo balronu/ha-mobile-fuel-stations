@@ -209,6 +209,32 @@ def test_provider_status_placeholders_are_localized_and_never_show_credentials()
     assert "tk-secret" not in str(placeholders)
 
 
+def test_provider_status_uses_initialized_coordinator_during_reload_boundary():
+    entry = _entry(
+        {
+            **_v2_data(
+                PROVIDER_AUTO,
+                **{
+                    CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP],
+                    CONF_TANKERKOENIG_API_KEY: "tk-secret",
+                    CONF_PETROMAP_API_KEY: "pm-secret",
+                },
+            )
+        }
+    )
+    entry.runtime_data = SimpleNamespace(
+        provider_status={PROVIDER_TANKERKOENIG: {"status": "success"}}
+    )
+    hass = SimpleNamespace(config=SimpleNamespace(language="de"), data={})
+
+    placeholders = _credential_status_placeholders({**entry.data, **entry.options}, hass, entry)
+
+    assert "Tankerkönig: Zugang erfolgreich geprüft" in placeholders["provider_status"]
+    assert "Petromap: API-Schlüssel hinterlegt – noch nicht geprüft" in placeholders["provider_status"]
+    assert "tk-secret" not in str(placeholders)
+    assert "pm-secret" not in str(placeholders)
+
+
 def test_options_explicit_remove_removes_only_requested_provider_key():
     entry = _entry(
         {

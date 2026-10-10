@@ -30,8 +30,14 @@ from mobile_fuel_stations.providers.petromap import PetromapProvider
 
 
 class _Store:
+    def __init__(self):
+        self.saved = None
+
+    async def async_load(self):
+        return self.saved
+
     async def async_save(self, data):
-        del data
+        self.saved = data
 
 
 class _Provider:
@@ -69,6 +75,8 @@ def _coordinator(provider, fuel="diesel"):
     coordinator.reference_position = None
     coordinator.last_request = None
     coordinator._store = _Store()
+    coordinator._provider_status_store = _Store()
+    coordinator.provider_status = {}
     coordinator.country_auto_context = SimpleNamespace(
         observe_position=lambda position: None
     )
@@ -94,6 +102,8 @@ def test_petromap_diesel_refresh_uses_one_search_query(monkeypatch):
     assert provider.calls[0].fuel_type == "diesel"
     assert provider.calls[0].latitude == 49.2
     assert provider.calls[0].longitude == 7.0
+    assert coordinator.hass.data["mobile_fuel_stations"]["provider_status"]["test-entry"][PROVIDER_PETROMAP]["status"] == "success"
+    assert coordinator._provider_status_store.saved[PROVIDER_PETROMAP]["status"] == "success"
 
 
 def test_petromap_e5_refresh_uses_one_search_query(monkeypatch):
