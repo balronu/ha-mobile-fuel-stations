@@ -39,7 +39,7 @@ unauthenticated provider is never used as a silent fallback.
 
 | Provider | Key | Current implementation coverage |
 | --- | --- | --- |
-| [Tankerkönig](https://creativecommons.tankerkoenig.de/) | Yes | Germany; Diesel, E5, and E10; API radius up to 25 km |
+| [Tankerkönig](https://onboarding.tankerkoenig.de/) | Yes | Germany; Diesel, E5, and E10; API radius up to 25 km |
 | [Petromap v2](https://developer.petromap.eu/) | Yes | DE/AT station prices for Diesel, E5, and LPG; other countries depend on verified Petromap coverage |
 | [Nakordoni](https://nakordoni.dev/) | Yes | Implemented for Diesel, E5, E10, and LPG; live API/market approval is still pending |
 
@@ -47,11 +47,59 @@ HVO100 is a real selectable fuel type. Prices depend on a verified provider and
 country capability; HVO100 is not documented as universally unsupported and is
 never silently represented as Diesel.
 
-### API keys
+### API keys for regular Home Assistant users
 
-Each provider used by the integration needs its own key. The official sources
-are linked above. Keys are entered in the setup or options flow and are never
-shown in full in the UI, logs, diagnostics, or Git files.
+Each enabled provider needs its own access. You do not need programming skills,
+your own app, or your own API client. Open the provider's official page,
+register or request access, and wait for the provider's approval. If asked for
+the purpose of use, you may state **Private use with Home Assistant / Mobile
+Fuel Stations**, where applicable. Always follow the provider's terms,
+registration restrictions, quotas, and possible charges.
+
+#### Tankerkönig
+
+1. Open the [Tankerkönig onboarding page](https://onboarding.tankerkoenig.de/).
+2. Register and request the intended access.
+3. If asked for the purpose, state private use with Home Assistant / Mobile
+   Fuel Stations where applicable.
+4. Wait for registration and key issuance, and observe Tankerkönig's terms of
+   use and any registration restrictions.
+5. In Home Assistant, open **Settings → Devices & services → Mobile Fuel
+   Stations → Configure → Manage credentials**.
+6. Enter the key and save it.
+7. Check the actual access status afterwards. A stored key is not automatically
+   treated as successfully checked.
+
+#### Petromap
+
+1. Open the [Petromap Developer page](https://developer.petromap.eu/).
+2. Register or request API access.
+3. If asked for the purpose, state private use with Home Assistant / Mobile
+   Fuel Stations where applicable.
+4. Wait for Petromap's manual approval and key issuance; registration alone
+   does not guarantee usable access.
+5. In Home Assistant, open **Settings → Devices & services → Mobile Fuel
+   Stations → Configure → Manage credentials**.
+6. Enter the key and save it.
+7. Check the actual access status. Petromap remains “stored – not checked yet”
+   until a successful provider-owned request has occurred.
+
+#### Nakordoni
+
+1. Open the [Nakordoni Developer page](https://nakordoni.eu/en/developers).
+2. Register or request key issuance.
+3. If asked for the purpose, state private use with Home Assistant / Mobile
+   Fuel Stations where applicable.
+4. Wait for both key issuance and the required approval for the countries and
+   fuel data you need. A key alone does not automatically mean that data
+   access is approved; live approval is still pending.
+5. In Home Assistant, open **Settings → Devices & services → Mobile Fuel
+   Stations → Configure → Manage credentials**.
+6. Enter the key and save it.
+7. Check the actual status. Immediate approval or unrestricted use is not
+   assumed.
+
+Keys are never shown in full in the UI, logs, diagnostics, or Git files.
 
 The options flow shows a non-sensitive status for each provider:
 
