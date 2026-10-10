@@ -596,7 +596,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             if PROVIDER_PETROMAP in target_modes and not self.config_entry.data.get(
                 CONF_PETROMAP_PRIVACY_ACCEPTED, False
             ):
-                step_id = "options_petromap_privacy" if target_modes == [PROVIDER_PETROMAP] else "options_provider_privacy"
+                step_id = "options_petromap_privacy" if target_modes == [PROVIDER_PETROMAP] or (legacy_ui and target_mode == PROVIDER_AUTO) else "options_provider_privacy"
                 return self.async_show_form(step_id=step_id, data_schema=vol.Schema({}))
             if PROVIDER_NAKORDONI in target_modes and not self.config_entry.data.get(
                 CONF_NAKORDONI_PRIVACY_ACCEPTED, False

@@ -32,6 +32,7 @@ from mobile_fuel_stations.const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     CONF_PROVIDER_MODE,
+    CONF_PROVIDER_MODES,
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
@@ -124,11 +125,12 @@ def test_options_form_translates_selectors_and_uses_visible_station_count_slider
 
     result = asyncio.run(flow.async_step_init())
 
-    provider = _validator(result, CONF_PROVIDER_MODE)
+    provider = _validator(result, CONF_PROVIDER_MODES)
     sorting = _validator(result, CONF_SORT_MODE)
     sort_fuel = _validator(result, CONF_SORT_FUEL)
     station_count = _validator(result, CONF_STATION_COUNT)
-    assert provider.config["options"] == [PROVIDER_TANKERKOENIG, "petromap", "nakordoni", "auto"]
+    assert provider.config["options"] == [PROVIDER_TANKERKOENIG, "petromap", "nakordoni"]
+    assert provider.config["multiple"] is True
     assert sorting.config["options"] == ["distance", "price"]
     assert sort_fuel.config["options"] == ["diesel"]
     assert isinstance(station_count, selector.NumberSelector)
@@ -728,6 +730,7 @@ def test_canonical_v2_data_at_version_one_is_promoted_with_fuel_metadata():
         **original_data,
         CONF_FUEL_TYPE: "diesel",
         "fuel_types": ["diesel"],
+        CONF_PROVIDER_MODES: [PROVIDER_PETROMAP],
     }
 
 

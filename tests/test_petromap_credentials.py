@@ -121,14 +121,15 @@ def test_usage_validator_maps_timeout_and_connection_errors_without_retry():
     assert len(connection_session.calls) == 1
 
 
-def test_config_schema_exposes_provider_mode_but_options_do_not():
+def test_config_schema_exposes_provider_multi_select_but_options_do_not():
     user_schema = _schema({}, False, True)
     options_schema = _schema({}, False)
     user_keys = {getattr(key, "schema", key) for key in user_schema.schema}
     option_keys = {getattr(key, "schema", key) for key in options_schema.schema}
-    assert CONF_PROVIDER_MODE in user_keys
+    from mobile_fuel_stations.const import CONF_PROVIDER_MODES
+    assert CONF_PROVIDER_MODES in user_keys
     assert CONF_API_KEY not in user_keys
-    assert CONF_PROVIDER_MODE not in option_keys
+    assert CONF_PROVIDER_MODES not in option_keys
 
 
 def _flow_with_location():
