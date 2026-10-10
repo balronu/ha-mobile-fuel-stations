@@ -33,6 +33,7 @@ from mobile_fuel_stations.const import (
     DOMAIN,
     CONF_PROVIDER_MODE,
     CONF_PROVIDER_MODES,
+    CONF_PROVIDER_MODES,
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
@@ -137,6 +138,71 @@ def test_options_form_translates_selectors_and_uses_visible_station_count_slider
     assert station_count.config["mode"] == selector.NumberSelectorMode.SLIDER
     assert station_count.config["min"] == 1
     assert station_count.config["max"] == 10
+
+
+def test_provider_selector_is_multi_select_and_excludes_legacy_auto_option():
+    entry = _entry(_data())
+    result = asyncio.run(MobileFuelStationsConfigFlow().async_step_user())
+    provider = _validator(result, CONF_PROVIDER_MODES)
+    assert provider.config["multiple"] is True
+    assert provider.config["options"] == [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI]
+
+
+def test_options_multi_provider_mode_uses_only_selected_providers_and_shows_safe_status():
+    entry = _entry(
+        {
+            **_v2_data(
+                PROVIDER_AUTO,
+                **{
+                    CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP],
+                    CONF_TANKERKOENIG_API_KEY: "tk-secret",
+                    CONF_PETROMAP_API_KEY: "pm-secret",
+                    CONF_PETROMAP_PRIVACY_ACCEPTED: True,
+                },
+            )
+        }
+    )
+    flow = _flow(entry)
+    submitted = {**_data(), CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP]}
+    status_form = asyncio.run(flow.async_step_init(submitted))
+    assert status_form["step_id"] == "provider_credentials"
+    assert status_form["description_placeholders"] == {
+        "tankerkoenig_status": "API key stored",
+        "petromap_status": "API key stored",
+        "nakordoni_status": "No API key stored",
+    }
+    assert "tk-secret" not in str(status_form)
+    result = asyncio.run(flow.async_step_provider_credentials({}))
+    assert result["type"] == "create_entry"
+    assert entry.data[CONF_PROVIDER_MODE] == PROVIDER_AUTO
+    assert entry.data[CONF_PROVIDER_MODES] == [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP]
+    assert CONF_TANKERKOENIG_API_KEY not in result["data"]
+    assert CONF_PETROMAP_API_KEY not in result["data"]
+
+
+def test_options_explicit_remove_removes_only_requested_provider_key():
+    entry = _entry(
+        {
+            **_v2_data(
+                PROVIDER_AUTO,
+                **{
+                    CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP],
+                    CONF_TANKERKOENIG_API_KEY: "tk-secret",
+                    CONF_PETROMAP_API_KEY: "pm-secret",
+                    CONF_PETROMAP_PRIVACY_ACCEPTED: True,
+                },
+            )
+        }
+    )
+    flow = _flow(entry)
+    submitted = {**_data(), CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP]}
+    asyncio.run(flow.async_step_init(submitted))
+    result = asyncio.run(
+        flow.async_step_provider_credentials({"remove_tankerkoenig_api_key": True})
+    )
+    assert result["type"] == "create_entry"
+    assert CONF_TANKERKOENIG_API_KEY not in entry.data
+    assert entry.data[CONF_PETROMAP_API_KEY] == "pm-secret"
 
 
 def test_options_form_limits_price_sort_fuel_to_selected_fuels_and_repairs_invalid_default():

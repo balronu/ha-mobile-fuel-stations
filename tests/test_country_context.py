@@ -40,6 +40,17 @@ def test_initial_gps_resolution_confirms_de_and_prepares_tankerkoenig():
     assert decision.reason == "preferred_provider"
 
 
+def test_auto_policy_never_uses_provider_outside_active_allowlist():
+    context = CountryAutoContext(
+        "diesel", resolver=lambda _lat, _lon: "DE", allowed_providers={PROVIDER_PETROMAP}
+    )
+
+    decision = context.observe_position((49.2402, 6.9969))
+
+    assert decision.provider_mode is None
+    assert decision.country_code == "DE"
+
+
 def test_country_change_requires_three_confirmations():
     context = _context(["DE", "FR", "FR", "FR"])
 
