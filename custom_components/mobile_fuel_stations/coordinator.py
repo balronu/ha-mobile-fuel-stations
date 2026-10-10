@@ -397,7 +397,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             result,
             int(self.options[CONF_STATION_COUNT]),
             mode=self.options.get(CONF_SORT_MODE, DEFAULT_SORT_MODE),
-            fuel=self.options.get(CONF_SORT_FUEL, self.fuel_types[0] if self.fuel_types else DEFAULT_SORT_FUEL),
+            fuel=self.options.get(
+                CONF_SORT_FUEL,
+                getattr(self, "fuel_types", configured_fuels)[0] if configured_fuels else DEFAULT_SORT_FUEL,
+            ),
         )
         self.last_successful_update = now
         self.reference_position = position
