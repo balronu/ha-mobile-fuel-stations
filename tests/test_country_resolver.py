@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from mobile_fuel_stations.country_resolver import _point_in_polygon, clear_cache, resolve
+from mobile_fuel_stations import country_resolver
+from mobile_fuel_stations.country_resolver import _point_in_polygon, clear_cache, load_countries, resolve
 
 
 @pytest.fixture(autouse=True)
@@ -104,6 +105,36 @@ def test_dataset_integrity():
 def test_boundary_is_deterministic():
     result = resolve(49.0, 7.0)
     assert result == resolve(49.0, 7.0)
+
+
+def test_dataset_is_loaded_once_and_reused(monkeypatch):
+    reads = 0
+    original = country_resolver._DATA_PATH.read_text
+
+    def read_text(*args, **kwargs):
+        nonlocal reads
+        reads += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(country_resolver, "_DATA_PATH", type("PathStub", (), {"read_text": read_text})())
+    load_countries()
+    assert resolve(49.2402, 6.9969) == "DE"
+    assert resolve(48.2082, 16.3738) == "AT"
+    assert reads == 1
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [OSError("missing"), json.JSONDecodeError("invalid", "{", 0), KeyError("countries")],
+)
+def test_failed_dataset_load_is_cached_fail_open(monkeypatch, failure):
+    def fail(*_args, **_kwargs):
+        raise failure
+
+    monkeypatch.setattr(country_resolver, "_DATA_PATH", type("PathStub", (), {"read_text": fail})())
+    with pytest.raises(type(failure)):
+        load_countries()
+    assert resolve(49.2402, 6.9969) is None
 
 
 def test_polygon_hole_is_not_classified_as_country():

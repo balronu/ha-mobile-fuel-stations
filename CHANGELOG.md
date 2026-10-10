@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0-beta.9 — Non-blocking country initialization
+
+- Load the offline country dataset once through Home Assistant's executor
+  during config-entry setup, eliminating synchronous file reads from the event
+  loop during coordinator refreshes.
+- Cache failed or unavailable dataset loads as an empty result so repeated GPS
+  updates fail open without repeated disk access.
+- Retain the beta.8 options-flow translations, multi-fuel sorting behavior,
+  responsive card, and approved local branding unchanged.
+- Nakordoni live authorization remains provider-dependent.
+
 ## 0.5.0-beta.8 — Correct multi-fuel results and mobile presentation
 
 - Stations are shown once with all available selected-fuel prices on one card.

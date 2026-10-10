@@ -1,5 +1,7 @@
 """Mobile Fuel Stations integration."""
 
+import json
+import logging
 from pathlib import Path
 
 from homeassistant.components.frontend import add_extra_js_url
@@ -29,6 +31,7 @@ from .const import (
     PROVIDER_TANKERKOENIG,
 )
 from .coordinator import MobileFuelStationsCoordinator
+from .country_resolver import load_countries
 from .providers.base import FuelFallbackBlockedError, NoSuitableProviderError
 
 PLATFORMS = [Platform.SENSOR]
@@ -36,6 +39,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 type MobileFuelStationsConfigEntry = ConfigEntry[MobileFuelStationsCoordinator]
 
 _FRONTEND_DIR = Path(__file__).parent / "frontend"
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -96,6 +100,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfigEntry) -> bool:
+    try:
+        await hass.async_add_executor_job(load_countries)
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as err:
+        _LOGGER.warning("Offline country resolver unavailable (%s)", type(err).__name__)
     domain_data = hass.data.setdefault(DOMAIN, {})
     configured_provider = {**entry.data, **entry.options}.get(CONF_PROVIDER_MODE)
     if configured_provider != PROVIDER_NAKORDONI:

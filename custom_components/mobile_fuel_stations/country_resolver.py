@@ -70,9 +70,26 @@ def _point_in_polygon(longitude: float, latitude: float, polygon: dict[str, Any]
 def _load_countries() -> tuple[dict[str, Any], ...]:
     global _COUNTRIES
     if _COUNTRIES is None:
-        payload = json.loads(_DATA_PATH.read_text(encoding="utf-8"))
-        _COUNTRIES = tuple(payload["countries"])
+        try:
+            payload = json.loads(_DATA_PATH.read_text(encoding="utf-8"))
+            _COUNTRIES = tuple(payload["countries"])
+        except (OSError, json.JSONDecodeError, KeyError, TypeError):
+            # Remember a failed load so a missing/corrupt optional dataset is
+            # fail-open and cannot cause repeated synchronous file I/O during
+            # coordinator refreshes.
+            _COUNTRIES = ()
+            raise
     return _COUNTRIES
+
+
+def load_countries() -> tuple[dict[str, Any], ...]:
+    """Load and cache the dataset once.
+
+    Home Assistant calls this through ``async_add_executor_job`` during entry
+    setup.  Runtime resolution then only walks the in-memory cache.
+    """
+
+    return _load_countries()
 
 
 def resolve(latitude: float, longitude: float) -> str | None:
@@ -103,4 +120,4 @@ def clear_cache() -> None:
     _COUNTRIES = None
 
 
-__all__ = ["clear_cache", "resolve"]
+__all__ = ["clear_cache", "load_countries", "resolve"]

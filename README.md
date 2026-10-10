@@ -12,7 +12,7 @@ Providerquoten ab.
 ## Stable und Pre-Release
 
 - **Stable:** `v0.4.0` ist die stabile Version für normale Nutzer.
-- **Beta:** `v0.5.0-beta.8` ist die aktuelle Pre-Release-Version mit korrekter Mehrfachauswahl und den neuen
+- **Beta:** `v0.5.0-beta.9` ist die aktuelle Pre-Release-Version mit korrekter Mehrfachauswahl und einem
   Provider- und Diagnosefunktionen.
 
 Wenn du die Beta testen möchtest, wähle in HACS bei Bedarf die **aktuelle
@@ -89,7 +89,7 @@ Home-Assistant-Brands-Upload stehen in
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.8`
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.9`
 enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
 eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
 einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update

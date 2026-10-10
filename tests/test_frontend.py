@@ -2,10 +2,10 @@ import asyncio
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from mobile_fuel_stations import DOMAIN
-from mobile_fuel_stations import async_setup
+from mobile_fuel_stations import async_setup, async_setup_entry
 from mobile_fuel_stations.const import (
     FRONTEND_FILENAME,
     FRONTEND_RESOURCE_URL,
@@ -42,6 +42,36 @@ def test_frontend_extra_module_registration_is_integration_wide():
     assert add_extra_js.call_args.args == (hass, FRONTEND_URL)
 
 
+def test_config_entry_preloads_country_data_in_executor():
+    executor = AsyncMock()
+    forward = AsyncMock()
+    hass = SimpleNamespace(
+        data={},
+        async_add_executor_job=executor,
+        config_entries=SimpleNamespace(async_forward_entry_setups=forward),
+    )
+    entry = SimpleNamespace(
+        entry_id="country-preload",
+        data={},
+        options={},
+        runtime_data=None,
+        add_update_listener=Mock(),
+        async_on_unload=Mock(),
+    )
+    coordinator = SimpleNamespace(
+        async_setup=AsyncMock(),
+        async_config_entry_first_refresh=AsyncMock(),
+    )
+
+    with patch("mobile_fuel_stations.MobileFuelStationsCoordinator", return_value=coordinator):
+        assert asyncio.run(async_setup_entry(hass, entry)) is True
+
+    executor.assert_awaited_once()
+    assert executor.await_args.args[0].__name__ == "load_countries"
+    coordinator.async_setup.assert_awaited_once()
+    coordinator.async_config_entry_first_refresh.assert_awaited_once()
+
+
 def test_frontend_bundle_and_versioned_resource_url():
     bundle = Path(__file__).parents[1] / "custom_components" / DOMAIN / "frontend" / FRONTEND_FILENAME
     assert bundle.is_file()
@@ -55,7 +85,7 @@ def test_frontend_bundle_and_versioned_resource_url():
 
 
 def test_frontend_resource_url_is_stable_across_updates():
-    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.8"
+    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.9"
 
 
 def test_versions_are_synchronized():
@@ -64,7 +94,7 @@ def test_versions_are_synchronized():
         (root / "custom_components" / DOMAIN / "manifest.json").read_text()
     )
     package = json.loads((root / "frontend" / "package.json").read_text())
-    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.5.0-beta.8"
-    assert json.loads((root / "frontend" / "package-lock.json").read_text())["version"] == "0.5.0-beta.8"
-    assert json.loads((root / "frontend" / "package-lock.json").read_text())["packages"][""]["version"] == "0.5.0-beta.8"
-    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.5.0-beta.8"
+    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.5.0-beta.9"
+    assert json.loads((root / "frontend" / "package-lock.json").read_text())["version"] == "0.5.0-beta.9"
+    assert json.loads((root / "frontend" / "package-lock.json").read_text())["packages"][""]["version"] == "0.5.0-beta.9"
+    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.5.0-beta.9"
