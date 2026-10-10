@@ -65,6 +65,18 @@ unverfügbare unterdrücken die übrigen nicht.
 
 ## Installation
 
+### Branding
+
+Das freigegebene Mobile-Fuel-Stations-Motiv liegt als lokale Home-Assistant-
+Branding-Dateien unter
+`custom_components/mobile_fuel_stations/brand/`. Damit verwenden Home-
+Assistant-Versionen ab 2026.3 das Icon und Logo direkt aus der Custom
+Integration; zusätzliche Manifest-Felder sind nicht erforderlich. Die
+Ausgangsdatei, Varianten und eine visuelle Übersicht liegen unter
+`assets/branding/`. Details zur HACS-Darstellung und zum vorbereiteten
+Home-Assistant-Brands-Upload stehen in
+[`BRANDING.md`](BRANDING.md).
+
 ### HACS (Custom Repository)
 
 1. Öffne **HACS → Integrationen**.
