@@ -128,13 +128,13 @@ def test_options_form_translates_selectors_and_uses_visible_station_count_slider
     sorting = _validator(result, CONF_SORT_MODE)
     sort_fuel = _validator(result, CONF_SORT_FUEL)
     station_count = _validator(result, CONF_STATION_COUNT)
-    assert provider.config.options == [PROVIDER_TANKERKOENIG, "petromap", "nakordoni", "auto"]
-    assert sorting.config.options == ["distance", "price"]
-    assert sort_fuel.config.options == ["diesel"]
+    assert provider.config["options"] == [PROVIDER_TANKERKOENIG, "petromap", "nakordoni", "auto"]
+    assert sorting.config["options"] == ["distance", "price"]
+    assert sort_fuel.config["options"] == ["diesel"]
     assert isinstance(station_count, selector.NumberSelector)
-    assert station_count.config.mode == selector.NumberSelectorMode.SLIDER
-    assert station_count.config.min == 1
-    assert station_count.config.max == 10
+    assert station_count.config["mode"] == selector.NumberSelectorMode.SLIDER
+    assert station_count.config["min"] == 1
+    assert station_count.config["max"] == 10
 
 
 def test_options_form_limits_price_sort_fuel_to_selected_fuels_and_repairs_invalid_default():
@@ -147,7 +147,7 @@ def test_options_form_limits_price_sort_fuel_to_selected_fuels_and_repairs_inval
     result = asyncio.run(flow.async_step_init())
     values = result["data_schema"]({})
     sort_fuel = _validator(result, CONF_SORT_FUEL)
-    assert sort_fuel.config.options == ["diesel", "e10"]
+    assert sort_fuel.config["options"] == ["diesel", "e10"]
     assert values[CONF_SORT_FUEL] == "diesel"
 
 
