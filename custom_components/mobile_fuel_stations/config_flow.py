@@ -78,7 +78,8 @@ def _schema(
     if include_provider:
         schema[vol.Required(CONF_PROVIDER_MODE, default=defaults.get(CONF_PROVIDER_MODE, PROVIDER_AUTO))] = selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=[PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI, PROVIDER_AUTO]
+                options=[PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI, PROVIDER_AUTO],
+                translation_key=CONF_PROVIDER_MODE,
             )
         )
     if include_key:
@@ -104,6 +105,7 @@ def _schema(
                 selector.SelectSelectorConfig(
                     options=[{"value": fuel, "label": label} for fuel, label in FUEL_TYPE_LABELS.items()],
                     multiple=True,
+                    translation_key=CONF_FUEL_TYPE,
                 )
             ),
             vol.Required(CONF_STATION_COUNT, default=defaults.get(CONF_STATION_COUNT, DEFAULT_STATION_COUNT)): selector.NumberSelector(
@@ -122,10 +124,14 @@ def _schema(
                 vol.Coerce(int), vol.Range(min=5, max=1440)
             ),
             vol.Required(CONF_SORT_MODE, default=defaults.get(CONF_SORT_MODE, DEFAULT_SORT_MODE)): selector.SelectSelector(
-                selector.SelectSelectorConfig(options=["distance", "price"])
+                selector.SelectSelectorConfig(
+                    options=["distance", "price"], translation_key=CONF_SORT_MODE
+                )
             ),
             vol.Required(CONF_SORT_FUEL, default=sort_fuel_default): selector.SelectSelector(
-                selector.SelectSelectorConfig(options=list(selected_fuels))
+                selector.SelectSelectorConfig(
+                    options=list(selected_fuels), translation_key=CONF_SORT_FUEL
+                )
             ),
         }
     )

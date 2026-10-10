@@ -177,9 +177,9 @@ def test_translation_files_contain_selector_labels_and_descriptions():
     root = Path(__file__).parents[1] / "custom_components" / "mobile_fuel_stations"
     de = json.loads((root / "translations" / "de.json").read_text())
     en = json.loads((root / "translations" / "en.json").read_text())
-    assert de["selector"]["provider_mode"]["select"]["options"]["auto"] == "Automatisch (empfohlen)"
-    assert de["selector"]["sort_mode"]["select"]["options"]["distance"] == "Entfernung – nächste zuerst"
-    assert en["selector"]["sort_fuel"]["select"]["options"]["hvo100"] == "HVO100"
+    assert de["selector"]["provider_mode"]["options"]["auto"] == "Automatisch (empfohlen)"
+    assert de["selector"]["sort_mode"]["options"]["distance"] == "Entfernung – nächste zuerst"
+    assert en["selector"]["sort_fuel"]["options"]["hvo100"] == "HVO100"
     assert "station_count" in de["options"]["step"]["init"]["data_description"]
 
 

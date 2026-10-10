@@ -119,32 +119,26 @@
   },
   "selector": {
     "provider_mode": {
-      "select": {
-        "options": {
+      "options": {
           "tankerkoenig": "Tankerkönig",
           "petromap": "Petromap",
           "nakordoni": "Nakordoni",
           "auto": "Automatic (recommended)"
-        }
       }
     },
     "sort_mode": {
-      "select": {
-        "options": {
+      "options": {
           "distance": "Distance — nearest first",
           "price": "Fuel price — cheapest first"
-        }
       }
     },
     "sort_fuel": {
-      "select": {
-        "options": {
+      "options": {
           "e5": "Super E5",
           "e10": "Super E10",
           "diesel": "Diesel",
           "lpg": "Autogas (LPG)",
           "hvo100": "HVO100"
-        }
       }
     }
   },
