@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.0] — Stable release
+
+- Added multi-provider selection for Tankerkönig, Petromap, and Nakordoni with
+  automatic selection limited to enabled and configured providers.
+- Added support for simultaneous E5, E10, Diesel, LPG, and HVO100 selection,
+  per-fuel price comparison, combined station cards, and stable station slots.
+- Added separate credential management, safe key replacement/removal, and
+  provider-specific access status based on actual provider requests.
+- Added distance and explicit-fuel price sorting, nearest/cheapest highlights,
+  navigation, compact responsive dashboard presentation, GPS movement updates,
+  and E10-to-E5 fallback notices.
+- Added the approved Home Assistant branding, repository social-preview asset,
+  complete German/English documentation, and user-facing API-key guides.
+- Preserved existing config entries, credentials, entity IDs, dashboard
+  resources, provider fallbacks, and sensor compatibility.
+- Nakordoni live authorization remains an external prerequisite.
+
 ## 0.5.0-beta.12 — Provider status and repository branding
 
 - Carry the provider-status fix into the release so successful provider-owned

@@ -4,7 +4,7 @@ from datetime import timedelta
 
 DOMAIN = "mobile_fuel_stations"
 CONFIG_ENTRY_VERSION = 4
-FRONTEND_VERSION = "0.5.0-beta.12"
+FRONTEND_VERSION = "0.5.0"
 FRONTEND_FILENAME = "mobile-fuel-stations-card.js"
 FRONTEND_URL = f"/{DOMAIN}/{FRONTEND_FILENAME}?v={FRONTEND_VERSION}"
 FRONTEND_RESOURCE_URL = FRONTEND_URL

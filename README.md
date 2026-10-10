@@ -11,11 +11,8 @@ bewegliche Objekte geeignet.
 
 | Kanal | Version | Zweck |
 | --- | --- | --- |
-| Stable | `v0.4.0` | Empfohlene Version für produktive Installationen |
-| Pre-Release | `v0.5.0-beta.12` | Aktueller Beta-Stand mit Provider-Status-Fix und kompakter Statusdarstellung |
-
-Beta-Versionen können sich ändern. Für produktive Systeme ist Stable die
-sicherere Wahl.
+| Stable | `v0.5.0` | Aktuelle empfohlene Version für produktive Installationen |
+| Vorherige Stable-Version | `v0.4.0` | Vorherige stabile Version |
 
 ## Funktionen
 
@@ -153,10 +150,10 @@ Home Assistant nicht unterstützt.
 4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** die
    Integration einrichten.
 
-Die Dashboard-Karte wird automatisch registriert. Beta.12 verwendet die
+Die Dashboard-Karte wird automatisch registriert. Stable 0.5.0 verwendet die
 versionierte Resource-URL:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.12`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0`
 
 Das lokale Icon/Logo ist Home-Assistant-Branding. Ein HACS-Repository-Icon und
 das Home-Assistant-Integrationsbranding sind getrennte Dinge; zusätzliche
@@ -232,7 +229,7 @@ nakordoni.eu** erhalten bleiben.
   versionierte Resource-URL verhindert normalerweise die Wiederverwendung
   alter Card-Skripte.
 - **Nakordoni:** Live-Freigabe, Marktberechtigung und Quoten sind weiterhin
-  externe Voraussetzungen und in beta.12 nicht als erfolgreich verfügbar
+  externe Voraussetzungen und nicht als erfolgreich verfügbar
   behauptet.
 
 ## Bekannte Einschränkungen
@@ -245,7 +242,7 @@ nakordoni.eu** erhalten bleiben.
 
 ## Entwicklung und Tests
 
-Die Beta.12-Prüfung umfasst Python-Tests, Frontend-Tests, Produktions-Build,
+Die Stable-0.5.0-Prüfung umfasst Python-Tests, Frontend-Tests, Produktions-Build,
 Hassfest, JSON-/Syntaxprüfung, Bundle-Diff und `git diff --check`. Provider-
 und API-Tests verwenden zusätzlich Mocks und Fixtures; unbestätigte Live-
 Zugänge werden nicht als erfolgreich simuliert.

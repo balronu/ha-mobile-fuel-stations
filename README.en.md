@@ -10,10 +10,8 @@ stations based on a vehicle or device entity exposing `latitude` and
 
 | Channel | Version | Purpose |
 | --- | --- | --- |
-| Stable | `v0.4.0` | Recommended for production installations |
-| Pre-release | `v0.5.0-beta.12` | Current beta with provider-status fix and compact status presentation |
-
-Beta versions can change. Stable is the safer choice for production systems.
+| Stable | `v0.5.0` | Current recommended version for production installations |
+| Previous stable | `v0.4.0` | Previous stable version |
 
 ## Features
 
@@ -134,10 +132,10 @@ form fields.
 3. Install it and restart Home Assistant completely.
 4. Add it under **Settings → Devices & services → Add integration**.
 
-The dashboard card registers automatically. Beta.12 uses the versioned resource
+The dashboard card registers automatically. Stable 0.5.0 uses the versioned resource
 URL:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.12`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0`
 
 The local icon/logo is Home Assistant integration branding. A HACS repository
 icon and Home Assistant integration branding are separate mechanisms; no extra
@@ -200,7 +198,7 @@ attribution: **Data by nakordoni.eu**.
 - **Stale card after update:** Restart Home Assistant completely. The versioned
   resource URL normally prevents stale card JavaScript from being reused.
 - **Nakordoni:** Live approval, market permission, and quotas remain external
-  prerequisites and are not claimed as available in beta.12.
+  prerequisites and are not claimed as available.
 
 ## Known limitations
 
@@ -211,7 +209,7 @@ attribution: **Data by nakordoni.eu**.
 
 ## Development and tests
 
-Beta.12 is checked with Python tests, frontend tests, the production build,
+Stable 0.5.0 is checked with Python tests, frontend tests, the production build,
 Hassfest, JSON/syntax checks, bundle-diff validation, and `git diff --check`.
 Provider/API tests also use mocks and fixtures; unapproved live access is never
 claimed as successful.
