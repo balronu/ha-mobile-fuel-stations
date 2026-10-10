@@ -111,7 +111,7 @@ def test_dataset_is_loaded_once_and_reused(monkeypatch):
     reads = 0
     original = country_resolver._DATA_PATH.read_text
 
-    def read_text(*args, **kwargs):
+    def read_text(_path, *args, **kwargs):
         nonlocal reads
         reads += 1
         return original(*args, **kwargs)

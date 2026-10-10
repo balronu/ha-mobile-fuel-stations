@@ -65,6 +65,10 @@ class _Provider:
         self.usage_calls += 1
 
 
+async def _async_executor(func, *args):
+    return func(*args)
+
+
 def _assert_runtime_usage_zero(pm):
     """Runtime refreshes must never perform credential validation."""
 
@@ -370,6 +374,7 @@ def test_first_refresh_expected_auto_state_is_accepted(monkeypatch, expected):
     )
     hass = SimpleNamespace(
         data={},
+        async_add_executor_job=_async_executor,
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
     )
     monkeypatch.setattr(integration, "MobileFuelStationsCoordinator", _Coordinator)
@@ -396,6 +401,7 @@ def test_first_refresh_real_network_failure_is_not_swallowed(monkeypatch):
     )
     hass = SimpleNamespace(
         data={},
+        async_add_executor_job=_async_executor,
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
     )
     monkeypatch.setattr(integration, "MobileFuelStationsCoordinator", _Coordinator)
