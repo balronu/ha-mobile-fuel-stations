@@ -8,6 +8,10 @@ The beta supports **Tankerkönig**, **Petromap v2**, and explicit **Nakordoni**.
 provider is selected from the confirmed country. Petromap access depends on
 the permissions of the configured developer key.
 
+## Beta 0.5.0-beta.8
+
+The station list is distance-sorted by default. Price sorting requires an explicit fuel type, so Diesel and E10 are never compared in one price ranking. Each station appears once and displays all available selected-fuel prices. The nearest station is distance-based and the cheapest station is calculated independently for each fuel.
+
 ## Features
 
 - setup and options through the Home Assistant UI
@@ -48,7 +52,7 @@ the permissions of the configured developer key.
 6. Add the integration through **Settings → Devices & services → Add integration**.
 
 The dashboard card is registered automatically. The automatically registered
-frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.7`
+frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.8`
 includes the integration version. Each integration version therefore gets its
 own resource URL, so stale card JavaScript from caches is not reused after a
 version update. After a HACS update, a complete Home Assistant restart is

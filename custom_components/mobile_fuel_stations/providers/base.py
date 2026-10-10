@@ -36,6 +36,8 @@ class Station:
     fuel_type: str | None = None
     requested_fuel: str | None = None
     fallback_used: bool = False
+    fuel_prices: dict[str, float | None] | None = None
+    fuel_fallbacks: dict[str, bool] | None = None
 
 
 @dataclass(slots=True, frozen=True)

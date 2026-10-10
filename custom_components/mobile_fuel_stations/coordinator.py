@@ -16,7 +16,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import Station, cheapest_station, nearest_station, sort_stations
+from .api import Station, cheapest_by_fuel, nearest_station, sort_stations, merge_stations
 from .const import (
     CONF_COOLDOWN,
     CONF_FUEL_TYPE,
@@ -28,6 +28,10 @@ from .const import (
     CONF_STATION_COUNT,
     CONF_UPDATE_INTERVAL,
     CONF_PROVIDER_MODE,
+    CONF_SORT_FUEL,
+    CONF_SORT_MODE,
+    DEFAULT_SORT_FUEL,
+    DEFAULT_SORT_MODE,
     DOMAIN,
     MAX_API_RADIUS_KM,
     PROVIDER_PETROMAP,
@@ -149,6 +153,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self.stations: list[Station] = []
         self.nearest_station: Station | None = None
         self.cheapest_station: Station | None = None
+        self.cheapest_stations: dict[str, Station] = {}
         self.last_successful_update: datetime | None = None
         self.reference_position: tuple[float, float] | None = None
         self.last_request: datetime | None = None
@@ -352,11 +357,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                 if len(requests) > 1 or requested_fuel != effective_fuel:
                     found = [replace(
                         station,
-                        station_id=(
-                            f"{request_mode}:{station.station_id}:{effective_fuel}"
-                            if len(requests) > 1
-                            else station.station_id
-                        ),
+                        station_id=station.station_id,
                         fuel_type=effective_fuel,
                         requested_fuel=requested_fuel,
                         fallback_used=requested_fuel != effective_fuel,
@@ -384,11 +385,18 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                 raise UpdateFailed(self._nakordoni_error_message(err)) from err
             provider_label = provider_mode or "provider"
             raise UpdateFailed(f"{provider_label} request failed") from err
+        result = merge_stations(result)
         self.nearest_station = nearest_station(result)
         if provider_mode == PROVIDER_NAKORDONI:
             self._record_nakordoni_success(provider)
-        self.cheapest_station = cheapest_station(result)
-        self.stations = sort_stations(result, int(self.options[CONF_STATION_COUNT]))
+        self.cheapest_stations = cheapest_by_fuel(result)
+        self.cheapest_station = self.cheapest_stations.get(self.fuel_types[0])
+        self.stations = sort_stations(
+            result,
+            int(self.options[CONF_STATION_COUNT]),
+            mode=self.options.get(CONF_SORT_MODE, DEFAULT_SORT_MODE),
+            fuel=self.options.get(CONF_SORT_FUEL, self.fuel_types[0] if self.fuel_types else DEFAULT_SORT_FUEL),
+        )
         self.last_successful_update = now
         self.reference_position = position
         await self._store.async_save({

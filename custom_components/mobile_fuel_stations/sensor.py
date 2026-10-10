@@ -108,6 +108,10 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "distance_since_last_search": self.coordinator.current_distance_km,
             "nearest_station": station_attributes(self.coordinator.nearest_station),
             "cheapest_station": station_attributes(self.coordinator.cheapest_station),
+            "cheapest_stations_by_fuel": {
+                fuel: station_attributes(station)
+                for fuel, station in getattr(self.coordinator, "cheapest_stations", {}).items()
+            },
             "provider": self.coordinator.config.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
             "attribution_name": "Data by nakordoni.eu"
             if self.coordinator.config.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
@@ -184,6 +188,8 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
             "fuel_type": station.fuel_type,
             "requested_fuel": station.requested_fuel,
             "fallback_used": station.fallback_used,
+            "fuel_prices": station.fuel_prices,
+            "fuel_fallbacks": station.fuel_fallbacks,
         }
         attributes.update({
             key: value

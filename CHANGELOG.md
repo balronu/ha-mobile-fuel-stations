@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0-beta.8 — Correct multi-fuel results and mobile presentation
+
+- Stations are shown once with all available selected-fuel prices on one card.
+- Nearest is distance-based; cheapest stations are calculated independently per fuel.
+- Added explicit distance/price sorting and a required price-sorting fuel.
+- Completed German and English flow labels and automatic provider mode for new installations.
+- Included approved local branding and responsive mobile card improvements.
+- Nakordoni live authorization remains provider-dependent.
+
 ## 0.5.0-beta.7 — Multi-fuel selection and provider-aware results
 
 - Added selectable Super E5, Super E10, Diesel, LPG and HVO100 fuel types.

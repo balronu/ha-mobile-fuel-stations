@@ -29,6 +29,8 @@ type HighlightStation = {
   fuel_type?: string | null;
   requested_fuel?: string | null;
   fallback_used?: boolean;
+  fuel_prices?: Record<string, number | null>;
+  fuel_fallbacks?: Record<string, boolean>;
 };
 
 export type NavigationProvider = "auto" | "apple" | "google" | "waze";
@@ -153,10 +155,13 @@ export class MobileFuelStationsCard extends LitElement {
     .station { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; border-top: 1px solid var(--divider-color); padding: 12px 0; cursor: pointer; }
     .station:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
     .icon { color: var(--primary-color); font-size: 1.5rem; }
-    .name, .address { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .name, .address { overflow-wrap: anywhere; word-break: break-word; }
     .name { font-weight: 500; }
     .address { color: var(--secondary-text-color); font-size: .85rem; }
     .price { font-size: 1.05rem; font-weight: 700; text-align: right; white-space: nowrap; }
+    .prices { min-width: 0; text-align: right; }
+    .fuel-price { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; font-size: .9rem; }
+    .fuel-price strong { white-space: nowrap; }
     .meta { color: var(--secondary-text-color); font-size: .82rem; text-align: right; white-space: nowrap; }
     .navigate { color: var(--primary-color); display: inline-flex; align-items: center; padding: 6px; border-radius: 50%; }
     .navigate:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
@@ -168,10 +173,11 @@ export class MobileFuelStationsCard extends LitElement {
     .highlight.is-link { cursor: pointer; }
     .highlight.is-link:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
     .highlight-label { color: var(--secondary-text-color); font-size: .82rem; font-weight: 600; text-transform: uppercase; }
-    .highlight-name { font-weight: 600; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .highlight-name { font-weight: 600; margin-top: 3px; overflow-wrap: anywhere; word-break: break-word; }
     .highlight-meta { color: var(--secondary-text-color); font-size: .9rem; margin-top: 3px; }
     @media (min-width: 700px) { .highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (min-width: 700px) { .header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; } .summary { margin-top: 0; } .stations { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; } .station { min-width: 0; } }
+    @media (max-width: 480px) { ha-card { padding: 12px; } .station { grid-template-columns: 26px minmax(0, 1fr); gap: 7px; } .prices { grid-column: 2; text-align: left; } .fuel-price { justify-content: flex-start; } .navigate { grid-column: 1 / -1; justify-self: end; } .highlight { grid-template-columns: minmax(0, 1fr) auto; } .highlight .navigate { grid-column: auto; } }
   `;
 
   private _config?: CardConfig;
@@ -222,7 +228,9 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _highlights(overview: HassState, visibleIds: string[]) {
     const highlights: Array<[string, HighlightStation]> = [];
-    for (const [label, value] of [[this._text("nearest"), overview.attributes.nearest_station], [this._text("cheapest"), overview.attributes.cheapest_station]]) {
+    const perFuel = Object.entries((overview.attributes.cheapest_stations_by_fuel as Record<string, HighlightStation> | undefined) ?? {});
+    const cheapest = perFuel.length ? perFuel.map(([fuel, station]) => [`${this._text("cheapest")} ${fuelLabel(fuel)}`, station] as [string, HighlightStation]) : [[this._text("cheapest"), overview.attributes.cheapest_station] as [string, HighlightStation | unknown]];
+    for (const [label, value] of [[this._text("nearest"), overview.attributes.nearest_station], ...cheapest]) {
       if (value && typeof value === "object") highlights.push([String(label), value as HighlightStation]);
     }
     if (!highlights.length) return nothing;
@@ -234,7 +242,8 @@ export class MobileFuelStationsCard extends LitElement {
     const entityId = stationId ? visibleIds.find((id) => this._hass?.states[id]?.attributes.station_id === stationId) : undefined;
     const name = text(station.station_name) ?? text(station.brand) ?? stationId ?? this._text("notFound");
     const brand = text(station.brand);
-    const price = formatPrice(station.price, this._locale(), text(station.currency) ?? "EUR") ?? this._text("noPrice");
+    const fuelPrice = station.fuel_prices?.[station.requested_fuel ?? station.fuel_type ?? ""] ?? station.price;
+    const price = formatPrice(fuelPrice, this._locale(), text(station.currency) ?? "EUR") ?? this._text("noPrice");
     const distance = formatDistance(station.distance, this._locale());
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(station.latitude, station.longitude, this._config?.navigation_provider ?? "auto") : null;
     const address = [station.street && station.house_number ? `${station.street} ${station.house_number}` : text(station.street), [station.postcode, station.place].filter(Boolean).join(" ")].filter(Boolean).join(", ");
@@ -265,29 +274,29 @@ export class MobileFuelStationsCard extends LitElement {
     const a = state.attributes;
     const name = text(a.station_name) ?? text(a.name) ?? id;
     const brand = text(a.brand);
-    const fuel = fuelLabel(a.fuel_type ?? a.requested_fuel);
+    const fuelPrices = a.fuel_prices && typeof a.fuel_prices === "object" ? a.fuel_prices as Record<string, unknown> : undefined;
     const addressParts = [a.street && a.house_number ? `${a.street} ${a.house_number}` : text(a.street), [a.postcode, a.place].filter(Boolean).join(" ")].filter(Boolean);
     const address = addressParts.join(", ");
-    const price = formatPrice(state.state, this._locale(), text(a.currency) ?? "EUR");
+    const priceRows = fuelPrices ? Object.entries(fuelPrices).map(([fuel, value]) => ({ fuel: fuelLabel(fuel) ?? fuel, value: formatPrice(value, this._locale(), text(a.currency) ?? "EUR"), fallback: Boolean((a.fuel_fallbacks as Record<string, boolean> | undefined)?.[fuel]) })) : [{ fuel: fuelLabel(a.fuel_type ?? a.requested_fuel) ?? "", value: formatPrice(state.state, this._locale(), text(a.currency) ?? "EUR"), fallback: Boolean(a.fallback_used) }];
     const distance = formatDistance(a.distance, this._locale());
     const open = typeof a.is_open === "boolean" ? a.is_open : undefined;
     const status = open === undefined ? null : open ? "Geöffnet" : "Geschlossen";
     const freshness = a.price_stale === true ? this._text("stale") : a.price_age_hours != null ? `${this._text("priceAge")} ${a.price_age_hours}h` : null;
-    const label = `${name}${fuel ? `, ${fuel}` : ""}${price ? `, ${price}` : ""}`;
+    const label = `${name}, ${priceRows.map((row) => `${row.fuel} ${row.value ?? this._text("noPrice")}`).join(", ")}`;
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
     return html`<div class="station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       <ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>
-      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}${fuel ? html` <span class="secondary">· ${fuel}</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
-      <div><div class="price">${price ?? this._text("noPrice")}</div>${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
+      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
+      <div class="prices">${priceRows.map((row) => html`<div class="fuel-price"><span>${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}</span><strong>${row.value ?? this._text("noPrice")}</strong></div>`)}${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
       ${navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing}
     </div>`;
   }
 
   private _message(message: string) { return html`<ha-card><div class="message">${message}</div></ha-card>`; }
   private _locale(): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? "en-US" : "de-DE"; }
-  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "priceAge"): string {
+  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "priceAge" | "fallback"): string {
     const english = this._locale() === "en-US";
-    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Price stale", priceAge: "Confirmed" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigate to station", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Preis veraltet", priceAge: "Bestätigt" };
+    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Price stale", priceAge: "Confirmed", fallback: "E5 instead of E10" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigieren", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Preis veraltet", priceAge: "Bestätigt", fallback: "E5 statt E10" };
     return values[key];
   }
   private _keyActivate(event: KeyboardEvent, id: string) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this._moreInfo(id); } }

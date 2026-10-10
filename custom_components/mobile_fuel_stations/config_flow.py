@@ -34,12 +34,16 @@ from .const import (
     DEFAULT_RADIUS,
     DEFAULT_STATION_COUNT,
     DEFAULT_UPDATE_INTERVAL,
+    DEFAULT_SORT_FUEL,
+    DEFAULT_SORT_MODE,
     FUEL_TYPES,
     FUEL_TYPE_LABELS,
     DOMAIN,
     MIN_UPDATE_INTERVAL,
     MAX_API_RADIUS_KM,
     CONF_PROVIDER_MODE,
+    CONF_SORT_FUEL,
+    CONF_SORT_MODE,
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
@@ -67,7 +71,7 @@ def _schema(
     schema: dict[Any, Any] = {}
     radius_default = min(float(defaults.get(CONF_RADIUS, DEFAULT_RADIUS)), MAX_API_RADIUS_KM)
     if include_provider:
-        schema[vol.Required(CONF_PROVIDER_MODE, default=defaults.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG))] = selector.SelectSelector(
+        schema[vol.Required(CONF_PROVIDER_MODE, default=defaults.get(CONF_PROVIDER_MODE, PROVIDER_AUTO))] = selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=[PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI, PROVIDER_AUTO]
             )
@@ -109,6 +113,12 @@ def _schema(
             ),
             vol.Required(CONF_COOLDOWN, default=defaults.get(CONF_COOLDOWN, DEFAULT_COOLDOWN)): vol.All(
                 vol.Coerce(int), vol.Range(min=5, max=1440)
+            ),
+            vol.Required(CONF_SORT_MODE, default=defaults.get(CONF_SORT_MODE, DEFAULT_SORT_MODE)): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=["distance", "price"])
+            ),
+            vol.Required(CONF_SORT_FUEL, default=defaults.get(CONF_SORT_FUEL, DEFAULT_SORT_FUEL)): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=list(FUEL_TYPES))
             ),
         }
     )
@@ -215,7 +225,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _async_create_user_entry(self, user_input):
         """Collect credentials and create the entry if the provider is enabled."""
 
-        provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+        provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_AUTO)
         api_key = user_input.get(CONF_API_KEY, "").strip()
         if provider_mode == PROVIDER_PETROMAP:
             api_key = user_input.get(CONF_PETROMAP_API_KEY, api_key).strip()

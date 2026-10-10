@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from math import isfinite
+from collections import defaultdict
+from dataclasses import replace
 from .providers.base import (
     ProviderAuthError,
     ProviderError,
@@ -21,17 +23,38 @@ from .providers.tankerkoenig import TankerkoenigProvider
 TankerkoenigClient = TankerkoenigProvider
 
 
-def sort_stations(stations: list[Station], limit: int) -> list[Station]:
-    """Prefer open stations, then valid prices, then ascending price."""
+def merge_stations(stations: list[Station]) -> list[Station]:
+    """Merge fuel-specific results into one station card per safe identity."""
+    groups: dict[tuple[str, str], list[Station]] = defaultdict(list)
+    for station in stations:
+        groups[(station.provider or "unknown", station.station_id)].append(station)
+    merged: list[Station] = []
+    for group in groups.values():
+        first = group[0]
+        prices: dict[str, float | None] = {}
+        fallbacks: dict[str, bool] = {}
+        for station in group:
+            fuel = station.requested_fuel or station.fuel_type
+            if fuel:
+                effective = station.fuel_type
+                if station.fallback_used and effective and any(
+                    existing_price == station.price and existing_fuel == effective
+                    for existing_fuel, existing_price in prices.items()
+                ):
+                    continue
+                prices[fuel] = station.price
+                fallbacks[fuel] = station.fallback_used
+        merged.append(replace(first, fuel_prices=prices or None, fuel_fallbacks=fallbacks or None))
+    return merged
 
-    return sorted(
-        stations,
-        key=lambda station: (
-            not station.is_open,
-            station.price is None,
-            station.price if station.price is not None else float("inf"),
-        ),
-    )[:limit]
+
+def sort_stations(stations: list[Station], limit: int, *, mode: str = "price", fuel: str = "diesel") -> list[Station]:
+    """Sort by an explicit mode; coordinator default is distance."""
+    if mode == "price":
+        key = lambda station: (not station.is_open, (station.fuel_prices or {}).get(fuel) is None, (station.fuel_prices or {}).get(fuel, float("inf")), station.distance if station.distance is not None else float("inf"), station.station_id)
+    else:
+        key = lambda station: (station.distance is None, station.distance if station.distance is not None else float("inf"), not station.is_open, station.station_id)
+    return sorted(stations, key=key)[:limit]
 
 
 def nearest_station(stations: list[Station]) -> Station | None:
@@ -54,6 +77,21 @@ def cheapest_station(stations: list[Station]) -> Station | None:
         if station.is_open and station.price is not None and isfinite(station.price)
     ]
     return min(candidates, key=lambda station: (station.price, station.station_id)) if candidates else None
+
+
+def cheapest_by_fuel(stations: list[Station]) -> dict[str, Station]:
+    """Return the cheapest station independently for every requested fuel."""
+    result: dict[str, Station] = {}
+    for station in stations:
+        if not station.is_open:
+            continue
+        for fuel, price in (station.fuel_prices or {}).items():
+            if price is None or not isfinite(price):
+                continue
+            current = result.get(fuel)
+            if current is None or price < (current.fuel_prices or {}).get(fuel, float("inf")):
+                result[fuel] = station
+    return result
 
 
 def station_attributes(station: Station | None) -> dict[str, object] | None:
@@ -85,6 +123,8 @@ def station_attributes(station: Station | None) -> dict[str, object] | None:
         "fuel_type": station.fuel_type,
         "requested_fuel": station.requested_fuel,
         "fallback_used": station.fallback_used,
+        "fuel_prices": station.fuel_prices,
+        "fuel_fallbacks": station.fuel_fallbacks,
     }
     attributes.update({
         key: value
