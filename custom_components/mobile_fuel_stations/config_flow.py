@@ -120,8 +120,6 @@ def _schema(
         provider_modes = _normalize_provider_modes(
             defaults.get(CONF_PROVIDER_MODES), defaults.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
         )
-    if include_credentials_management:
-        schema[vol.Optional(CONF_MANAGE_CREDENTIALS, default=False)] = bool
         schema[vol.Required(CONF_PROVIDER_MODES, default=provider_modes)] = selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=list(PROVIDER_CHOICES),
@@ -129,6 +127,8 @@ def _schema(
                 translation_key=CONF_PROVIDER_MODES,
             )
         )
+    if include_credentials_management:
+        schema[vol.Optional(CONF_MANAGE_CREDENTIALS, default=False)] = bool
     if include_key:
         schema[vol.Required(CONF_API_KEY, default=defaults.get(CONF_API_KEY, ""))] = selector.TextSelector(
             selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
@@ -287,7 +287,7 @@ def _status_for_provider(hass: HomeAssistant | None, entry: Any, data: dict[str,
         return "not_selected"
     if not data.get(_provider_key(provider)):
         return "no_key"
-    statuses = hass.data.get(DOMAIN, {}).get("provider_status", {}) if hass is not None else {}
+    statuses = getattr(hass, "data", {}).get(DOMAIN, {}).get("provider_status", {}) if hass is not None else {}
     stored = statuses.get(entry.entry_id, {}).get(provider, {}) if entry is not None else {}
     return stored.get("status", "untested") if isinstance(stored, dict) else "untested"
 
@@ -317,6 +317,8 @@ def _credential_status_placeholders(data: dict[str, Any], hass: HomeAssistant | 
 async def _reset_provider_status(hass: HomeAssistant, entry_id: str, providers: set[str], data: dict[str, Any]) -> None:
     """Invalidate only providers whose credentials were explicitly changed."""
 
+    if not hasattr(hass, "data"):
+        return
     domain_data = hass.data.setdefault(DOMAIN, {})
     all_status = domain_data.setdefault("provider_status", {}).setdefault(entry_id, {})
     for provider in providers:

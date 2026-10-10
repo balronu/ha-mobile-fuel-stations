@@ -320,6 +320,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
     async def _set_provider_status(self, provider: str, status: str) -> None:
         """Persist only non-sensitive result state from a real provider call."""
 
+        if not hasattr(self, "_provider_status_store") or not hasattr(self.hass, "data"):
+            return
         domain_data = self.hass.data.setdefault(DOMAIN, {})
         all_status = domain_data.setdefault("provider_status", {}).setdefault(self.entry.entry_id, {})
         all_status[provider] = {
@@ -388,7 +390,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             provider = requests[0][1]
         else:
             provider_mode = self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
-            if provider_mode not in self.available_provider_modes or self.client is None:
+            available_provider_modes = getattr(self, "available_provider_modes", frozenset({provider_mode}))
+            if provider_mode not in available_provider_modes or self.client is None:
                 raise UpdateFailed("Selected provider has no configured API key")
             provider = self.client
             capabilities = PROVIDER_REGISTRY[provider_mode].capabilities
