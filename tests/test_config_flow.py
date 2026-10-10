@@ -1,5 +1,7 @@
 import asyncio
+import json
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 
@@ -20,6 +22,8 @@ from mobile_fuel_stations.const import (
     CONF_STATION_COUNT,
     CONF_TANKERKOENIG_API_KEY,
     CONF_UPDATE_INTERVAL,
+    CONF_SORT_FUEL,
+    CONF_SORT_MODE,
     DEFAULT_COOLDOWN,
     DEFAULT_MOVEMENT_THRESHOLD,
     DEFAULT_MOVEMENT_UPDATES,
@@ -33,6 +37,7 @@ from mobile_fuel_stations.const import (
     PROVIDER_TANKERKOENIG,
     PROVIDER_NAKORDONI,
 )
+from homeassistant.helpers import selector
 
 
 def _entry(data, options=None):
@@ -89,6 +94,15 @@ def _v2_data(provider_mode, **credentials):
     return data
 
 
+def _validator(result, field):
+    """Get one field validator from a Home Assistant form schema."""
+
+    for key, validator in result["data_schema"].schema.items():
+        if getattr(key, "schema", None) == field:
+            return validator
+    raise AssertionError(f"Missing form field: {field}")
+
+
 def test_existing_entry_options_flow_starts_without_config_entry_setter_error():
     entry = _entry(_data())
     flow = _flow(entry)
@@ -102,6 +116,71 @@ def test_existing_entry_options_flow_starts_without_config_entry_setter_error():
     assert values[CONF_FUEL_TYPE] == ["diesel"]
     assert values[CONF_STATION_COUNT] == 5
     assert CONF_API_KEY not in str(result["data_schema"].schema)
+
+
+def test_options_form_translates_selectors_and_uses_visible_station_count_slider():
+    entry = _entry({**_data(), CONF_PROVIDER_MODE: PROVIDER_TANKERKOENIG})
+    flow = _flow(entry)
+
+    result = asyncio.run(flow.async_step_init())
+
+    provider = _validator(result, CONF_PROVIDER_MODE)
+    sorting = _validator(result, CONF_SORT_MODE)
+    sort_fuel = _validator(result, CONF_SORT_FUEL)
+    station_count = _validator(result, CONF_STATION_COUNT)
+    assert provider.config.options == [PROVIDER_TANKERKOENIG, "petromap", "nakordoni", "auto"]
+    assert sorting.config.options == ["distance", "price"]
+    assert sort_fuel.config.options == ["diesel"]
+    assert isinstance(station_count, selector.NumberSelector)
+    assert station_count.config.mode == selector.NumberSelectorMode.SLIDER
+    assert station_count.config.min == 1
+    assert station_count.config.max == 10
+
+
+def test_options_form_limits_price_sort_fuel_to_selected_fuels_and_repairs_invalid_default():
+    entry = _entry(
+        {**_data(), CONF_PROVIDER_MODE: PROVIDER_TANKERKOENIG},
+        {"fuel_type": ["diesel", "e10"], CONF_SORT_FUEL: "lpg"},
+    )
+    flow = _flow(entry)
+
+    result = asyncio.run(flow.async_step_init())
+    values = result["data_schema"]({})
+    sort_fuel = _validator(result, CONF_SORT_FUEL)
+    assert sort_fuel.config.options == ["diesel", "e10"]
+    assert values[CONF_SORT_FUEL] == "diesel"
+
+
+def test_options_save_repairs_invalid_price_sort_fuel_without_changing_fuel_selection():
+    entry = _entry(
+        {**_data(), CONF_PROVIDER_MODE: PROVIDER_TANKERKOENIG},
+        {"fuel_type": ["diesel", "e10"], CONF_SORT_FUEL: "lpg"},
+    )
+    flow = _flow(entry)
+    submitted = {
+        **_data(),
+        CONF_PROVIDER_MODE: PROVIDER_TANKERKOENIG,
+        CONF_FUEL_TYPE: ["diesel", "e10"],
+        CONF_SORT_MODE: "price",
+        CONF_SORT_FUEL: "lpg",
+    }
+
+    result = asyncio.run(flow.async_step_init(submitted))
+
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_FUEL_TYPE] == ["diesel", "e10"]
+    assert result["data"][CONF_SORT_MODE] == "price"
+    assert result["data"][CONF_SORT_FUEL] == "diesel"
+
+
+def test_translation_files_contain_selector_labels_and_descriptions():
+    root = Path(__file__).parents[1] / "custom_components" / "mobile_fuel_stations"
+    de = json.loads((root / "translations" / "de.json").read_text())
+    en = json.loads((root / "translations" / "en.json").read_text())
+    assert de["selector"]["provider_mode"]["select"]["options"]["auto"] == "Automatisch (empfohlen)"
+    assert de["selector"]["sort_mode"]["select"]["options"]["distance"] == "Entfernung – nächste zuerst"
+    assert en["selector"]["sort_fuel"]["select"]["options"]["hvo100"] == "HVO100"
+    assert "station_count" in de["options"]["step"]["init"]["data_description"]
 
 
 def test_options_override_data_and_missing_values_use_defaults():

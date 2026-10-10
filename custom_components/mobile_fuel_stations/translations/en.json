@@ -1,1 +1,95 @@
-{"config":{"step":{"user":{"title":"Mobile Fuel Stations","description":"Configure a provider and nearby-stations search.","data":{"provider_mode":"Data provider","location_entity":"Vehicle location","radius":"Search radius (km)","fuel_type":"Fuel types","station_count":"Station slots","update_interval":"Update interval (minutes)","movement_updates":"Enable movement updates","movement_threshold":"Movement threshold (km)","cooldown":"Movement cooldown (minutes)","sort_mode":"Station sorting","sort_fuel":"Price sorting fuel"}},"tankerkoenig_credentials":{"title":"Tankerkönig credentials","description":"Enter the Tankerkönig API key."},"petromap_credentials":{"title":"Petromap credentials","description":"Enter the Petromap API key."},"nakordoni_credentials":{"title":"Nakordoni credentials","description":"Enter the Nakordoni API key."},"auto_credentials":{"title":"Automatic mode credentials","description":"Enter both provider credentials."},"petromap_privacy":{"title":"Petromap privacy","description":"Location coordinates, radius, and fuel types may be sent to Petromap."},"nakordoni_privacy":{"title":"Nakordoni privacy","description":"Location coordinates, radius, and fuel types may be sent to Nakordoni. No device ID is sent."},"auto_privacy":{"title":"Automatic mode privacy","description":"Petromap may be used in automatic mode."},"reauth_confirm":{"title":"Reauthenticate Petromap","description":"Enter a new Petromap API key."},"reauth_auto_confirm":{"title":"Reauthenticate Auto Petromap","description":"Enter a new Petromap API key."},"reauth_nakordoni_confirm":{"title":"Reauthenticate Nakordoni","description":"Enter a new Nakordoni API key."}},"error":{"api_key_required":"Enter an API key.","invalid_location":"The selected entity has no valid latitude/longitude.","invalid_auth":"The API key is invalid or expired.","permission_error":"The API key lacks permission for this provider.","rate_limited":"The provider rate limit was reached.","budget_exhausted":"The provider credit budget is exhausted.","cannot_connect":"Unable to connect to the provider.","provider_disabled":"This provider is not enabled in this integration version.","unknown":"Unexpected provider response."}},"options":{"step":{"init":{"title":"Mobile Fuel Stations options","data":{"provider_mode":"Data provider","location_entity":"Vehicle location","radius":"Search radius (km)","fuel_type":"Fuel types","station_count":"Station slots","update_interval":"Update interval (minutes)","movement_updates":"Enable movement updates","movement_threshold":"Movement threshold (km)","cooldown":"Movement cooldown (minutes)","sort_mode":"Station sorting","sort_fuel":"Price sorting fuel"}},"options_petromap_privacy":{"title":"Petromap privacy","description":"Location coordinates, radius, and fuel types may be sent to Petromap."},"options_nakordoni_privacy":{"title":"Nakordoni privacy","description":"Location coordinates, radius, and fuel types may be sent to Nakordoni."},"provider_credentials":{"title":"Provider credentials","description":"Enter only credentials missing for the selected provider mode."}}}}
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mobile Fuel Stations",
+        "description": "Configure a provider and nearby-stations search.",
+        "data": {
+          "provider_mode": "Data provider",
+          "location_entity": "Vehicle location",
+          "radius": "Search radius (km)",
+          "fuel_type": "Fuel types",
+          "station_count": "Station slots",
+          "update_interval": "Update interval (minutes)",
+          "movement_updates": "Enable movement updates",
+          "movement_threshold": "Movement threshold (km)",
+          "cooldown": "Movement cooldown (minutes)",
+          "sort_mode": "Station sorting",
+          "sort_fuel": "Price sorting fuel"
+        },
+        "data_description": {
+          "provider_mode": "Automatically choose a suitable provider for the country and fuel type.",
+          "location_entity": "Entity providing the vehicle location.",
+          "radius": "Search for stations within this radius of the vehicle location.",
+          "station_count": "Number of stations provided as sensors.",
+          "movement_updates": "Automatically update stations when the location changes.",
+          "movement_threshold": "Minimum distance since the last location update.",
+          "cooldown": "Minimum wait between movement-triggered updates.",
+          "sort_mode": "Order of the displayed stations.",
+          "sort_fuel": "Fuel type used for price sorting."
+        }
+      },
+      "tankerkoenig_credentials": {"title": "Tankerkönig credentials", "description": "Enter the Tankerkönig API key."},
+      "petromap_credentials": {"title": "Petromap credentials", "description": "Enter the Petromap API key."},
+      "nakordoni_credentials": {"title": "Nakordoni credentials", "description": "Enter the Nakordoni API key."},
+      "auto_credentials": {"title": "Automatic mode credentials", "description": "Enter both provider credentials."},
+      "petromap_privacy": {"title": "Petromap privacy", "description": "Location coordinates, radius, and fuel types may be sent to Petromap."},
+      "nakordoni_privacy": {"title": "Nakordoni privacy", "description": "Location coordinates, radius, and fuel types may be sent to Nakordoni. No device ID is sent."},
+      "auto_privacy": {"title": "Automatic mode privacy", "description": "Petromap may be used in automatic mode."},
+      "reauth_confirm": {"title": "Reauthenticate Petromap", "description": "Enter a new Petromap API key."},
+      "reauth_auto_confirm": {"title": "Reauthenticate Auto Petromap", "description": "Enter a new Petromap API key."},
+      "reauth_nakordoni_confirm": {"title": "Reauthenticate Nakordoni", "description": "Enter a new Nakordoni API key."}
+    },
+    "error": {
+      "api_key_required": "Enter an API key.",
+      "invalid_location": "The selected entity has no valid latitude/longitude.",
+      "invalid_auth": "The API key is invalid or expired.",
+      "permission_error": "The API key lacks permission for this provider.",
+      "rate_limited": "The provider rate limit was reached. Try later.",
+      "budget_exhausted": "The provider credit budget is exhausted.",
+      "cannot_connect": "Unable to connect to the provider.",
+      "provider_disabled": "This provider is not enabled in this integration version.",
+      "unknown": "Unexpected provider response."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Mobile Fuel Stations options",
+        "data": {
+          "provider_mode": "Data provider",
+          "location_entity": "Vehicle location",
+          "radius": "Search radius (km)",
+          "fuel_type": "Fuel types",
+          "station_count": "Station slots",
+          "update_interval": "Update interval (minutes)",
+          "movement_updates": "Enable movement updates",
+          "movement_threshold": "Movement threshold (km)",
+          "cooldown": "Movement cooldown (minutes)",
+          "sort_mode": "Station sorting",
+          "sort_fuel": "Price sorting fuel"
+        },
+        "data_description": {
+          "provider_mode": "Automatically choose a suitable provider for the country and fuel type.",
+          "location_entity": "Entity providing the vehicle location.",
+          "radius": "Search for stations within this radius of the vehicle location.",
+          "station_count": "Number of stations provided as sensors.",
+          "movement_updates": "Automatically update stations when the location changes.",
+          "movement_threshold": "Minimum distance since the last location update.",
+          "cooldown": "Minimum wait between movement-triggered updates.",
+          "sort_mode": "Order of the displayed stations.",
+          "sort_fuel": "Fuel type used for price sorting."
+        }
+      },
+      "options_petromap_privacy": {"title": "Petromap privacy", "description": "Location coordinates, radius, and fuel types may be sent to Petromap."},
+      "options_nakordoni_privacy": {"title": "Nakordoni privacy", "description": "Location coordinates, radius, and fuel types may be sent to Nakordoni."},
+      "provider_credentials": {"title": "Provider credentials", "description": "Enter only credentials missing for the selected provider mode."}
+    }
+  },
+  "selector": {
+    "provider_mode": {"select": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni", "auto": "Automatic (recommended)"}}},
+    "sort_mode": {"select": {"options": {"distance": "Distance — nearest first", "price": "Fuel price — cheapest first"}}},
+    "sort_fuel": {"select": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100"}}},
+    "fuel_type": {"select": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100"}}}
+  }
+}

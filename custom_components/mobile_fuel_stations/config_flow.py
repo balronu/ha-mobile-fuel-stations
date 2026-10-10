@@ -34,7 +34,6 @@ from .const import (
     DEFAULT_RADIUS,
     DEFAULT_STATION_COUNT,
     DEFAULT_UPDATE_INTERVAL,
-    DEFAULT_SORT_FUEL,
     DEFAULT_SORT_MODE,
     FUEL_TYPES,
     FUEL_TYPE_LABELS,
@@ -70,6 +69,12 @@ def _schema(
 ) -> vol.Schema:
     schema: dict[Any, Any] = {}
     radius_default = min(float(defaults.get(CONF_RADIUS, DEFAULT_RADIUS)), MAX_API_RADIUS_KM)
+    selected_fuels = _normalize_fuel_types(
+        defaults.get(CONF_FUEL_TYPES, defaults.get(CONF_FUEL_TYPE, DEFAULT_FUEL_TYPE))
+    )
+    sort_fuel_default = defaults.get(CONF_SORT_FUEL, selected_fuels[0])
+    if sort_fuel_default not in selected_fuels:
+        sort_fuel_default = selected_fuels[0]
     if include_provider:
         schema[vol.Required(CONF_PROVIDER_MODE, default=defaults.get(CONF_PROVIDER_MODE, PROVIDER_AUTO))] = selector.SelectSelector(
             selector.SelectSelectorConfig(
@@ -101,8 +106,10 @@ def _schema(
                     multiple=True,
                 )
             ),
-            vol.Required(CONF_STATION_COUNT, default=defaults.get(CONF_STATION_COUNT, DEFAULT_STATION_COUNT)): vol.All(
-                vol.Coerce(int), vol.Range(min=1, max=10)
+            vol.Required(CONF_STATION_COUNT, default=defaults.get(CONF_STATION_COUNT, DEFAULT_STATION_COUNT)): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1, max=10, step=1, mode=selector.NumberSelectorMode.SLIDER
+                )
             ),
             vol.Required(CONF_UPDATE_INTERVAL, default=defaults.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)): vol.All(
                 vol.Coerce(int), vol.Range(min=MIN_UPDATE_INTERVAL, max=1440)
@@ -117,8 +124,8 @@ def _schema(
             vol.Required(CONF_SORT_MODE, default=defaults.get(CONF_SORT_MODE, DEFAULT_SORT_MODE)): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=["distance", "price"])
             ),
-            vol.Required(CONF_SORT_FUEL, default=defaults.get(CONF_SORT_FUEL, DEFAULT_SORT_FUEL)): selector.SelectSelector(
-                selector.SelectSelectorConfig(options=list(FUEL_TYPES))
+            vol.Required(CONF_SORT_FUEL, default=sort_fuel_default): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=list(selected_fuels))
             ),
         }
     )
@@ -141,6 +148,21 @@ def _stored_fuel_value(value: object) -> str | list[str]:
 
     fuels = _normalize_fuel_types(value)
     return fuels[0] if len(fuels) == 1 else fuels
+
+
+def _normalize_sorting_input(values: dict[str, Any]) -> dict[str, Any]:
+    """Keep the stored price-sort fuel valid for the selected fuels."""
+
+    normalized = dict(values)
+    selected_fuels = _normalize_fuel_types(
+        normalized.get(CONF_FUEL_TYPES, normalized.get(CONF_FUEL_TYPE))
+    )
+    normalized[CONF_SORT_MODE] = normalized.get(CONF_SORT_MODE, DEFAULT_SORT_MODE)
+    if normalized[CONF_SORT_MODE] not in ("distance", "price"):
+        normalized[CONF_SORT_MODE] = DEFAULT_SORT_MODE
+    if len(selected_fuels) == 1 or normalized.get(CONF_SORT_FUEL) not in selected_fuels:
+        normalized[CONF_SORT_FUEL] = selected_fuels[0]
+    return normalized
 
 
 def _credential_schema(provider_mode: str) -> vol.Schema:
@@ -225,6 +247,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _async_create_user_entry(self, user_input):
         """Collect credentials and create the entry if the provider is enabled."""
 
+        user_input = _normalize_sorting_input(user_input)
         provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_AUTO)
         api_key = user_input.get(CONF_API_KEY, "").strip()
         if provider_mode == PROVIDER_PETROMAP:
@@ -501,7 +524,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            self._pending_options = dict(user_input)
+            self._pending_options = _normalize_sorting_input(user_input)
             current_mode = self.config_entry.data.get(
                 CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG
             )

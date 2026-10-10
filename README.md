@@ -111,6 +111,19 @@ die gewählte Standort-Entity, den Radius, den Kraftstoff und die Stationszahl
 aus dieser Konfiguration. Es gibt keine YAML-Konfiguration für die
 Integration.
 
+### Optionen auf mobilen Geräten
+
+Die Anbieter-, Sortier- und Kraftstoffauswahl verwendet die offiziellen
+Home-Assistant-Selectoren. Die sichtbaren Bezeichnungen werden über die
+deutschen und englischen Übersetzungsdateien bereitgestellt; gespeicherte
+Werte bleiben unverändert. Die Auswahl „Tankstellenplätze“ ist ein Slider mit
+dem aktuellen Zahlenwert. Bei der Preissortierung werden nur die aktuell
+ausgewählten Kraftstoffarten angeboten. Wenn eine ältere Konfiguration einen
+ungültigen Sortierkraftstoff enthält, wird beim Speichern automatisch der
+erste gültige ausgewählte Kraftstoff verwendet. Die dynamische Ausblendung
+des Feldes bei Entfernungssortierung wird von HA-Formularen nicht zuverlässig
+unterstützt, daher bleibt das Feld sichtbar und wird robust validiert.
+
 ### API-Schlüssel
 
 Die Schlüssel werden direkt im Home-Assistant-Dialog eingegeben. Sie gehören
