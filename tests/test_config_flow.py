@@ -166,8 +166,8 @@ def test_options_multi_provider_mode_uses_only_selected_providers_and_shows_safe
     submitted = {**_data(), CONF_PROVIDER_MODES: [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP]}
     status_form = asyncio.run(flow.async_step_init(submitted))
     assert status_form["step_id"] == "provider_credentials"
-    assert status_form["description_placeholders"]["tankerkoenig_status"] == "API key stored"
-    assert status_form["description_placeholders"]["petromap_status"] == "API key stored"
+    assert status_form["description_placeholders"]["tankerkoenig_status"] == "API key stored – not checked yet"
+    assert status_form["description_placeholders"]["petromap_status"] == "API key stored – not checked yet"
     assert status_form["description_placeholders"]["nakordoni_status"] == "Not selected"
     assert "tk-secret" not in str(status_form)
     result = asyncio.run(flow.async_step_provider_credentials({}))

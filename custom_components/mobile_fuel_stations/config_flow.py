@@ -811,7 +811,11 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             remove = credentials.get(f"remove_{key}", False)
             replacement = str(
                 credentials.get(key)
-                or (credentials.get(CONF_API_KEY, "") if len(target_modes) == 1 else "")
+                or (
+                    credentials.get(CONF_API_KEY, "")
+                    if len(target_modes) == 1 and provider == target_modes[0]
+                    else ""
+                )
             ).strip()
             if remove and replacement:
                 return self.async_show_form(
