@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0-beta.12 — Provider status and repository branding
+
+- Carry the provider-status fix into the release so successful provider-owned
+  requests are reflected after coordinator/options-flow reload boundaries.
+- Keep provider status provider-specific: an unused provider remains untested,
+  and opening the options flow does not trigger network requests.
+- Reduce the first options-page description to compact provider-mode and access
+  status lines while keeping the native Home Assistant form order.
+- Add a 1280×640 GitHub social-preview asset based on the approved logo; the
+  GitHub Settings upload remains a manual repository action.
+- Update the German and English README files and the versioned card resource
+  reference for beta.12. Nakordoni live authorization remains pending.
+
 ## 0.5.0-beta.11 — Separate credential management and provider status
 
 - Save general options without forcing an API-key form; credential management

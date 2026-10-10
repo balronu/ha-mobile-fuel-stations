@@ -312,12 +312,10 @@ def _credential_status_placeholders(data: dict[str, Any], hass: HomeAssistant | 
     else:
         mode_status = "Only the selected provider is used" if language == "en" else "Es wird ausschließlich der ausgewählte Anbieter verwendet"
     status_line = " · ".join(f"{_PROVIDER_LABELS[provider]}: {statuses[provider]}" for provider in PROVIDER_CHOICES)
-    hint = "Credentials can be changed or removed in the credential manager." if language == "en" else "Zugangsdaten können unter Zugangsdaten verwalten geändert oder entfernt werden."
     return {
         **{f"{provider}_status": statuses[provider] for provider in PROVIDER_CHOICES},
         "provider_mode_status": mode_status,
         "provider_status": status_line,
-        "credentials_hint": hint,
     }
 
 

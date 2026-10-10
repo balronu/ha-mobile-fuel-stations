@@ -1,5 +1,7 @@
 # Mobile Fuel Stations
 
+<p><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="160"></p>
+
 Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration für nahe
 gelegene Tankstellen anhand einer Fahrzeug- oder Geräte-Entity mit
 `latitude`/`longitude`. Die Integration ist für Autos, Wohnmobile und andere
@@ -10,7 +12,7 @@ bewegliche Objekte geeignet.
 | Kanal | Version | Zweck |
 | --- | --- | --- |
 | Stable | `v0.4.0` | Empfohlene Version für produktive Installationen |
-| Pre-Release | `v0.5.0-beta.11` | Aktueller Beta-Stand mit getrenntem Credential-Manager und API-Status |
+| Pre-Release | `v0.5.0-beta.12` | Aktueller Beta-Stand mit Provider-Status-Fix und kompakter Statusdarstellung |
 
 Beta-Versionen können sich ändern. Für produktive Systeme ist Stable die
 sicherere Wahl.
@@ -83,6 +85,12 @@ Entfernen-Option. Status wird nach Schlüsseländerungen invalidiert. Die
 gespeicherten Schlüssel werden bei einer Aktualisierung nicht neu erfunden oder
 ungefragt überschrieben.
 
+Die native Home-Assistant-Form rendert die kompakten Statuszeilen als
+Formularbeschreibung oberhalb der Felder. Danach folgen Anbieter-Auswahl,
+Zugangsdatenverwaltung und allgemeine Einstellungen in dieser Reihenfolge.
+Eine frei platzierbare Statussektion innerhalb des nativen Formulars wird von
+Home Assistant nicht unterstützt.
+
 ## Installation über HACS
 
 1. **HACS → Integrationen** öffnen.
@@ -94,10 +102,10 @@ ungefragt überschrieben.
 4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** die
    Integration einrichten.
 
-Die Dashboard-Karte wird automatisch registriert. Beta.10 verwendet die
+Die Dashboard-Karte wird automatisch registriert. Beta.12 verwendet die
 versionierte Resource-URL:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.11`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.12`
 
 Das lokale Icon/Logo ist Home-Assistant-Branding. Ein HACS-Repository-Icon und
 das Home-Assistant-Integrationsbranding sind getrennte Dinge; zusätzliche
@@ -140,6 +148,9 @@ Apple Maps, Google Maps, Waze oder automatisch konfiguriert werden.
 Eine aktuelle UI-Screenshot-Datei ist im Repository nicht vorhanden. Die
 freigegebene Branding-Vorschau ist unter
 [`assets/branding/preview.png`](assets/branding/preview.png) verfügbar.
+Die GitHub-Social-Preview ist als [`assets/github-social-preview.png`](assets/github-social-preview.png)
+vorbereitet. GitHub verwendet sie erst nach dem manuellen Upload unter
+**Repository → Settings → General → Social preview**.
 
 ## Aktualisierung bestehender Installationen
 
@@ -170,7 +181,7 @@ nakordoni.eu** erhalten bleiben.
   versionierte Resource-URL verhindert normalerweise die Wiederverwendung
   alter Card-Skripte.
 - **Nakordoni:** Live-Freigabe, Marktberechtigung und Quoten sind weiterhin
-  externe Voraussetzungen und in beta.11 nicht als erfolgreich verfügbar
+  externe Voraussetzungen und in beta.12 nicht als erfolgreich verfügbar
   behauptet.
 
 ## Bekannte Einschränkungen
@@ -183,7 +194,7 @@ nakordoni.eu** erhalten bleiben.
 
 ## Entwicklung und Tests
 
-Die Beta.10-Prüfung umfasst Python-Tests, Frontend-Tests, Produktions-Build,
+Die Beta.12-Prüfung umfasst Python-Tests, Frontend-Tests, Produktions-Build,
 Hassfest, JSON-/Syntaxprüfung, Bundle-Diff und `git diff --check`. Provider-
 und API-Tests verwenden zusätzlich Mocks und Fixtures; unbestätigte Live-
 Zugänge werden nicht als erfolgreich simuliert.

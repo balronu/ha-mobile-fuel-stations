@@ -138,6 +138,9 @@ def test_options_form_translates_selectors_and_uses_visible_station_count_slider
     assert station_count.config["mode"] == selector.NumberSelectorMode.SLIDER
     assert station_count.config["min"] == 1
     assert station_count.config["max"] == 10
+    assert "credentials_hint" not in result["description_placeholders"]
+    fields = [getattr(key, "schema", key) for key in result["data_schema"].schema]
+    assert fields[:3] == [CONF_PROVIDER_MODES, CONF_MANAGE_CREDENTIALS, CONF_LOCATION_ENTITY]
 
 
 def test_provider_selector_is_multi_select_and_excludes_legacy_auto_option():

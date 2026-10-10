@@ -59,7 +59,7 @@
     "step": {
       "init": {
         "title": "Mobile Fuel Stations options",
-        "description": "{provider_mode_status}\n{provider_status}\n{credentials_hint}",
+        "description": "{provider_mode_status}\n{provider_status}",
         "data": {
           "provider_modes": "Data providers",
           "manage_credentials": "Manage credentials",

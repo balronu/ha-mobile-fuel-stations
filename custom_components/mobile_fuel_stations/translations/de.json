@@ -59,7 +59,7 @@
     "step": {
       "init": {
         "title": "Optionen Mobile Tankstellen",
-        "description": "{provider_mode_status}\n{provider_status}\n{credentials_hint}",
+        "description": "{provider_mode_status}\n{provider_status}",
         "data": {
           "provider_modes": "Datenanbieter",
           "manage_credentials": "Zugangsdaten verwalten",

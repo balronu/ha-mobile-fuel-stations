@@ -1,5 +1,7 @@
 # Mobile Fuel Stations
 
+<p><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="160"></p>
+
 Mobile Fuel Stations is a Home Assistant custom integration for nearby fuel
 stations based on a vehicle or device entity exposing `latitude` and
 `longitude`. It is designed for cars, motorhomes, and other moving objects.
@@ -9,7 +11,7 @@ stations based on a vehicle or device entity exposing `latitude` and
 | Channel | Version | Purpose |
 | --- | --- | --- |
 | Stable | `v0.4.0` | Recommended for production installations |
-| Pre-release | `v0.5.0-beta.11` | Current beta with separate credential management and API status |
+| Pre-release | `v0.5.0-beta.12` | Current beta with provider-status fix and compact status presentation |
 
 Beta versions can change. Stable is the safer choice for production systems.
 
@@ -69,6 +71,12 @@ Leaving a key field empty keeps an existing key; replacement requires entering a
 new value, removal requires an explicit remove option, and a key change resets
 that provider's check status.
 
+The native Home Assistant form renders the compact status lines as its
+description above the fields. The fields then appear in the order provider
+selection, credential management, and general settings. Home Assistant does
+not provide a supported way to place a free-form status section between native
+form fields.
+
 ## HACS installation
 
 1. Open **HACS → Integrations**.
@@ -78,10 +86,10 @@ that provider's check status.
 3. Install it and restart Home Assistant completely.
 4. Add it under **Settings → Devices & services → Add integration**.
 
-The dashboard card registers automatically. Beta.10 uses the versioned resource
+The dashboard card registers automatically. Beta.12 uses the versioned resource
 URL:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.11`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.12`
 
 The local icon/logo is Home Assistant integration branding. A HACS repository
 icon and Home Assistant integration branding are separate mechanisms; no extra
@@ -115,6 +123,10 @@ Waze, or automatic selection.
 
 No current UI screenshot is stored in the repository. The approved branding
 preview is available at [`assets/branding/preview.png`](assets/branding/preview.png).
+The GitHub social preview is prepared at
+[`assets/github-social-preview.png`](assets/github-social-preview.png). GitHub
+uses it only after a manual upload under **Repository → Settings → General →
+Social preview**.
 
 ## Updating an existing installation
 
@@ -140,7 +152,7 @@ attribution: **Data by nakordoni.eu**.
 - **Stale card after update:** Restart Home Assistant completely. The versioned
   resource URL normally prevents stale card JavaScript from being reused.
 - **Nakordoni:** Live approval, market permission, and quotas remain external
-  prerequisites and are not claimed as available in beta.11.
+  prerequisites and are not claimed as available in beta.12.
 
 ## Known limitations
 
@@ -151,7 +163,7 @@ attribution: **Data by nakordoni.eu**.
 
 ## Development and tests
 
-Beta.10 is checked with Python tests, frontend tests, the production build,
+Beta.12 is checked with Python tests, frontend tests, the production build,
 Hassfest, JSON/syntax checks, bundle-diff validation, and `git diff --check`.
 Provider/API tests also use mocks and fixtures; unapproved live access is never
 claimed as successful.
