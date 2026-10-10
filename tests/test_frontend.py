@@ -65,6 +65,6 @@ def test_versions_are_synchronized():
     )
     package = json.loads((root / "frontend" / "package.json").read_text())
     assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.5.0-beta.8"
-    assert json.loads((root / "frontend" / "package-lock.json").read_text())["version"] == "0.5.0-beta.7"
-    assert json.loads((root / "frontend" / "package-lock.json").read_text())["packages"][""]["version"] == "0.5.0-beta.7"
+    assert json.loads((root / "frontend" / "package-lock.json").read_text())["version"] == "0.5.0-beta.8"
+    assert json.loads((root / "frontend" / "package-lock.json").read_text())["packages"][""]["version"] == "0.5.0-beta.8"
     assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.5.0-beta.8"

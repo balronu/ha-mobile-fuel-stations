@@ -390,7 +390,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         if provider_mode == PROVIDER_NAKORDONI:
             self._record_nakordoni_success(provider)
         self.cheapest_stations = cheapest_by_fuel(result)
-        self.cheapest_station = self.cheapest_stations.get(self.fuel_types[0])
+        self.cheapest_station = self.cheapest_stations.get(
+            getattr(self, "fuel_types", configured_fuels)[0]
+        )
         self.stations = sort_stations(
             result,
             int(self.options[CONF_STATION_COUNT]),
