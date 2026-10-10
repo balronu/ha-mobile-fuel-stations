@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0-beta.10 — Compact multi-provider mobile cards
+
+- Kept the tested multi-provider checkbox flow and secure API-key status,
+  replacement, removal, and beta.9 migration behavior.
+- Reduced mobile station-card spacing while keeping names and addresses
+  wrapping, prices/status visible, and navigation touch targets accessible.
+- Merged nearest and per-fuel cheapest highlights for the same station only
+  when its stable station identity matches; different stations remain separate.
+- Added frontend regressions for highlight deduplication and long station
+  details. Nakordoni live authorization remains provider-dependent.
+
 ## 0.5.0-beta.9 — Non-blocking country initialization
 
 - Load the offline country dataset once through Home Assistant's executor

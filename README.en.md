@@ -8,6 +8,15 @@ The beta supports **Tankerkönig**, **Petromap v2**, and explicit **Nakordoni**.
 provider is selected from the confirmed country. Petromap access depends on
 the permissions of the configured developer key.
 
+## Beta 0.5.0-beta.10
+
+Beta.10 retains the tested multi-provider checkbox flow and adds secure API-key
+status, replacement, explicit removal, and beta.9 migration behavior. The
+mobile card uses tighter spacing, keeps long station details wrapping without
+horizontal overflow, and merges nearest/per-fuel-cheapest highlights only when
+the stable station identity matches. Nakordoni live authorization remains
+provider-dependent.
+
 ## Beta 0.5.0-beta.9
 
 Beta.9 retains the beta.8 multi-fuel behavior and loads the offline country
@@ -58,7 +67,7 @@ compared in one price ranking.
 6. Add the integration through **Settings → Devices & services → Add integration**.
 
 The dashboard card is registered automatically. The automatically registered
-frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.9`
+frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10`
 includes the integration version. Each integration version therefore gets its
 own resource URL, so stale card JavaScript from caches is not reused after a
 version update. After a HACS update, a complete Home Assistant restart is
@@ -71,7 +80,7 @@ Download the repository and copy `custom_components/mobile_fuel_stations` to `co
 
 ## Setup
 
-Choose the location entity, radius, fuel type, and number of station slots. Then choose Tankerkönig, Petromap, Nakordoni, or Auto and provide the required credentials. The first Petromap or Nakordoni activation shows its privacy disclosure. Config and options flows remain network-free; the first provider request occurs during the normal runtime refresh.
+Choose the location entity, radius, fuel type, and number of station slots. Then select one or more of Tankerkönig, Petromap, and Nakordoni and provide the required credentials. One provider runs directly; multiple selected providers activate the existing automatic country/fuel policy within that allowlist. The first Petromap or Nakordoni activation shows its privacy disclosure. Config and options flows remain network-free; the first provider request occurs during the normal runtime refresh.
 
 ## Dashboard card
 

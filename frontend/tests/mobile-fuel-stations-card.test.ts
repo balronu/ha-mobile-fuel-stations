@@ -80,6 +80,35 @@ describe("card", () => {
     expect(entityId).toBe("sensor.vehicle_station_1");
     expect(card.shadowRoot?.querySelectorAll(".highlight .navigate")).toHaveLength(2);
   });
+  it("merges nearest and per-fuel cheapest highlights for the same station", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, {
+      nearest_station: { station_id: "slot-1", station_name: "Compact Station", price: 1.799, distance: 1.2, latitude: 49, longitude: 8 },
+      cheapest_stations_by_fuel: {
+        diesel: { station_id: "slot-1", station_name: "Compact Station", fuel_type: "diesel", price: 1.799, distance: 1.2, latitude: 49, longitude: 8 },
+        e10: { station_id: "slot-1", station_name: "Compact Station", fuel_type: "e10", price: 1.699, distance: 1.2, latitude: 49, longitude: 8 },
+      },
+    }, { station_id: "slot-1", latitude: 49, longitude: 8 });
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelectorAll(".highlight")).toHaveLength(1);
+    expect(card.shadowRoot?.textContent).toContain("Nächste");
+    expect(card.shadowRoot?.textContent).toContain("Günstigste Diesel");
+    expect(card.shadowRoot?.textContent).toContain("Günstigste E10");
+    expect(card.shadowRoot?.querySelectorAll(".highlight .navigate")).toHaveLength(1);
+  });
+  it("wraps long station details without losing prices or navigation", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, {}, {
+      station_name: "Sehr lange Tankstellenbezeichnung mit Ortszusatz und Zusatzinformationen",
+      street: "Eine außergewöhnlich lange Straßenbezeichnung", house_number: "123456789", postcode: "12345", place: "Eine sehr lange Ortsbezeichnung",
+      latitude: 49, longitude: 8, fuel_prices: { diesel: 1.799, e10: null },
+    });
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    const station = card.shadowRoot?.querySelector(".station");
+    expect(station?.textContent).toContain("Sehr lange Tankstellenbezeichnung");
+    expect(station?.textContent).toContain("Preis nicht verfügbar");
+    expect(station?.querySelector(".navigate")).toBeTruthy();
+  });
   it("renders unavailable slots and all-unavailable states safely", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(2); hass.states["sensor.vehicle_station_1"]!.state = "unavailable"; card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(1);
     hass.states["sensor.vehicle_station_2"]!.state = "unavailable"; card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Keine Tankstellen gefunden");

@@ -151,8 +151,8 @@ export class MobileFuelStationsCard extends LitElement {
     h2 { margin: 0; font-size: 1.1rem; }
     .summary, .secondary { color: var(--secondary-text-color); font-size: .9rem; }
     .summary { display: block; margin-top: 4px; }
-    .stations { display: grid; gap: 8px; }
-    .station { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; border-top: 1px solid var(--divider-color); padding: 12px 0; cursor: pointer; }
+    .stations { display: grid; gap: 4px; }
+    .station { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; border-top: 1px solid var(--divider-color); padding: 8px 0; cursor: pointer; min-width: 0; }
     .station:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
     .icon { color: var(--primary-color); font-size: 1.5rem; }
     .name, .address { overflow-wrap: anywhere; word-break: break-word; }
@@ -163,13 +163,13 @@ export class MobileFuelStationsCard extends LitElement {
     .fuel-price { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; font-size: .9rem; }
     .fuel-price strong { white-space: nowrap; }
     .meta { color: var(--secondary-text-color); font-size: .82rem; text-align: right; white-space: nowrap; }
-    .navigate { color: var(--primary-color); display: inline-flex; align-items: center; padding: 6px; border-radius: 50%; }
+    .navigate { color: var(--primary-color); display: inline-flex; align-items: center; justify-content: center; padding: 8px; min-width: 44px; min-height: 44px; box-sizing: border-box; border-radius: 50%; }
     .navigate:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
     .open { color: var(--success-color, var(--primary-color)); }
     .closed { color: var(--secondary-text-color); }
     .message { color: var(--secondary-text-color); }
-    .highlights { display: grid; gap: 8px; margin-bottom: 12px; }
-    .highlight { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; border: 1px solid var(--divider-color); border-radius: var(--ha-card-border-radius, 12px); padding: 12px; }
+    .highlights { display: grid; gap: 6px; margin-bottom: 10px; }
+    .highlight { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; border: 1px solid var(--divider-color); border-radius: var(--ha-card-border-radius, 12px); padding: 8px 10px; min-width: 0; }
     .highlight.is-link { cursor: pointer; }
     .highlight.is-link:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
     .highlight-label { color: var(--secondary-text-color); font-size: .82rem; font-weight: 600; text-transform: uppercase; }
@@ -177,7 +177,7 @@ export class MobileFuelStationsCard extends LitElement {
     .highlight-meta { color: var(--secondary-text-color); font-size: .9rem; margin-top: 3px; }
     @media (min-width: 700px) { .highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (min-width: 700px) { .header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; } .summary { margin-top: 0; } .stations { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; } .station { min-width: 0; } }
-    @media (max-width: 480px) { ha-card { padding: 12px; } .station { grid-template-columns: 26px minmax(0, 1fr); gap: 7px; } .prices { grid-column: 2; text-align: left; } .fuel-price { justify-content: flex-start; } .navigate { grid-column: 1 / -1; justify-self: end; } .highlight { grid-template-columns: minmax(0, 1fr) auto; } .highlight .navigate { grid-column: auto; } }
+    @media (max-width: 480px) { ha-card { padding: 12px; } .station { grid-template-columns: 26px minmax(0, 1fr) auto; gap: 6px; } .station .prices { grid-column: 2; grid-row: 2; text-align: left; } .fuel-price { justify-content: flex-start; gap: 4px; } .station .navigate { grid-column: 3; grid-row: 1 / span 2; align-self: center; } .highlight { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; } .highlight .navigate { grid-column: auto; } }
   `;
 
   private _config?: CardConfig;
@@ -234,7 +234,16 @@ export class MobileFuelStationsCard extends LitElement {
       if (value && typeof value === "object") highlights.push([String(label), value as HighlightStation]);
     }
     if (!highlights.length) return nothing;
-    return html`<div class="highlights">${highlights.map(([label, station]) => this._highlight(label, station, visibleIds))}</div>`;
+    const merged = new Map<string, { labels: string[]; station: HighlightStation }>();
+    highlights.forEach(([label, station], index) => {
+      const stationId = text(station.station_id);
+      const entityId = stationId ? visibleIds.find((id) => this._hass?.states[id]?.attributes.station_id === stationId) : undefined;
+      const key = stationId ? `station:${stationId}` : entityId ? `entity:${entityId}` : `highlight:${index}`;
+      const existing = merged.get(key);
+      if (existing) existing.labels.push(label);
+      else merged.set(key, { labels: [label], station });
+    });
+    return html`<div class="highlights">${Array.from(merged.values()).map(({ labels, station }) => this._highlight(labels.join(" · "), station, visibleIds))}</div>`;
   }
 
   private _highlight(label: string, station: HighlightStation, visibleIds: string[]) {

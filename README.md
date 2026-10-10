@@ -12,8 +12,9 @@ Providerquoten ab.
 ## Stable und Pre-Release
 
 - **Stable:** `v0.4.0` ist die stabile Version für normale Nutzer.
-- **Beta:** `v0.5.0-beta.9` ist die aktuelle Pre-Release-Version mit korrekter Mehrfachauswahl und einem
-  Provider- und Diagnosefunktionen.
+- **Beta:** `v0.5.0-beta.10` ist die aktuelle Pre-Release-Version mit
+  Multi-Provider-Auswahl, sicherer API-Key-Verwaltung und kompakter mobiler
+  Tankstellenkarte.
 
 Wenn du die Beta testen möchtest, wähle in HACS bei Bedarf die **aktuelle
 Pre-Release-Version**. Eine Pre-Release kann sich ändern und ist nicht für
@@ -89,7 +90,7 @@ Home-Assistant-Brands-Upload stehen in
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.9`
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.10`
 enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
 eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
 einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
@@ -123,6 +124,14 @@ ungültigen Sortierkraftstoff enthält, wird beim Speichern automatisch der
 erste gültige ausgewählte Kraftstoff verwendet. Die dynamische Ausblendung
 des Feldes bei Entfernungssortierung wird von HA-Formularen nicht zuverlässig
 unterstützt, daher bleibt das Feld sichtbar und wird robust validiert.
+
+Beta.10 erlaubt die gleichzeitige Aktivierung von Tankerkönig, Petromap und
+Nakordoni. Bei einem Anbieter wird dieser direkt verwendet; ab zwei aktivierten
+Anbietern wählt die bestehende Länder-/Kraftstoff-Policy automatisch nur aus
+dieser Allowlist. API-Key-Status wird maskiert angezeigt; leere Eingaben
+behalten vorhandene Schlüssel, und eine Entfernung erfolgt nur ausdrücklich.
+Die mobile Karte zeigt jede Station einmal, führt mehrere Preise kompakt auf
+und fasst identische Highlights anhand der stabilen Stations-ID zusammen.
 
 ### API-Schlüssel
 
