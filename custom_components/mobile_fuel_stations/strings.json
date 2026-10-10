@@ -149,6 +149,14 @@
           "nakordoni": "Nakordoni"
       }
     },
+    "provider_mode": {
+      "options": {
+        "tankerkoenig": "Tankerkönig",
+        "petromap": "Petromap",
+        "nakordoni": "Nakordoni",
+        "auto": "Automatic (recommended)"
+      }
+    },
     "sort_mode": {
       "options": {
           "distance": "Distance — nearest first",

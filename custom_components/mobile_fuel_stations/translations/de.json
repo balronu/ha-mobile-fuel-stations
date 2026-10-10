@@ -91,6 +91,7 @@
   },
   "selector": {
     "provider_modes": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni"}},
+    "provider_mode": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni", "auto": "Automatisch (empfohlen)"}},
     "sort_mode": {"options": {"distance": "Entfernung – nächste zuerst", "price": "Kraftstoffpreis – günstigste zuerst"}},
     "sort_fuel": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100"}}
   }

@@ -302,7 +302,10 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         credentials = {}
         for provider in provider_modes:
             key_name = _provider_key(provider)
-            key = str(user_input.get(key_name, "")).strip()
+            key = str(
+                user_input.get(key_name)
+                or (user_input.get(CONF_API_KEY, "") if len(provider_modes) == 1 else "")
+            ).strip()
             credentials[key_name] = key
             if not key:
                 errors[key_name] = "api_key_required"
@@ -356,6 +359,8 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not errors:
                 self._pending_user_input = _normalize_sorting_input(dict(user_input))
                 legacy_mode = user_input.get(CONF_PROVIDER_MODE)
+                if legacy_mode == PROVIDER_TANKERKOENIG and CONF_PROVIDER_MODES not in user_input:
+                    return self.async_show_form(step_id="tankerkoenig_credentials", data_schema=_credential_schema([PROVIDER_TANKERKOENIG]))
                 if legacy_mode == PROVIDER_PETROMAP and CONF_PROVIDER_MODES not in user_input:
                     return self.async_show_form(step_id="petromap_privacy", data_schema=vol.Schema({}))
                 if legacy_mode == PROVIDER_NAKORDONI and CONF_PROVIDER_MODES not in user_input:
@@ -583,6 +588,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                     errors={CONF_PROVIDER_MODES: "provider_required"},
                 )
             self._pending_options = _normalize_sorting_input(user_input)
+            legacy_ui = CONF_PROVIDER_MODES not in user_input
             target_modes = _normalize_provider_modes(
                 self._pending_options.get(CONF_PROVIDER_MODES),
                 self.config_entry.data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
@@ -597,6 +603,8 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             ):
                 step_id = "options_nakordoni_privacy" if target_modes == [PROVIDER_NAKORDONI] else "options_provider_privacy"
                 return self.async_show_form(step_id=step_id, data_schema=vol.Schema({}))
+            if legacy_ui:
+                return await self._async_options_credentials({})
             return await self._show_provider_credentials()
         return self.async_show_form(
             step_id="init",
@@ -615,7 +623,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 step_id="options_petromap_privacy", data_schema=vol.Schema({})
             )
         self._petromap_privacy_accepted = True
-        return await self._show_provider_credentials()
+        return await self._async_options_credentials({})
 
     async def async_step_options_nakordoni_privacy(self, user_input=None):
         """Show the Nakordoni location-transfer disclosure before activation."""
@@ -625,7 +633,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 step_id="options_nakordoni_privacy", data_schema=vol.Schema({})
             )
         self._nakordoni_privacy_accepted = True
-        return await self._show_provider_credentials()
+        return await self._async_options_credentials({})
 
     async def async_step_options_provider_privacy(self, user_input=None):
         if user_input is None:
