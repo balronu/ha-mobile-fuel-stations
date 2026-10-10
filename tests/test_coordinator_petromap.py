@@ -1,5 +1,6 @@
 import asyncio
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.config_entries import ConfigEntryAuthFailed
@@ -117,12 +118,14 @@ class _NoRequestSession:
 
 
 def test_petromap_e10_uses_capability_declared_e5_fallback(monkeypatch):
-    session = _NoRequestSession()
-    coordinator = _coordinator(PetromapProvider(session, "dummy"), fuel="e10")
+    provider = PetromapProvider(object(), "dummy")
+    provider.async_search = AsyncMock(return_value=[])
+    coordinator = _coordinator(provider, fuel="e10")
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
 
     asyncio.run(coordinator._async_update_data())
-    assert session.calls == 1
+    provider.async_search.assert_awaited_once()
+    assert provider.async_search.await_args.args[0].fuel_type == "e5"
 
 
 def test_petromap_401_requests_reauth(monkeypatch):

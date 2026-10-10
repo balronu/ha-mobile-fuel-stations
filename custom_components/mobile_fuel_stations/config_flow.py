@@ -86,7 +86,12 @@ def _schema(
             ),
             # Keep the historical key for storage/entity compatibility while
             # allowing the selector to return multiple fuel types.
-            vol.Required(CONF_FUEL_TYPE, default=defaults.get(CONF_FUEL_TYPE, defaults.get(CONF_FUEL_TYPES, DEFAULT_FUEL_TYPE))): selector.SelectSelector(
+            vol.Required(
+                CONF_FUEL_TYPE,
+                default=_normalize_fuel_types(
+                    defaults.get(CONF_FUEL_TYPES, defaults.get(CONF_FUEL_TYPE, DEFAULT_FUEL_TYPE))
+                ),
+            ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=[{"value": fuel, "label": label} for fuel, label in FUEL_TYPE_LABELS.items()],
                     multiple=True,
