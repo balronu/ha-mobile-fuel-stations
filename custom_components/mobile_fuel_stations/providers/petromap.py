@@ -7,7 +7,7 @@ and budget policy are approved.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from math import isfinite
 from typing import Any
@@ -289,7 +289,10 @@ class PetromapProvider:
                     body_credits=result.credits,
                     next_cursor=result.next_cursor,
                 )
-                return result.stations
+                return [
+                    replace(station, fuel_type=query.fuel_type, requested_fuel=query.fuel_type, provider="petromap")
+                    for station in result.stations
+                ]
         except asyncio.TimeoutError as err:
             raise ProviderTimeoutError("Petromap request timed out") from err
         except ClientConnectionError as err:

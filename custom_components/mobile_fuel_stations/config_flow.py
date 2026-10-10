@@ -20,6 +20,7 @@ from .const import (
     CONF_TANKERKOENIG_API_KEY,
     CONF_COOLDOWN,
     CONF_FUEL_TYPE,
+    CONF_FUEL_TYPES,
     CONF_LOCATION_ENTITY,
     CONF_MOVEMENT_THRESHOLD,
     CONF_MOVEMENT_UPDATES,
@@ -33,6 +34,8 @@ from .const import (
     DEFAULT_RADIUS,
     DEFAULT_STATION_COUNT,
     DEFAULT_UPDATE_INTERVAL,
+    FUEL_TYPES,
+    FUEL_TYPE_LABELS,
     DOMAIN,
     MIN_UPDATE_INTERVAL,
     MAX_API_RADIUS_KM,
@@ -81,8 +84,13 @@ def _schema(
             vol.Required(CONF_RADIUS, default=radius_default): vol.All(
                 vol.Coerce(float), vol.Range(min=1, max=MAX_API_RADIUS_KM)
             ),
-            vol.Required(CONF_FUEL_TYPE, default=defaults.get(CONF_FUEL_TYPE, DEFAULT_FUEL_TYPE)): vol.In(
-                ["diesel", "e5", "e10", "lpg"]
+            # Keep the historical key for storage/entity compatibility while
+            # allowing the selector to return multiple fuel types.
+            vol.Required(CONF_FUEL_TYPE, default=defaults.get(CONF_FUEL_TYPE, defaults.get(CONF_FUEL_TYPES, DEFAULT_FUEL_TYPE))): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[{"value": fuel, "label": label} for fuel, label in FUEL_TYPE_LABELS.items()],
+                    multiple=True,
+                )
             ),
             vol.Required(CONF_STATION_COUNT, default=defaults.get(CONF_STATION_COUNT, DEFAULT_STATION_COUNT)): vol.All(
                 vol.Coerce(int), vol.Range(min=1, max=10)
@@ -100,6 +108,24 @@ def _schema(
         }
     )
     return vol.Schema(schema)
+
+
+def _normalize_fuel_types(value: object) -> list[str]:
+    """Normalize legacy scalar and new multi-select values."""
+
+    values = [value] if isinstance(value, str) else value if isinstance(value, (list, tuple, set)) else []
+    result: list[str] = []
+    for fuel in values:
+        if isinstance(fuel, str) and fuel in FUEL_TYPES and fuel not in result:
+            result.append(fuel)
+    return result or [DEFAULT_FUEL_TYPE]
+
+
+def _stored_fuel_value(value: object) -> str | list[str]:
+    """Store one fuel as the legacy scalar, multiple fuels as a list."""
+
+    fuels = _normalize_fuel_types(value)
+    return fuels[0] if len(fuels) == 1 else fuels
 
 
 def _credential_schema(provider_mode: str) -> vol.Schema:
@@ -220,11 +246,14 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=_credential_schema(provider_mode),
                 errors=errors,
             )
+        selected_fuels = _normalize_fuel_types(user_input.get(CONF_FUEL_TYPE))
         await self.async_set_unique_id(
-            f"{user_input[CONF_LOCATION_ENTITY]}_{user_input[CONF_FUEL_TYPE]}"
+            f"{user_input[CONF_LOCATION_ENTITY]}_{'-'.join(selected_fuels)}"
         )
         self._abort_if_unique_id_configured()
         data = dict(user_input)
+        data[CONF_FUEL_TYPE] = _stored_fuel_value(selected_fuels)
+        data[CONF_FUEL_TYPES] = selected_fuels
         data[CONF_PROVIDER_MODE] = provider_mode
         if provider_mode == PROVIDER_AUTO:
             data.pop(CONF_API_KEY, None)
@@ -265,7 +294,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     step_id="tankerkoenig_credentials",
                     data_schema=_credential_schema(PROVIDER_TANKERKOENIG),
                 )
-        defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
+        defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_FUEL_TYPES: [DEFAULT_FUEL_TYPE], CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL, CONF_MOVEMENT_UPDATES: DEFAULT_MOVEMENT_UPDATES,
                     CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN}
         return self.async_show_form(
@@ -631,6 +660,12 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 CONF_NAKORDONI_API_KEY,
             }
         }
+        if CONF_FUEL_TYPE in pending or CONF_FUEL_TYPES in pending:
+            selected_fuels = _normalize_fuel_types(
+                pending.get(CONF_FUEL_TYPES, pending.get(CONF_FUEL_TYPE))
+            )
+            options[CONF_FUEL_TYPE] = _stored_fuel_value(selected_fuels)
+            options[CONF_FUEL_TYPES] = selected_fuels
         # Update data and options together.  The OptionsFlowManager applies the
         # returned options mapping after this step; passing the same mapping here
         # makes the entry update atomic and prevents the update listener from

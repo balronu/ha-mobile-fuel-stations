@@ -16,9 +16,13 @@ from .const import (
     CONF_PETROMAP_API_KEY,
     CONF_PETROMAP_PRIVACY_ACCEPTED,
     CONF_PROVIDER_MODE,
+    CONF_FUEL_TYPE,
+    CONF_FUEL_TYPES,
     CONF_TANKERKOENIG_API_KEY,
     DOMAIN,
     FRONTEND_URL,
+    DEFAULT_FUEL_TYPE,
+    FUEL_TYPES,
     PROVIDER_AUTO,
     PROVIDER_NAKORDONI,
     PROVIDER_PETROMAP,
@@ -56,6 +60,19 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     elif mode == PROVIDER_AUTO and petromap_key:
         data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
         # An unexpected generic key is retained rather than guessed or dropped.
+
+    # v3 keeps the old scalar key for entity compatibility and adds a
+    # canonical list for multi-fuel runtime processing.
+    raw_fuels = data.get(CONF_FUEL_TYPES, data.get(CONF_FUEL_TYPE, DEFAULT_FUEL_TYPE))
+    if isinstance(raw_fuels, str):
+        fuels = [raw_fuels]
+    elif isinstance(raw_fuels, (list, tuple, set)):
+        fuels = [fuel for fuel in raw_fuels if isinstance(fuel, str)]
+    else:
+        fuels = []
+    fuels = list(dict.fromkeys(fuel for fuel in fuels if fuel in FUEL_TYPES)) or [DEFAULT_FUEL_TYPE]
+    data[CONF_FUEL_TYPES] = fuels
+    data[CONF_FUEL_TYPE] = fuels[0] if len(fuels) == 1 else fuels
 
     if data != entry.data or entry.version != CONFIG_ENTRY_VERSION:
         hass.config_entries.async_update_entry(

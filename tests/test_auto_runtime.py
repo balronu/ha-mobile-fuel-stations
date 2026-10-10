@@ -182,16 +182,14 @@ def test_auto_at_uses_petromap_once_and_routes_secret(monkeypatch, fuel):
     _assert_runtime_usage_zero(pm)
 
 
-def test_auto_at_e10_blocks_before_provider_creation_or_http(monkeypatch):
+def test_auto_at_e10_uses_capability_declared_e5_fallback(monkeypatch):
     coordinator, tk, pm = _coordinator(monkeypatch, "AT", "e10")
 
-    with pytest.raises(UpdateFailed) as caught:
-        asyncio.run(coordinator._async_update_data())
+    asyncio.run(coordinator._async_update_data())
 
-    assert isinstance(caught.value.__cause__, FuelFallbackBlockedError)
-    assert not tk.calls and not pm.calls
-    assert coordinator._providers == {}
-    assert coordinator.auto_runtime_state.effective_provider is None
+    assert not tk.calls and len(pm.calls) == 1
+    assert pm.calls[0].fuel_type == "e5"
+    assert coordinator.auto_runtime_state.effective_provider == PROVIDER_PETROMAP
     assert coordinator.auto_runtime_state.fuel_resolution.fallback_used is True
     _assert_runtime_usage_zero(pm)
 
@@ -204,18 +202,16 @@ def test_auto_e10_border_preserves_last_valid_data_after_confirmed_at(monkeypatc
 
     for _ in range(2):
         asyncio.run(coordinator._async_update_data())
-    with pytest.raises(UpdateFailed) as caught:
-        asyncio.run(coordinator._async_update_data())
+    asyncio.run(coordinator._async_update_data())
 
-    assert isinstance(caught.value.__cause__, FuelFallbackBlockedError)
-    assert coordinator.stations == previous
+    assert coordinator.stations != previous
     assert coordinator.auto_runtime_state.confirmed_country == "AT"
-    assert coordinator.auto_runtime_state.effective_provider is None
+    assert coordinator.auto_runtime_state.effective_provider == PROVIDER_PETROMAP
     _assert_runtime_usage_zero(pm)
     assert coordinator.auto_runtime_state.fuel_resolution.effective_fuel == "e5"
     assert coordinator.auto_runtime_state.fuel_resolution.fallback_used is True
     assert len(tk.calls) == 3
-    assert not pm.calls
+    assert len(pm.calls) == 1
 
 
 @pytest.mark.parametrize("country", ["BG", "PL", "SK", "ME", "RS", "FR", None])

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { buildNavigationUrl, detectNavigationProvider, discoverStationEntities, formatDistance, formatPrice, MobileFuelStationsCard, shouldShowBrand } from "../src/mobile-fuel-stations-card";
+import { buildNavigationUrl, detectNavigationProvider, discoverStationEntities, formatDistance, formatPrice, fuelLabel, MobileFuelStationsCard, shouldShowBrand } from "../src/mobile-fuel-stations-card";
 
 const overviewId = "sensor.vehicle_nearby_stations";
 const state = (value: string, attributes: Record<string, unknown> = {}) => ({ state: value, attributes });
@@ -11,6 +11,7 @@ const hassFor = (count: number, attrs: Record<string, unknown> = {}, stationAttr
 
 describe("formatting and discovery", () => {
   it("formats prices and distances with stable units", () => { expect(formatPrice("1.659")).toBe("1,659 €/l"); expect(formatDistance(1.25)).toBe("1,3 km"); expect(formatPrice(null)).toBeNull(); expect(formatDistance(null)).toBeNull(); });
+  it("labels all selectable fuels, including HVO100", () => { expect(fuelLabel("e5")).toBe("E5"); expect(fuelLabel("E10")).toBe("E10"); expect(fuelLabel("diesel")).toBe("Diesel"); expect(fuelLabel("lpg")).toBe("LPG / Autogas"); expect(fuelLabel("hvo100")).toBe("HVO100"); });
   it("keeps station_entities order and ignores unavailable slots", () => {
     const hass = { states: { a: state("1"), b: state("unavailable"), c: state("3") } };
     expect(discoverStationEntities(overviewId, state("3", { station_entities: ["a", "b", "c"] }), hass)).toEqual(["a", "c"]);
@@ -90,6 +91,7 @@ describe("card", () => {
   it("renders required error states", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: "sensor.missing" }); card.hass = { states: {} }; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Overview entity not found"); card.hass = { states: { [overviewId]: state("unavailable") } }; card.setConfig({ entity: overviewId }); await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("nicht verfügbar"); });
   it("dispatches more-info with the station entity id", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); card.hass = hassFor(1); await card.updateComplete; let event: Event | undefined; card.addEventListener("hass-more-info", (value) => { event = value; }); (card.shadowRoot?.querySelector(".station") as HTMLElement).click(); expect((event as CustomEvent).detail.entityId).toBe("sensor.vehicle_station_1"); });
   it("keeps header metadata below the title on mobile", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); card.hass = hassFor(1, { radius: 20, fuel_type: "diesel" }); await card.updateComplete; expect(card.shadowRoot?.querySelector(".header h2")).toBeTruthy(); expect(card.shadowRoot?.querySelector(".header .summary")).toBeTruthy(); });
+  it("renders multiple selected fuels and station fuel metadata", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(1, { fuel_types: ["diesel", "hvo100"] }, { fuel_type: "hvo100", requested_fuel: "hvo100" }); card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.querySelector(".summary")?.textContent).toContain("Diesel, HVO100"); expect(card.shadowRoot?.textContent).toContain("HVO100"); });
   it("shows Nakordoni attribution only for Nakordoni data", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId });
     card.hass = hassFor(1, { provider: "nakordoni" }); await card.updateComplete;

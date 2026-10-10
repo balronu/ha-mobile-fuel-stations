@@ -26,6 +26,9 @@ type HighlightStation = {
   longitude?: number | null;
   price_age_hours?: number | null;
   price_stale?: boolean | null;
+  fuel_type?: string | null;
+  requested_fuel?: string | null;
+  fallback_used?: boolean;
 };
 
 export type NavigationProvider = "auto" | "apple" | "google" | "waze";
@@ -54,6 +57,7 @@ export function fuelLabel(value: unknown): string | null {
     e5: "E5",
     e10: "E10",
     lpg: "LPG / Autogas",
+    hvo100: "HVO100",
   };
   return typeof value === "string" ? labels[value.toLowerCase()] ?? value : null;
 }
@@ -247,8 +251,9 @@ export class MobileFuelStationsCard extends LitElement {
     if (Number.isFinite(count)) parts.push(`${count} Tankstellen`);
     const radius = formatDistance(overview.attributes.radius, this._locale());
     if (radius) parts.push(radius);
-    const fuel = fuelLabel(overview.attributes.fuel_type);
-    if (fuel) parts.push(fuel);
+    const fuels = Array.isArray(overview.attributes.fuel_types) ? overview.attributes.fuel_types : [overview.attributes.fuel_type];
+    const labels = fuels.map((fuel) => fuelLabel(fuel)).filter((fuel): fuel is string => Boolean(fuel));
+    if (labels.length) parts.push(labels.join(", "));
     if (overview.attributes.last_successful_update) {
       const date = new Date(String(overview.attributes.last_successful_update));
       if (!Number.isNaN(date.getTime())) parts.push(`${this._text("asOf")} ${new Intl.DateTimeFormat(this._locale(), { hour: "2-digit", minute: "2-digit" }).format(date)}`);
@@ -260,6 +265,7 @@ export class MobileFuelStationsCard extends LitElement {
     const a = state.attributes;
     const name = text(a.station_name) ?? text(a.name) ?? id;
     const brand = text(a.brand);
+    const fuel = fuelLabel(a.fuel_type ?? a.requested_fuel);
     const addressParts = [a.street && a.house_number ? `${a.street} ${a.house_number}` : text(a.street), [a.postcode, a.place].filter(Boolean).join(" ")].filter(Boolean);
     const address = addressParts.join(", ");
     const price = formatPrice(state.state, this._locale(), text(a.currency) ?? "EUR");
@@ -267,11 +273,11 @@ export class MobileFuelStationsCard extends LitElement {
     const open = typeof a.is_open === "boolean" ? a.is_open : undefined;
     const status = open === undefined ? null : open ? "Geöffnet" : "Geschlossen";
     const freshness = a.price_stale === true ? this._text("stale") : a.price_age_hours != null ? `${this._text("priceAge")} ${a.price_age_hours}h` : null;
-    const label = `${name}${price ? `, ${price}` : ""}`;
+    const label = `${name}${fuel ? `, ${fuel}` : ""}${price ? `, ${price}` : ""}`;
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
     return html`<div class="station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       <ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>
-      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
+      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}${fuel ? html` <span class="secondary">· ${fuel}</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
       <div><div class="price">${price ?? this._text("noPrice")}</div>${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
       ${navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing}
     </div>`;

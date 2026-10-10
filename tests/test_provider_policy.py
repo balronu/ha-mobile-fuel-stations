@@ -207,8 +207,7 @@ def test_c2b_outcomes_are_pre_network_and_distinct():
         validate_direct_fuel_runtime(unsupported)
 
     fallback = choose_auto_provider("AT", "e10", petromap_enabled=True)
-    with pytest.raises(FuelFallbackBlockedError):
-        validate_direct_fuel_runtime(fallback)
+    assert validate_direct_fuel_runtime(fallback) == fallback
     assert is_expected_auto_unavailable(NoSuitableProviderError("unsupported_country"))
     assert is_expected_auto_unavailable(FuelFallbackBlockedError("fallback_required"))
     assert not is_expected_auto_unavailable(ProviderUnavailableError("503"))

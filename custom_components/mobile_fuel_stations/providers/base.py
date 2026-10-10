@@ -33,6 +33,9 @@ class Station:
     price_confirmed_at: datetime | None = None
     price_age_hours: float | None = None
     price_stale: bool | None = None
+    fuel_type: str | None = None
+    requested_fuel: str | None = None
+    fallback_used: bool = False
 
 
 @dataclass(slots=True, frozen=True)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from dataclasses import replace
 import json
 import logging
 from math import asin, cos, radians, sin, sqrt
@@ -19,6 +20,7 @@ from .api import Station, cheapest_station, nearest_station, sort_stations
 from .const import (
     CONF_COOLDOWN,
     CONF_FUEL_TYPE,
+    CONF_FUEL_TYPES,
     CONF_LOCATION_ENTITY,
     CONF_MOVEMENT_THRESHOLD,
     CONF_MOVEMENT_UPDATES,
@@ -46,6 +48,7 @@ from .providers.base import (
     ProviderReauthContext,
     ProviderUnsupportedFuelError,
     StationSearchQuery,
+    resolve_fuel,
 )
 from .providers import PROVIDER_REGISTRY
 from .providers.policy import (
@@ -110,6 +113,7 @@ class CountryAutoContext:
         self.confirmed_country = self._hysteresis.observe(self.raw_country)
         tankerkoenig = PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG]
         petromap = PROVIDER_REGISTRY[PROVIDER_PETROMAP]
+        nakordoni = PROVIDER_REGISTRY[PROVIDER_NAKORDONI]
         self.auto_provider_decision = choose_auto_provider(
             self.confirmed_country,
             self.fuel_type,
@@ -117,6 +121,8 @@ class CountryAutoContext:
             tankerkoenig_capabilities=tankerkoenig.capabilities,
             petromap_enabled=petromap.enabled,
             petromap_capabilities=petromap.capabilities,
+            nakordoni_enabled=nakordoni.enabled,
+            nakordoni_capabilities=nakordoni.capabilities,
         )
         return self.auto_provider_decision
 
@@ -149,27 +155,38 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._unsub_position = None
         self._movement_refresh_scheduled = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
-        self.country_auto_context = CountryAutoContext(self.options[CONF_FUEL_TYPE])
+        self.fuel_types = self._configured_fuels(self.options)
+        self.country_auto_context = CountryAutoContext(self.fuel_types[0])
         self.auto_runtime_state: AutoRuntimeState | None = None
 
     @property
     def _is_auto(self) -> bool:
         return self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG) == "auto"
 
+    @staticmethod
+    def _configured_fuels(options: dict[str, Any]) -> list[str]:
+        raw = options.get(CONF_FUEL_TYPES, options.get(CONF_FUEL_TYPE, "diesel"))
+        values = [raw] if isinstance(raw, str) else raw if isinstance(raw, (list, tuple, set)) else []
+        fuels: list[str] = []
+        for fuel in values:
+            if isinstance(fuel, str) and fuel in {"e5", "e10", "diesel", "lpg", "hvo100"} and fuel not in fuels:
+                fuels.append(fuel)
+        return fuels or ["diesel"]
+
     def _get_provider(self, provider_mode: str):
         """Return one cached concrete provider for Auto runtime."""
 
-        if provider_mode not in (PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP):
+        if provider_mode not in (PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI):
             raise ValueError(f"Auto selected non-concrete provider: {provider_mode}")
         provider = self._providers.get(provider_mode)
         if provider is not None:
             return provider
         registration = PROVIDER_REGISTRY[provider_mode]
-        key_name = (
-            "tankerkoenig_api_key"
-            if provider_mode == PROVIDER_TANKERKOENIG
-            else "petromap_api_key"
-        )
+        key_name = {
+            PROVIDER_TANKERKOENIG: "tankerkoenig_api_key",
+            PROVIDER_PETROMAP: "petromap_api_key",
+            PROVIDER_NAKORDONI: "nakordoni_api_key",
+        }[provider_mode]
         provider = registration.factory(self._session, self.options[key_name])
         self._providers[provider_mode] = provider
         return provider
@@ -257,6 +274,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             return None
 
     async def _async_update_data(self) -> list[Station]:
+        configured_fuels = getattr(self, "fuel_types", self._configured_fuels(self.options))
         position = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         if position is None:
             if self._is_auto:
@@ -274,38 +292,77 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         if self._is_auto:
             decision = observed_decision
             self._set_auto_runtime_state(decision)
-            try:
-                validate_direct_fuel_runtime(decision)
-            except (NoSuitableProviderError, FuelFallbackBlockedError) as err:
-                raise UpdateFailed(str(err)) from err
-            provider_mode = decision.provider_mode
-            provider = self._get_provider(provider_mode)
-            query_fuel = decision.fuel_resolution.effective_fuel
+            requests = []
+            for index, requested_fuel in enumerate(configured_fuels):
+                candidate = decision if index == 0 else choose_auto_provider(
+                    self.country_auto_context.confirmed_country,
+                    requested_fuel,
+                    tankerkoenig_enabled=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].enabled,
+                    tankerkoenig_capabilities=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].capabilities,
+                    petromap_enabled=PROVIDER_REGISTRY[PROVIDER_PETROMAP].enabled,
+                    petromap_capabilities=PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities,
+                    nakordoni_enabled=PROVIDER_REGISTRY[PROVIDER_NAKORDONI].enabled,
+                    nakordoni_capabilities=PROVIDER_REGISTRY[PROVIDER_NAKORDONI].capabilities,
+                )
+                try:
+                    validate_direct_fuel_runtime(candidate)
+                except (NoSuitableProviderError, FuelFallbackBlockedError):
+                    continue
+                effective_fuel = candidate.fuel_resolution.effective_fuel if candidate.fuel_resolution else None
+                if effective_fuel is None or candidate.provider_mode is None:
+                    continue
+                requests.append((candidate.provider_mode, self._get_provider(candidate.provider_mode), requested_fuel, effective_fuel))
+            if not requests:
+                raise UpdateFailed("No configured fuel has a suitable provider") from NoSuitableProviderError(
+                    decision.reason
+                )
+            provider_mode = requests[0][0]
+            provider = requests[0][1]
         else:
             provider_mode = self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
             provider = self.client
-            query_fuel = self.options[CONF_FUEL_TYPE]
             capabilities = PROVIDER_REGISTRY[provider_mode].capabilities
-            if query_fuel not in (capabilities.supported_fuel_types or frozenset()):
+            requests = []
+            for requested_fuel in configured_fuels:
+                resolution = resolve_fuel(requested_fuel, capabilities)
+                if resolution.effective_fuel is not None:
+                    requests.append((provider_mode, provider, requested_fuel, resolution.effective_fuel))
+            if not requests:
                 raise UpdateFailed(
                     str(ProviderUnsupportedFuelError(
-                        f"{provider_mode} does not support fuel {query_fuel}"
+                        f"{provider_mode} does not support configured fuels"
                     ))
                 )
         now = datetime.now().astimezone()
         self.last_request = now
         if self._is_auto:
             self._set_auto_runtime_state(decision, effective_provider=provider_mode)
+        result: list[Station] = []
         try:
-            result = await provider.async_search(
-                StationSearchQuery(
-                    latitude=position[0],
-                    longitude=position[1],
-                    radius_km=min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
-                    fuel_type=query_fuel,
-                    station_count=int(self.options[CONF_STATION_COUNT]),
+            for request_mode, request_provider, requested_fuel, effective_fuel in requests:
+                found = await request_provider.async_search(
+                    StationSearchQuery(
+                        latitude=position[0],
+                        longitude=position[1],
+                        radius_km=min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
+                        fuel_type=effective_fuel,
+                        station_count=int(self.options[CONF_STATION_COUNT]),
+                    )
                 )
-            )
+                if len(requests) > 1 or requested_fuel != effective_fuel:
+                    found = [replace(
+                        station,
+                        station_id=(
+                            f"{request_mode}:{station.station_id}:{effective_fuel}"
+                            if len(requests) > 1
+                            else station.station_id
+                        ),
+                        fuel_type=effective_fuel,
+                        requested_fuel=requested_fuel,
+                        fallback_used=requested_fuel != effective_fuel,
+                        provider=station.provider or request_mode,
+                    ) for station in found]
+                result.extend(found)
         except ProviderAuthError as err:
             if provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)

@@ -565,7 +565,7 @@ def test_legacy_migration_maps_generic_key_to_tankerkoenig_without_loss():
     assert entry.data[CONF_TANKERKOENIG_API_KEY] == "legacy-tk"
     assert CONF_API_KEY not in entry.data
     assert entry.data[CONF_LOCATION_ENTITY] == "device_tracker.vehicle"
-    assert entry.version == 2
+    assert entry.version == 3
 
 
 def test_explicit_petromap_migration_sets_privacy_marker_and_preserves_data():
@@ -591,7 +591,7 @@ def test_explicit_petromap_migration_sets_privacy_marker_and_preserves_data():
     assert entry.data[CONF_PETROMAP_PRIVACY_ACCEPTED] is True
     assert CONF_API_KEY not in entry.data
     assert entry.data[CONF_LOCATION_ENTITY] == "device_tracker.vehicle"
-    assert entry.version == 2
+    assert entry.version == 3
 
 
 def test_ambiguous_generic_key_is_retained_during_migration():
@@ -620,7 +620,7 @@ def test_ambiguous_generic_key_is_retained_during_migration():
     assert entry.data[CONF_TANKERKOENIG_API_KEY] == "tk-known"
     assert entry.data[CONF_PETROMAP_API_KEY] == "pm-known"
     assert entry.data[CONF_PETROMAP_PRIVACY_ACCEPTED] is True
-    assert entry.version == 2
+    assert entry.version == 3
 
 
 def test_canonical_v2_data_at_version_one_is_promoted_without_mutation():
@@ -644,7 +644,7 @@ def test_canonical_v2_data_at_version_one_is_promoted_without_mutation():
     )
     original_data = dict(entry.data)
     assert asyncio.run(integration.async_migrate_entry(hass, entry)) is True
-    assert entry.version == 2
+    assert entry.version == 3
     assert entry.data == original_data
 
 
@@ -682,5 +682,5 @@ def test_config_entry_migration_lifecycle_persists_handler_version():
 
     assert asyncio.run(hass.config_entries.async_migrate(entry)) is True
     assert updates == [2]
-    assert entry.version == MobileFuelStationsConfigFlow.VERSION == 2
+    assert entry.version == MobileFuelStationsConfigFlow.VERSION == 3
     assert entry.data[CONF_PETROMAP_API_KEY] == "legacy-pm"

@@ -12,8 +12,9 @@ the permissions of the configured developer key.
 
 - setup and options through the Home Assistant UI
 - configurable location entity with `latitude` and `longitude` attributes
-- diesel, E5, E10, and LPG / Autogas
-- HVO100 is not selectable yet because no verified provider-specific API selector is available.
+- selectable Super E5, Super E10, Diesel, LPG / Autogas, and HVO100
+- HVO100 remains unavailable unless a provider capability is verified; it is never silently treated as diesel.
+- multiple fuel types can be selected, with fuel type and original currency retained per station
 - search radius from 1 to 25 km
 - 1 to 10 stable station slots
 - regular refreshes and optional movement-triggered updates
@@ -47,7 +48,7 @@ the permissions of the configured developer key.
 6. Add the integration through **Settings → Devices & services → Add integration**.
 
 The dashboard card is registered automatically. The automatically registered
-frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.6`
+frontend URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.7`
 includes the integration version. Each integration version therefore gets its
 own resource URL, so stale card JavaScript from caches is not reused after a
 version update. After a HACS update, a complete Home Assistant restart is
@@ -123,7 +124,7 @@ navigation_provider: waze
 
 ## Upgrading from older versions
 
-For the upgrade to v0.5.0-beta.6, update through HACS and restart Home Assistant completely. Beta.6 adds safe Nakordoni rate, quota, and permission diagnostics; it performs no additional provider requests and logs no credentials or location data.
+For the upgrade to v0.5.0-beta.7, update through HACS and restart Home Assistant completely. Beta.7 migrates the former single-fuel value without loss and exposes all five fuels as a multi-select. Providers are evaluated per fuel using verified capabilities; credentials and location data are not logged in diagnostics.
 
 For the upgrade to v0.5.0-beta.5, update through HACS and restart Home Assistant completely. Beta.5 adds the explicit Nakordoni provider; existing beta.4 entries remain compatible without migration.
 

@@ -115,6 +115,8 @@ def _error(
         exception = ProviderResponseError("provider_error")
     exception.diagnostics = ProviderRequestDiagnostics(
         provider=PROVIDER_NAKORDONI,
+        fuel_type=fuel_type,
+        requested_fuel=fuel_type,
         http_status=status,
         error_code=_safe_error_code(code),
         retry_after=_header_nonnegative_int(headers, "Retry-After"),

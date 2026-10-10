@@ -3,8 +3,8 @@
 from datetime import timedelta
 
 DOMAIN = "mobile_fuel_stations"
-CONFIG_ENTRY_VERSION = 2
-FRONTEND_VERSION = "0.5.0-beta.6"
+CONFIG_ENTRY_VERSION = 3
+FRONTEND_VERSION = "0.5.0-beta.7"
 FRONTEND_FILENAME = "mobile-fuel-stations-card.js"
 FRONTEND_URL = f"/{DOMAIN}/{FRONTEND_FILENAME}?v={FRONTEND_VERSION}"
 FRONTEND_RESOURCE_URL = FRONTEND_URL
@@ -19,6 +19,7 @@ CONF_PROVIDER_MODE = "provider_mode"
 CONF_LOCATION_ENTITY = "location_entity"
 CONF_RADIUS = "radius"
 CONF_FUEL_TYPE = "fuel_type"
+CONF_FUEL_TYPES = "fuel_types"
 CONF_STATION_COUNT = "station_count"
 CONF_UPDATE_INTERVAL = "update_interval"
 CONF_MOVEMENT_UPDATES = "movement_updates"
@@ -27,6 +28,14 @@ CONF_COOLDOWN = "cooldown"
 
 DEFAULT_RADIUS = 20.0
 DEFAULT_FUEL_TYPE = "diesel"
+FUEL_TYPES = ("e5", "e10", "diesel", "lpg", "hvo100")
+FUEL_TYPE_LABELS = {
+    "e5": "Super E5",
+    "e10": "Super E10",
+    "diesel": "Diesel",
+    "lpg": "Autogas LPG",
+    "hvo100": "HVO100",
+}
 DEFAULT_STATION_COUNT = 5
 DEFAULT_UPDATE_INTERVAL = 15
 DEFAULT_MOVEMENT_UPDATES = True

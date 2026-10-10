@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
@@ -67,7 +68,10 @@ class TankerkoenigProvider:
                 raise ProviderRateLimitError
             raise ProviderResponseError("Provider returned ok=false")
 
-        return [self._normalize(item) for item in payload.get("stations", []) if isinstance(item, dict)]
+        return [
+            replace(self._normalize(item), fuel_type=query.fuel_type, requested_fuel=query.fuel_type, provider="tankerkoenig")
+            for item in payload.get("stations", []) if isinstance(item, dict)
+        ]
 
     @staticmethod
     def _number(value: Any) -> float | None:

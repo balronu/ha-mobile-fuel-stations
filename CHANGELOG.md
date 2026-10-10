@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0-beta.7 — Multi-fuel selection and provider-aware results
+
+- Added selectable Super E5, Super E10, Diesel, LPG and HVO100 fuel types.
+- Preserved legacy single-fuel configuration while storing canonical multi-fuel values.
+- Added per-station fuel metadata, namespaced multi-provider station IDs and explicit E10-to-E5 fallback metadata.
+- Extended the frontend card to show the selected fuel per station and multi-fuel summaries.
+- Nakordoni remains implemented behind its documented, externally blocked live authorization; no unverified HVO100 capability is enabled.
+
 ## 0.5.0-beta.6 — Nakordoni failure diagnostics
 
 - Added safe Nakordoni rate, quota, permission, and first-refresh diagnostics.

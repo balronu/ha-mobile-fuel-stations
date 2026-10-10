@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..const import PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
+from ..const import PROVIDER_NAKORDONI, PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
 from .base import (
     CountryPriceCoverage,
     FuelFallbackBlockedError,
@@ -68,14 +68,14 @@ class AutoRuntimeState:
 
 
 def validate_direct_fuel_runtime(decision: AutoProviderDecision) -> AutoProviderDecision:
-    """Reject Auto outcomes that cannot make one direct provider request."""
+    """Validate an Auto outcome before its direct provider request.
+
+    E10-to-E5 is the only permitted substitution and is represented in the
+    decision metadata; diesel, LPG and HVO100 never cross-map.
+    """
 
     if decision.provider_mode is None:
         raise NoSuitableProviderError(decision.reason)
-    if decision.fuel_resolution and decision.fuel_resolution.fallback_used:
-        raise FuelFallbackBlockedError(
-            decision.fuel_resolution.fallback_reason or "fallback_required"
-        )
     return decision
 
 
@@ -103,6 +103,8 @@ def choose_auto_provider(
     tankerkoenig_capabilities: ProviderCapabilities | None = None,
     petromap_enabled: bool = False,
     petromap_capabilities: ProviderCapabilities | None = None,
+    nakordoni_enabled: bool = False,
+    nakordoni_capabilities: ProviderCapabilities | None = None,
 ) -> AutoProviderDecision:
     """Choose a provider without I/O, HA state, geocoding, or fallback calls.
 
@@ -134,36 +136,55 @@ def choose_auto_provider(
 
     petromap_capabilities = petromap_capabilities or PETROMAP_CAPABILITIES
     petromap_coverage = _coverage_for(petromap_capabilities, normalized)
-    if petromap_coverage != CountryPriceCoverage.PER_STATION:
-        reason = {
-            CountryPriceCoverage.NATIONAL_ONLY: "national_prices_only",
-            CountryPriceCoverage.NO_PRICES: "no_station_prices",
-            CountryPriceCoverage.UNSUPPORTED: "unsupported_country",
-            CountryPriceCoverage.UNKNOWN: "unknown_coverage",
-        }.get(petromap_coverage, "unsupported_country")
-        return AutoProviderDecision(None, normalized, petromap_coverage, reason)
-    if not petromap_enabled:
-        return AutoProviderDecision(None, normalized, petromap_coverage, "provider_disabled")
-    supported_fuels = petromap_capabilities.supported_fuel_types or frozenset()
-    petromap_fuel = resolve_fuel(
-        fuel_type,
-        ProviderCapabilities(supported_fuel_types=supported_fuels),
-    )
-    if petromap_fuel.effective_fuel is None:
-        return AutoProviderDecision(
-            None,
-            normalized,
-            petromap_coverage,
-            "unsupported_fuel",
-            petromap_fuel,
+    if petromap_coverage == CountryPriceCoverage.PER_STATION and petromap_enabled:
+        supported_fuels = petromap_capabilities.supported_fuel_types or frozenset()
+        petromap_fuel = resolve_fuel(
+            fuel_type,
+            ProviderCapabilities(supported_fuel_types=supported_fuels),
         )
-    return AutoProviderDecision(
-        PROVIDER_PETROMAP,
-        normalized,
-        petromap_coverage,
-        "provider_available",
-        petromap_fuel,
-    )
+        if petromap_fuel.effective_fuel is not None:
+            return AutoProviderDecision(
+                PROVIDER_PETROMAP,
+                normalized,
+                petromap_coverage,
+                "provider_available",
+                petromap_fuel,
+            )
+
+    nakordoni_coverage = _coverage_for(nakordoni_capabilities, normalized)
+    if nakordoni_enabled and nakordoni_coverage == CountryPriceCoverage.PER_STATION:
+        supported_fuels = nakordoni_capabilities.supported_fuel_types or frozenset()
+        nakordoni_fuel = resolve_fuel(
+            fuel_type,
+            ProviderCapabilities(supported_fuel_types=supported_fuels),
+        )
+        if nakordoni_fuel.effective_fuel is not None:
+            return AutoProviderDecision(
+                PROVIDER_NAKORDONI,
+                normalized,
+                nakordoni_coverage,
+                "provider_available",
+                nakordoni_fuel,
+            )
+
+    if (
+        petromap_coverage == CountryPriceCoverage.PER_STATION
+        and not petromap_enabled
+        and nakordoni_coverage != CountryPriceCoverage.PER_STATION
+    ):
+        return AutoProviderDecision(None, normalized, petromap_coverage, "provider_disabled")
+
+    # Never infer country coverage from an API key or from a provider's global
+    # fuel list.  Unknown Nakordoni coverage remains unavailable until it is
+    # documented and verified.
+    coverage = petromap_coverage if petromap_coverage != CountryPriceCoverage.UNSUPPORTED else nakordoni_coverage
+    reason = {
+        CountryPriceCoverage.NATIONAL_ONLY: "national_prices_only",
+        CountryPriceCoverage.NO_PRICES: "no_station_prices",
+        CountryPriceCoverage.UNSUPPORTED: "unsupported_country",
+        CountryPriceCoverage.UNKNOWN: "unknown_coverage",
+    }.get(coverage, "unsupported_country")
+    return AutoProviderDecision(None, normalized, coverage, reason)
 
 
 class CountryHysteresis:

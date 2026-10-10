@@ -12,7 +12,7 @@ Providerquoten ab.
 ## Stable und Pre-Release
 
 - **Stable:** `v0.4.0` ist die stabile Version für normale Nutzer.
-- **Beta:** `v0.5.0-beta.6` ist die aktuelle Pre-Release-Version mit den neuen
+- **Beta:** `v0.5.0-beta.7` ist die aktuelle Pre-Release-Version mit Mehrfachauswahl und den neuen
   Provider- und Diagnosefunktionen.
 
 Wenn du die Beta testen möchtest, wähle in HACS bei Bedarf die **aktuelle
@@ -23,8 +23,9 @@ produktive Installationen gedacht.
 
 - Einrichtung und Optionen über die Home-Assistant-Oberfläche
 - frei wählbare Standort-Entity mit `latitude`- und `longitude`-Attributen
-- Diesel, E5, E10 und LPG / Autogas
-- HVO100 ist noch nicht auswählbar, weil kein verifizierter providerbezogener API-Selektor vorliegt.
+- Super E5, Super E10, Diesel, LPG / Autogas und HVO100 sind auswählbar.
+- HVO100 bleibt ohne verifizierte Provider-Capability korrekt als nicht verfügbar; es wird niemals stillschweigend als Diesel behandelt.
+- Mehrfachauswahl von Kraftstoffarten ist möglich; jede Tankstelle trägt ihre Kraftstoffart und Originalwährung.
 - Nakordoni unterstützt in dieser Beta explizit Diesel, E5, E10 und LPG; HVO/HVO100 bleibt blockiert.
 - Nakordoni begrenzt den Radius auf 25 km, verwendet eine Anfrage pro Refresh und verlangt sichtbare Attribution: **Data by nakordoni.eu**.
 - Suchradius von 1 bis 25 km
@@ -47,10 +48,14 @@ produktive Installationen gedacht.
 | --- | --- | --- | --- | --- |
 | [Tankerkönig](https://creativecommons.tankerkoenig.de/) | Deutschland | Ja | Diesel, E5, E10 | LPG ist im Tankerkönig-Adapter nicht unterstützt; Radius maximal 25 km. |
 | [Petromap](https://developer.petromap.eu/) | Länder- und Preisabdeckung gemäß dem aktuellen Petromap-Vertrag | Ja | Diesel, E5, LPG | Abdeckung und Preisqualität unterscheiden sich je Land; E10 ist im aktuellen MFS-Petromap-Modus nicht als expliziter Kraftstoff verfügbar. |
-| [Nakordoni](https://nakordoni.dev/) | Explizit auswählbarer Provider in beta.6 | Ja | Diesel, E5, E10, LPG | Nicht Bestandteil von Auto; maximal 25 km; Marktfreigabe und Quoten können erforderlich sein; sichtbare Attribution ist Pflicht. |
+| [Nakordoni](https://nakordoni.dev/) | Explizit auswählbarer Provider in beta.7 | Ja | Diesel, E5, E10, LPG | Auto-Auswahl nur bei bestätigter Capability; maximal 25 km; API-Freischaltung und Quoten können erforderlich sein; sichtbare Attribution ist Pflicht. |
 
-HVO und HVO100 werden derzeit von MFS nicht unterstützt. HVO wird nicht
-stillschweigend als Diesel behandelt.
+HVO100 ist im Config-/Options-Flow auswählbar und wird intern eindeutig als
+eigener Kraftstoff geführt. Es wird aktuell jedoch von keinem verifiziert
+aktivierten Provider angeboten; deshalb werden dafür keine Dieselpreise
+angezeigt und es findet keine stille Substitution statt. Mehrfachauswahl ist
+pro Kraftstoff capability-basiert: verfügbare Kraftstoffe bleiben sichtbar,
+unverfügbare unterdrücken die übrigen nicht.
 
 ## Voraussetzungen
 
@@ -70,7 +75,7 @@ stillschweigend als Diesel behandelt.
 6. Füge die Integration unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** hinzu.
 
 Die Dashboard-Karte wird automatisch registriert. Die automatisch registrierte
-Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.6`
+Frontend-URL `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.0-beta.7`
 enthält die Integrationsversion. Jede Integrationsversion erhält dadurch eine
 eigene Resource-URL, sodass veralteter Card-JavaScript-Code aus Caches bei
 einem Versionswechsel nicht weiterverwendet wird. Nach einem HACS-Update
@@ -196,7 +201,7 @@ Attribution **[Data by nakordoni.eu](https://nakordoni.eu)**. Eine Nakordoni-
 Credential wird niemals in Options, Entity-Attributen, Diagnostics oder
 Frontend-Code gespeichert.
 
-Bei Providerfehlern stellt beta.6 sichere technische Diagnosedaten bereit,
+Bei Providerfehlern stellt beta.7 sichere technische Diagnosedaten bereit,
 beispielsweise Provider, HTTP-Status, normalisierten Fehlercode,
 `Retry-After` sowie Quota-Limit und Remaining. Credentials, Authorization-
 Header, exakte Koordinaten, Request-URLs und rohe Providerantworten werden
@@ -204,7 +209,7 @@ nicht in diesen Diagnosen gespeichert.
 
 ## Upgrade von älteren Versionen
 
-Für das Upgrade auf v0.5.0-beta.6 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.6 ergänzt sichere Nakordoni-Fehlerdiagnostik für Rate-/Quota-/Berechtigungsfehler; es werden keine zusätzlichen Providerrequests ausgeführt und keine Credentials oder Standortdaten protokolliert.
+Für das Upgrade auf v0.5.0-beta.7 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.7 migriert den bisherigen Einzelkraftstoff verlustfrei und bietet die fünf Kraftstoffe als Mehrfachauswahl. Provider werden je Kraftstoff anhand verifizierter Capabilities bewertet; Credentials und Standortdaten werden nicht in Diagnosen protokolliert.
 
 Für das Upgrade auf v0.5.0-beta.5 genügt ein Update über HACS und ein vollständiger Home-Assistant-Neustart. Beta.5 ergänzt den expliziten Nakordoni-Provider; bestehende beta.4-Entries bleiben ohne Migration kompatibel.
 
@@ -221,18 +226,21 @@ Die Standort-Entity muss die numerischen Attribute `latitude` und `longitude` be
 Auto wählt anhand von Land und Kraftstoff nach der aktuellen MFS-Policy. Für
 Deutschland wird Tankerkönig bevorzugt, wenn die Kombination unterstützt wird;
 Petromap kann für dafür geeignete Länder und Kraftstoffe verwendet werden.
-Nakordoni ist in beta.6 **nicht** Bestandteil des Auto-Modus. Auto fragt nicht
-automatisch alle Provider parallel ab und führt keine unnötigen Fallback-
-Requests für nicht unterstützte Kombinationen aus.
+Nakordoni wird nur ausgewählt, wenn die konfigurierte und dokumentierte
+Capability-Kombination Land/Kraftstoff/Preisabdeckung dies erlaubt. Eine noch
+nicht freigeschaltete Nakordoni-Credential liefert keine vorgetäuschten
+Live-Daten; die externe Freigabe bleibt für den Live-Test offen.
 
-Eine spätere Multi-Provider-Auswahl ist nur geplant und in beta.6 nicht
-vorhanden.
+Auto bewertet die Kraftstoffe einzeln. Tankerkönig wird in Deutschland für
+E5, E10 und Diesel bevorzugt. E10 darf ausschließlich dann als E5 angezeigt
+werden, wenn für das Land keine ausdrücklich unterstützten E10-Preisdaten
+verfügbar sind; der Ersatz wird an Station und Frontend gekennzeichnet.
 
 ## Erzeugte Entities
 
 Der Overview-Sensor stellt unter anderem folgende Attribute bereit:
 
-`radius`, `fuel_type`, `location_entity`, `station_count`, `station_entities`, `last_successful_update`, `reference_latitude`, `reference_longitude`, `distance_since_last_search`, `nearest_station`, `cheapest_station`
+`radius`, `fuel_type`, `fuel_types`, `location_entity`, `station_count`, `station_entities`, `last_successful_update`, `reference_latitude`, `reference_longitude`, `distance_since_last_search`, `nearest_station`, `cheapest_station`
 
 Die Stations-Slots stellen unter anderem bereit:
 
