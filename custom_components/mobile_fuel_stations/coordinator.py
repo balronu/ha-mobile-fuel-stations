@@ -28,6 +28,7 @@ from .const import (
     CONF_STATION_COUNT,
     CONF_UPDATE_INTERVAL,
     CONF_PROVIDER_MODE,
+    CONF_PROVIDER_MODES,
     CONF_SORT_FUEL,
     CONF_SORT_MODE,
     DEFAULT_SORT_FUEL,
@@ -98,9 +99,15 @@ class CountryAutoContext:
         self,
         fuel_type: str,
         resolver: Callable[[float, float], str | None] = resolve,
+        allowed_providers: set[str] | frozenset[str] | None = None,
     ) -> None:
         self.fuel_type = fuel_type
         self._resolver = resolver
+        self.allowed_providers = frozenset(allowed_providers or {
+            PROVIDER_TANKERKOENIG,
+            PROVIDER_PETROMAP,
+            PROVIDER_NAKORDONI,
+        })
         self._hysteresis = CountryHysteresis()
         self.raw_country: str | None = None
         self.confirmed_country: str | None = None
@@ -121,11 +128,11 @@ class CountryAutoContext:
         self.auto_provider_decision = choose_auto_provider(
             self.confirmed_country,
             self.fuel_type,
-            tankerkoenig_enabled=tankerkoenig.enabled,
+            tankerkoenig_enabled=tankerkoenig.enabled and PROVIDER_TANKERKOENIG in self.allowed_providers,
             tankerkoenig_capabilities=tankerkoenig.capabilities,
-            petromap_enabled=petromap.enabled,
+            petromap_enabled=petromap.enabled and PROVIDER_PETROMAP in self.allowed_providers,
             petromap_capabilities=petromap.capabilities,
-            nakordoni_enabled=nakordoni.enabled,
+            nakordoni_enabled=nakordoni.enabled and PROVIDER_NAKORDONI in self.allowed_providers,
             nakordoni_capabilities=nakordoni.capabilities,
         )
         return self.auto_provider_decision
@@ -161,7 +168,19 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._movement_refresh_scheduled = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
         self.fuel_types = self._configured_fuels(self.options)
-        self.country_auto_context = CountryAutoContext(self.fuel_types[0])
+        self.provider_modes = self._configured_provider_modes(self.options)
+        self.available_provider_modes = frozenset(
+            provider
+            for provider in self.provider_modes
+            if self.options.get({
+                PROVIDER_TANKERKOENIG: "tankerkoenig_api_key",
+                PROVIDER_PETROMAP: "petromap_api_key",
+                PROVIDER_NAKORDONI: "nakordoni_api_key",
+            }[provider])
+        )
+        self.country_auto_context = CountryAutoContext(
+            self.fuel_types[0], allowed_providers=self.available_provider_modes
+        )
         self.auto_runtime_state: AutoRuntimeState | None = None
 
     @property
@@ -177,6 +196,26 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             if isinstance(fuel, str) and fuel in {"e5", "e10", "diesel", "lpg", "hvo100"} and fuel not in fuels:
                 fuels.append(fuel)
         return fuels or ["diesel"]
+
+    @staticmethod
+    def _configured_provider_modes(options: dict[str, Any]) -> frozenset[str]:
+        raw = options.get(CONF_PROVIDER_MODES)
+        if isinstance(raw, str):
+            values = [raw]
+        elif isinstance(raw, (list, tuple, set, frozenset)):
+            values = list(raw)
+        else:
+            mode = options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+            values = [mode] if mode != "auto" else [
+                PROVIDER_TANKERKOENIG,
+                PROVIDER_PETROMAP,
+                PROVIDER_NAKORDONI,
+            ]
+        return frozenset(value for value in values if value in {
+            PROVIDER_TANKERKOENIG,
+            PROVIDER_PETROMAP,
+            PROVIDER_NAKORDONI,
+        }) or frozenset({PROVIDER_TANKERKOENIG})
 
     def _get_provider(self, provider_mode: str):
         """Return one cached concrete provider for Auto runtime."""
@@ -302,11 +341,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                 candidate = decision if index == 0 else choose_auto_provider(
                     self.country_auto_context.confirmed_country,
                     requested_fuel,
-                    tankerkoenig_enabled=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].enabled,
+                    tankerkoenig_enabled=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].enabled and PROVIDER_TANKERKOENIG in self.available_provider_modes,
                     tankerkoenig_capabilities=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].capabilities,
-                    petromap_enabled=PROVIDER_REGISTRY[PROVIDER_PETROMAP].enabled,
+                    petromap_enabled=PROVIDER_REGISTRY[PROVIDER_PETROMAP].enabled and PROVIDER_PETROMAP in self.available_provider_modes,
                     petromap_capabilities=PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities,
-                    nakordoni_enabled=PROVIDER_REGISTRY[PROVIDER_NAKORDONI].enabled,
+                    nakordoni_enabled=PROVIDER_REGISTRY[PROVIDER_NAKORDONI].enabled and PROVIDER_NAKORDONI in self.available_provider_modes,
                     nakordoni_capabilities=PROVIDER_REGISTRY[PROVIDER_NAKORDONI].capabilities,
                 )
                 try:

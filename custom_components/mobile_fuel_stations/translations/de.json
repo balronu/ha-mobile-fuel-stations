@@ -5,7 +5,7 @@
         "title": "Mobile Tankstellen",
         "description": "Anbieter und Tankstellensuche konfigurieren.",
         "data": {
-          "provider_mode": "Datenanbieter",
+          "provider_modes": "Datenanbieter",
           "location_entity": "Standort des Fahrzeugs",
           "radius": "Suchradius (km)",
           "fuel_type": "Kraftstoffarten",
@@ -18,7 +18,7 @@
           "sort_fuel": "Kraftstoff für Preissortierung"
         },
         "data_description": {
-          "provider_mode": "Automatisch je nach Land und Kraftstoffart einen geeigneten Anbieter auswählen.",
+          "provider_modes": "Einen oder mehrere Anbieter für die automatische Auswahl festlegen.",
           "location_entity": "Entity mit dem Standort des Fahrzeugs.",
           "radius": "Tankstellen innerhalb dieses Radius um den Fahrzeugstandort suchen.",
           "station_count": "Anzahl der Tankstellen, die als Sensoren bereitgestellt werden.",
@@ -33,6 +33,7 @@
       "petromap_credentials": {"title": "Petromap-Zugangsdaten", "description": "Petromap-API-Key eingeben."},
       "nakordoni_credentials": {"title": "Nakordoni-Zugangsdaten", "description": "Nakordoni-API-Key eingeben."},
       "auto_credentials": {"title": "Zugangsdaten im Auto-Modus", "description": "Beide Provider-Zugangsdaten eingeben."},
+      "provider_privacy": {"title": "Datenschutz der Anbieter", "description": "Ausgewählte Anbieter können Standort, Radius und Kraftstoffarten erhalten."},
       "petromap_privacy": {"title": "Petromap-Datenschutz", "description": "Standortkoordinaten, Radius und Kraftstoffarten können an Petromap übertragen werden."},
       "nakordoni_privacy": {"title": "Nakordoni-Datenschutz", "description": "Standortkoordinaten, Radius und Kraftstoffarten können an Nakordoni übertragen werden. Keine Geräte-ID wird übertragen."},
       "auto_privacy": {"title": "Datenschutz im Auto-Modus", "description": "Petromap kann im Auto-Modus verwendet werden."},
@@ -42,6 +43,7 @@
     },
     "error": {
       "api_key_required": "Bitte einen API-Key eingeben.",
+      "provider_required": "Bitte mindestens einen Datenanbieter auswählen.",
       "invalid_location": "Die Entity liefert keine gültigen Latitude-/Longitude-Werte.",
       "invalid_auth": "Der API-Key ist ungültig oder abgelaufen.",
       "permission_error": "Der API-Key hat keine Berechtigung für diesen Anbieter.",
@@ -57,7 +59,7 @@
       "init": {
         "title": "Optionen Mobile Tankstellen",
         "data": {
-          "provider_mode": "Datenanbieter",
+          "provider_modes": "Datenanbieter",
           "location_entity": "Standort des Fahrzeugs",
           "radius": "Suchradius (km)",
           "fuel_type": "Kraftstoffarten",
@@ -70,7 +72,7 @@
           "sort_fuel": "Kraftstoff für Preissortierung"
         },
         "data_description": {
-          "provider_mode": "Automatisch je nach Land und Kraftstoffart einen geeigneten Anbieter auswählen.",
+          "provider_modes": "Einen oder mehrere Anbieter für die automatische Auswahl festlegen.",
           "location_entity": "Entity mit dem Standort des Fahrzeugs.",
           "radius": "Tankstellen innerhalb dieses Radius um den Fahrzeugstandort suchen.",
           "station_count": "Anzahl der Tankstellen, die als Sensoren bereitgestellt werden.",
@@ -83,11 +85,12 @@
       },
       "options_petromap_privacy": {"title": "Petromap-Datenschutz", "description": "Standortkoordinaten, Radius und Kraftstoffarten können an Petromap übertragen werden."},
       "options_nakordoni_privacy": {"title": "Nakordoni-Datenschutz", "description": "Standortkoordinaten, Radius und Kraftstoffarten können an Nakordoni übertragen werden."},
-      "provider_credentials": {"title": "Provider-Zugangsdaten", "description": "Nur fehlende Zugangsdaten für den gewählten Provider eingeben."}
+      "options_provider_privacy": {"title": "Datenschutz der Anbieter", "description": "Ausgewählte Anbieter können Standort, Radius und Kraftstoffarten erhalten."},
+      "provider_credentials": {"title": "Provider-Zugangsdaten", "description": "Tankerkönig: {tankerkoenig_status}. Petromap: {petromap_status}. Nakordoni: {nakordoni_status}.", "data": {"tankerkoenig_api_key": "Tankerkönig-API-Key (leer lassen zum Beibehalten)", "petromap_api_key": "Petromap-API-Key (leer lassen zum Beibehalten)", "nakordoni_api_key": "Nakordoni-API-Key (leer lassen zum Beibehalten)", "remove_tankerkoenig_api_key": "Tankerkönig-API-Key entfernen", "remove_petromap_api_key": "Petromap-API-Key entfernen", "remove_nakordoni_api_key": "Nakordoni-API-Key entfernen"}}
     }
   },
   "selector": {
-    "provider_mode": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni", "auto": "Automatisch (empfohlen)"}},
+    "provider_modes": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni"}},
     "sort_mode": {"options": {"distance": "Entfernung – nächste zuerst", "price": "Kraftstoffpreis – günstigste zuerst"}},
     "sort_fuel": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100"}}
   }

@@ -41,6 +41,7 @@ from .const import (
     MIN_UPDATE_INTERVAL,
     MAX_API_RADIUS_KM,
     CONF_PROVIDER_MODE,
+    CONF_PROVIDER_MODES,
     CONF_SORT_FUEL,
     CONF_SORT_MODE,
     PROVIDER_AUTO,
@@ -63,6 +64,42 @@ from .providers.base import (
 )
 from .providers.petromap import async_validate_petromap_credentials
 
+PROVIDER_CHOICES = (
+    PROVIDER_TANKERKOENIG,
+    PROVIDER_PETROMAP,
+    PROVIDER_NAKORDONI,
+)
+
+
+def _normalize_provider_modes(value: object, fallback_mode: object = PROVIDER_TANKERKOENIG) -> list[str]:
+    """Normalize the new provider multi-select and legacy provider mode."""
+
+    values = [value] if isinstance(value, str) else value if isinstance(value, (list, tuple, set, frozenset)) else []
+    result = [provider for provider in values if provider in PROVIDER_CHOICES]
+    if result:
+        return list(dict.fromkeys(result))
+    if fallback_mode == PROVIDER_AUTO:
+        # Legacy beta entries used Auto for Tankerkönig + Petromap.  Keep that
+        # interpretation when an older test/entry has no provider_modes key.
+        return [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP]
+    if fallback_mode in PROVIDER_CHOICES:
+        return [fallback_mode]
+    return [PROVIDER_TANKERKOENIG]
+
+
+def _effective_provider_mode(provider_modes: list[str]) -> str:
+    """Keep the legacy scalar mode as the runtime compatibility value."""
+
+    return provider_modes[0] if len(provider_modes) == 1 else PROVIDER_AUTO
+
+
+def _provider_key(provider: str) -> str:
+    return {
+        PROVIDER_TANKERKOENIG: CONF_TANKERKOENIG_API_KEY,
+        PROVIDER_PETROMAP: CONF_PETROMAP_API_KEY,
+        PROVIDER_NAKORDONI: CONF_NAKORDONI_API_KEY,
+    }[provider]
+
 
 def _schema(
     defaults: dict[str, Any], include_key: bool, include_provider: bool = False
@@ -76,10 +113,14 @@ def _schema(
     if sort_fuel_default not in selected_fuels:
         sort_fuel_default = selected_fuels[0]
     if include_provider:
-        schema[vol.Required(CONF_PROVIDER_MODE, default=defaults.get(CONF_PROVIDER_MODE, PROVIDER_AUTO))] = selector.SelectSelector(
+        provider_modes = _normalize_provider_modes(
+            defaults.get(CONF_PROVIDER_MODES), defaults.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+        )
+        schema[vol.Required(CONF_PROVIDER_MODES, default=provider_modes)] = selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=[PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI, PROVIDER_AUTO],
-                translation_key=CONF_PROVIDER_MODE,
+                options=list(PROVIDER_CHOICES),
+                multiple=True,
+                translation_key=CONF_PROVIDER_MODES,
             )
         )
     if include_key:
@@ -168,45 +209,44 @@ def _normalize_sorting_input(values: dict[str, Any]) -> dict[str, Any]:
         normalized[CONF_SORT_MODE] = DEFAULT_SORT_MODE
     if len(selected_fuels) == 1 or normalized.get(CONF_SORT_FUEL) not in selected_fuels:
         normalized[CONF_SORT_FUEL] = selected_fuels[0]
+    provider_modes = _normalize_provider_modes(
+        normalized.get(CONF_PROVIDER_MODES), normalized.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+    )
+    normalized[CONF_PROVIDER_MODES] = provider_modes
+    normalized[CONF_PROVIDER_MODE] = _effective_provider_mode(provider_modes)
     return normalized
 
 
-def _credential_schema(provider_mode: str) -> vol.Schema:
+def _credential_schema(provider_modes: list[str]) -> vol.Schema:
     """Return the provider-specific credential form."""
 
-    if provider_mode == PROVIDER_AUTO:
-        fields = {
-            vol.Required(CONF_TANKERKOENIG_API_KEY): selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-            ),
-            vol.Required(CONF_PETROMAP_API_KEY): selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-            ),
-        }
-    elif provider_mode == PROVIDER_NAKORDONI:
-        fields = {
-            vol.Required(CONF_NAKORDONI_API_KEY): selector.TextSelector(
+    fields: dict[Any, Any] = {}
+    for provider in provider_modes:
+        key = _provider_key(provider)
+        fields[vol.Required(key)] = selector.TextSelector(
                 selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
             )
-        }
-    else:
-        fields = {
-            vol.Required(CONF_API_KEY): selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-            )
-        }
     return vol.Schema(fields)
 
 
-def _options_credential_schema(provider_mode: str, missing: set[str]) -> vol.Schema:
-    """Return password fields only for credentials missing from a target mode."""
+def _options_credential_schema(provider_modes: list[str], current_data: dict[str, Any]) -> vol.Schema:
+    """Return safe replacement/removal controls for selected providers."""
 
     fields: dict[Any, Any] = {}
-    for key in missing:
-        fields[vol.Required(key)] = selector.TextSelector(
+    for provider in provider_modes:
+        key = _provider_key(provider)
+        fields[vol.Optional(key, default="")] = selector.TextSelector(
             selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
         )
+        fields[vol.Optional(f"remove_{key}", default=False)] = bool
     return vol.Schema(fields)
+
+
+def _credential_status_placeholders(data: dict[str, Any]) -> dict[str, str]:
+    return {
+        f"{provider}_status": "API key stored" if data.get(_provider_key(provider)) else "No API key stored"
+        for provider in PROVIDER_CHOICES
+    }
 
 
 def _validate_location(hass: HomeAssistant, entity_id: str) -> bool:
@@ -254,40 +294,27 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Collect credentials and create the entry if the provider is enabled."""
 
         user_input = _normalize_sorting_input(user_input)
-        provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_AUTO)
-        api_key = user_input.get(CONF_API_KEY, "").strip()
-        if provider_mode == PROVIDER_PETROMAP:
-            api_key = user_input.get(CONF_PETROMAP_API_KEY, api_key).strip()
-        elif provider_mode == PROVIDER_NAKORDONI:
-            api_key = user_input.get(CONF_NAKORDONI_API_KEY, api_key).strip()
+        provider_modes = _normalize_provider_modes(
+            user_input.get(CONF_PROVIDER_MODES), user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+        )
+        provider_mode = _effective_provider_mode(provider_modes)
         errors = {}
-        if provider_mode == PROVIDER_AUTO:
-            tankerkoenig_key = user_input.get(CONF_TANKERKOENIG_API_KEY, "").strip()
-            petromap_key = user_input.get(CONF_PETROMAP_API_KEY, "").strip()
-            if not tankerkoenig_key:
-                errors[CONF_TANKERKOENIG_API_KEY] = "api_key_required"
-            if not petromap_key:
-                errors[CONF_PETROMAP_API_KEY] = "api_key_required"
-            if not errors and PROVIDER_REGISTRY.get(PROVIDER_PETROMAP) is None:
+        credentials = {}
+        for provider in provider_modes:
+            key_name = _provider_key(provider)
+            key = str(user_input.get(key_name, "")).strip()
+            credentials[key_name] = key
+            if not key:
+                errors[key_name] = "api_key_required"
+            registration = PROVIDER_REGISTRY.get(provider)
+            if registration is None:
                 errors["base"] = "unknown"
-        elif provider_mode in (PROVIDER_PETROMAP, PROVIDER_NAKORDONI):
-            if not api_key:
-                errors_key = CONF_PETROMAP_API_KEY if provider_mode == PROVIDER_PETROMAP else CONF_NAKORDONI_API_KEY
-                errors[errors_key] = "api_key_required"
-            registration = PROVIDER_REGISTRY.get(provider_mode)
-            if not errors and registration is None:
-                errors["base"] = "unknown"
-            elif not errors and (not registration.enabled or registration.factory is None):
+            elif not registration.enabled or registration.factory is None:
                 errors["base"] = "provider_disabled"
         if errors:
-            step_id = {
-                PROVIDER_AUTO: "auto_credentials",
-                PROVIDER_NAKORDONI: "nakordoni_credentials",
-                PROVIDER_TANKERKOENIG: "tankerkoenig_credentials",
-            }.get(provider_mode, "petromap_credentials")
             return self.async_show_form(
-                step_id=step_id,
-                data_schema=_credential_schema(provider_mode),
+                step_id="provider_credentials",
+                data_schema=_credential_schema(provider_modes),
                 errors=errors,
             )
         selected_fuels = _normalize_fuel_types(user_input.get(CONF_FUEL_TYPE))
@@ -296,25 +323,18 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         self._abort_if_unique_id_configured()
         data = dict(user_input)
+        data.pop(CONF_PROVIDER_MODES, None)
         data[CONF_FUEL_TYPE] = _stored_fuel_value(selected_fuels)
         data[CONF_FUEL_TYPES] = selected_fuels
         data[CONF_PROVIDER_MODE] = provider_mode
-        if provider_mode == PROVIDER_AUTO:
-            data.pop(CONF_API_KEY, None)
-            data[CONF_TANKERKOENIG_API_KEY] = user_input[CONF_TANKERKOENIG_API_KEY].strip()
-            data[CONF_PETROMAP_API_KEY] = user_input[CONF_PETROMAP_API_KEY].strip()
+        data[CONF_PROVIDER_MODES] = provider_modes
+        data.pop(CONF_API_KEY, None)
+        for key_name, key in credentials.items():
+            data[key_name] = key
+        if PROVIDER_PETROMAP in provider_modes:
             data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
-        elif provider_mode == PROVIDER_PETROMAP:
-            data.pop(CONF_API_KEY, None)
-            data[CONF_PETROMAP_API_KEY] = api_key
-            data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
-        elif provider_mode == PROVIDER_NAKORDONI:
-            data.pop(CONF_API_KEY, None)
-            data[CONF_NAKORDONI_API_KEY] = api_key
+        if PROVIDER_NAKORDONI in provider_modes:
             data[CONF_NAKORDONI_PRIVACY_ACCEPTED] = True
-        else:
-            data.pop(CONF_API_KEY, None)
-            data[CONF_TANKERKOENIG_API_KEY] = api_key
         return self.async_create_entry(
             title=f"Mobile Fuel Stations ({user_input[CONF_LOCATION_ENTITY]})",
             data=data,
@@ -323,27 +343,50 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
-            provider_mode = user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+            raw_provider_modes = user_input.get(CONF_PROVIDER_MODES)
+            provider_modes = _normalize_provider_modes(
+                raw_provider_modes, user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+            )
+            if isinstance(raw_provider_modes, (list, tuple, set, frozenset)) and not any(
+                provider in PROVIDER_CHOICES for provider in raw_provider_modes
+            ):
+                errors[CONF_PROVIDER_MODES] = "provider_required"
             if not _validate_location(self.hass, user_input[CONF_LOCATION_ENTITY]):
                 errors[CONF_LOCATION_ENTITY] = "invalid_location"
             if not errors:
-                self._pending_user_input = dict(user_input)
-                if provider_mode == PROVIDER_PETROMAP:
+                self._pending_user_input = _normalize_sorting_input(dict(user_input))
+                legacy_mode = user_input.get(CONF_PROVIDER_MODE)
+                if legacy_mode == PROVIDER_PETROMAP and CONF_PROVIDER_MODES not in user_input:
                     return self.async_show_form(step_id="petromap_privacy", data_schema=vol.Schema({}))
-                if provider_mode == PROVIDER_NAKORDONI:
+                if legacy_mode == PROVIDER_NAKORDONI and CONF_PROVIDER_MODES not in user_input:
                     return self.async_show_form(step_id="nakordoni_privacy", data_schema=vol.Schema({}))
-                if provider_mode == PROVIDER_AUTO:
+                if legacy_mode == PROVIDER_AUTO and CONF_PROVIDER_MODES not in user_input:
                     return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
-                return self.async_show_form(
-                    step_id="tankerkoenig_credentials",
-                    data_schema=_credential_schema(PROVIDER_TANKERKOENIG),
-                )
+                if PROVIDER_PETROMAP in provider_modes or PROVIDER_NAKORDONI in provider_modes:
+                    return self.async_show_form(step_id="provider_privacy", data_schema=vol.Schema({}))
+                return self.async_show_form(step_id="provider_credentials", data_schema=_credential_schema(provider_modes))
         defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_FUEL_TYPES: [DEFAULT_FUEL_TYPE], CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL, CONF_MOVEMENT_UPDATES: DEFAULT_MOVEMENT_UPDATES,
                     CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN}
         return self.async_show_form(
             step_id="user", data_schema=_schema(defaults, False, True), errors=errors
         )
+
+    async def async_step_provider_privacy(self, user_input=None):
+        if user_input is None:
+            return self.async_show_form(step_id="provider_privacy", data_schema=vol.Schema({}))
+        modes = _normalize_provider_modes(self._pending_user_input.get(CONF_PROVIDER_MODES))
+        return self.async_show_form(
+            step_id="provider_credentials", data_schema=_credential_schema(modes)
+        )
+
+    async def async_step_provider_credentials(self, user_input=None):
+        if user_input is None:
+            modes = _normalize_provider_modes(self._pending_user_input.get(CONF_PROVIDER_MODES))
+            return self.async_show_form(
+                step_id="provider_credentials", data_schema=_credential_schema(modes)
+            )
+        return await self._async_create_user_entry({**self._pending_user_input, **user_input})
 
     async def async_step_petromap_privacy(self, user_input=None):
         """Show the Petromap data-transfer disclosure before validation."""
@@ -354,7 +397,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         return self.async_show_form(
             step_id="petromap_credentials",
-            data_schema=_credential_schema(PROVIDER_PETROMAP),
+            data_schema=_credential_schema([PROVIDER_PETROMAP]),
         )
 
     async def async_step_auto_privacy(self, user_input=None):
@@ -364,7 +407,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
         return self.async_show_form(
             step_id="auto_credentials",
-            data_schema=_credential_schema(PROVIDER_AUTO),
+            data_schema=_credential_schema([PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP]),
         )
 
     async def async_step_nakordoni_privacy(self, user_input=None):
@@ -374,7 +417,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(step_id="nakordoni_privacy", data_schema=vol.Schema({}))
         return self.async_show_form(
             step_id="nakordoni_credentials",
-            data_schema=_credential_schema(PROVIDER_NAKORDONI),
+            data_schema=_credential_schema([PROVIDER_NAKORDONI]),
         )
 
     async def async_step_tankerkoenig_credentials(self, user_input=None):
@@ -383,7 +426,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="tankerkoenig_credentials",
-                data_schema=_credential_schema(PROVIDER_TANKERKOENIG),
+                data_schema=_credential_schema([PROVIDER_TANKERKOENIG]),
             )
         return await self._async_create_user_entry(
             {**self._pending_user_input, **user_input}
@@ -395,7 +438,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="petromap_credentials",
-                data_schema=_credential_schema(PROVIDER_PETROMAP),
+                data_schema=_credential_schema([PROVIDER_PETROMAP]),
             )
         return await self._async_create_user_entry(
             {**self._pending_user_input, **user_input}
@@ -407,7 +450,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="auto_credentials",
-                data_schema=_credential_schema(PROVIDER_AUTO),
+                data_schema=_credential_schema([PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP]),
             )
         return await self._async_create_user_entry(
             {**self._pending_user_input, **user_input}
@@ -419,7 +462,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="nakordoni_credentials",
-                data_schema=_credential_schema(PROVIDER_NAKORDONI),
+                data_schema=_credential_schema([PROVIDER_NAKORDONI]),
             )
         return await self._async_create_user_entry(
             {**self._pending_user_input, **user_input}
@@ -530,24 +573,31 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
+            raw_provider_modes = user_input.get(CONF_PROVIDER_MODES)
+            if isinstance(raw_provider_modes, (list, tuple, set, frozenset)) and not any(
+                provider in PROVIDER_CHOICES for provider in raw_provider_modes
+            ):
+                return self.async_show_form(
+                    step_id="init",
+                    data_schema=_schema({**self.config_entry.data, **self.config_entry.options}, False, True),
+                    errors={CONF_PROVIDER_MODES: "provider_required"},
+                )
             self._pending_options = _normalize_sorting_input(user_input)
-            current_mode = self.config_entry.data.get(
-                CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG
+            target_modes = _normalize_provider_modes(
+                self._pending_options.get(CONF_PROVIDER_MODES),
+                self.config_entry.data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
             )
-            target_mode = user_input.get(CONF_PROVIDER_MODE, current_mode)
-            if target_mode in (PROVIDER_PETROMAP, PROVIDER_AUTO) and not self.config_entry.data.get(
+            if PROVIDER_PETROMAP in target_modes and not self.config_entry.data.get(
                 CONF_PETROMAP_PRIVACY_ACCEPTED, False
             ):
-                return self.async_show_form(
-                    step_id="options_petromap_privacy", data_schema=vol.Schema({})
-                )
-            if target_mode == PROVIDER_NAKORDONI and not self.config_entry.data.get(
+                step_id = "options_petromap_privacy" if target_modes == [PROVIDER_PETROMAP] else "options_provider_privacy"
+                return self.async_show_form(step_id=step_id, data_schema=vol.Schema({}))
+            if PROVIDER_NAKORDONI in target_modes and not self.config_entry.data.get(
                 CONF_NAKORDONI_PRIVACY_ACCEPTED, False
             ):
-                return self.async_show_form(
-                    step_id="options_nakordoni_privacy", data_schema=vol.Schema({})
-                )
-            return await self._async_options_credentials({})
+                step_id = "options_nakordoni_privacy" if target_modes == [PROVIDER_NAKORDONI] else "options_provider_privacy"
+                return self.async_show_form(step_id=step_id, data_schema=vol.Schema({}))
+            return await self._show_provider_credentials()
         return self.async_show_form(
             step_id="init",
             data_schema=_schema(
@@ -565,7 +615,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 step_id="options_petromap_privacy", data_schema=vol.Schema({})
             )
         self._petromap_privacy_accepted = True
-        return await self._async_options_credentials({})
+        return await self._show_provider_credentials()
 
     async def async_step_options_nakordoni_privacy(self, user_input=None):
         """Show the Nakordoni location-transfer disclosure before activation."""
@@ -575,10 +625,34 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
                 step_id="options_nakordoni_privacy", data_schema=vol.Schema({})
             )
         self._nakordoni_privacy_accepted = True
-        return await self._async_options_credentials({})
+        return await self._show_provider_credentials()
+
+    async def async_step_options_provider_privacy(self, user_input=None):
+        if user_input is None:
+            return self.async_show_form(step_id="options_provider_privacy", data_schema=vol.Schema({}))
+        self._petromap_privacy_accepted = PROVIDER_PETROMAP in _normalize_provider_modes(
+            getattr(self, "_pending_options", {}).get(CONF_PROVIDER_MODES)
+        )
+        self._nakordoni_privacy_accepted = PROVIDER_NAKORDONI in _normalize_provider_modes(
+            getattr(self, "_pending_options", {}).get(CONF_PROVIDER_MODES)
+        )
+        return await self._show_provider_credentials()
+
+    async def _show_provider_credentials(self):
+        pending = getattr(self, "_pending_options", {})
+        modes = _normalize_provider_modes(
+            pending.get(CONF_PROVIDER_MODES),
+            self.config_entry.data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
+        )
+        current = {**self.config_entry.data, **self.config_entry.options}
+        return self.async_show_form(
+            step_id="provider_credentials",
+            data_schema=_options_credential_schema(modes, current),
+            description_placeholders=_credential_status_placeholders(current),
+        )
 
     async def async_step_provider_credentials(self, user_input=None):
-        """Collect only credentials missing for the selected provider mode."""
+        """Replace or explicitly remove credentials without exposing them."""
 
         return await self._async_options_credentials(user_input or {})
 
@@ -586,7 +660,8 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
         pending = getattr(self, "_pending_options", {})
         current_data = dict(self.config_entry.data)
         current_mode = current_data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
-        target_mode = pending.get(CONF_PROVIDER_MODE, current_mode)
+        target_modes = _normalize_provider_modes(pending.get(CONF_PROVIDER_MODES), current_mode)
+        target_mode = _effective_provider_mode(target_modes)
 
         source_tankerkoenig_key = current_data.get(CONF_TANKERKOENIG_API_KEY, "")
         source_petromap_key = current_data.get(CONF_PETROMAP_API_KEY, "")
@@ -600,51 +675,33 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             source_petromap_key = legacy_api_key
             legacy_key_is_unambiguous = bool(legacy_api_key)
 
-        tankerkoenig_key = source_tankerkoenig_key
-        petromap_key = source_petromap_key
-        nakordoni_key = source_nakordoni_key
+        source_keys = {
+            CONF_TANKERKOENIG_API_KEY: source_tankerkoenig_key,
+            CONF_PETROMAP_API_KEY: source_petromap_key,
+            CONF_NAKORDONI_API_KEY: source_nakordoni_key,
+        }
+        updated_keys: dict[str, str] = dict(source_keys)
         missing: set[str] = set()
-        if target_mode == PROVIDER_AUTO:
-            tankerkoenig_key = credentials.get(CONF_TANKERKOENIG_API_KEY, "").strip()
-            petromap_key = credentials.get(CONF_PETROMAP_API_KEY, "").strip()
-            if not tankerkoenig_key:
-                tankerkoenig_key = source_tankerkoenig_key
-            if not petromap_key:
-                petromap_key = source_petromap_key
-            if not tankerkoenig_key:
-                missing.add(CONF_TANKERKOENIG_API_KEY)
-            if not petromap_key:
-                missing.add(CONF_PETROMAP_API_KEY)
-        elif target_mode == PROVIDER_PETROMAP:
-            api_key = (
-                credentials.get(CONF_PETROMAP_API_KEY)
-                or credentials.get(CONF_API_KEY, "")
+        for provider in target_modes:
+            key = _provider_key(provider)
+            remove = credentials.get(f"remove_{key}", False)
+            replacement = str(
+                credentials.get(key)
+                or (credentials.get(CONF_API_KEY, "") if len(target_modes) == 1 else "")
             ).strip()
-            if not api_key:
-                api_key = source_petromap_key
-            if not api_key:
-                missing.add(CONF_PETROMAP_API_KEY)
-        elif target_mode == PROVIDER_NAKORDONI:
-            api_key = credentials.get(CONF_NAKORDONI_API_KEY, "").strip()
-            if not api_key:
-                api_key = source_nakordoni_key
-            if not api_key:
-                missing.add(CONF_NAKORDONI_API_KEY)
-        else:
-            api_key = (
-                credentials.get(CONF_TANKERKOENIG_API_KEY)
-                or credentials.get(CONF_API_KEY, "")
-            ).strip()
-            if not api_key:
-                api_key = source_tankerkoenig_key
-            if not api_key:
-                missing.add(CONF_TANKERKOENIG_API_KEY)
+            if remove:
+                updated_keys.pop(key, None)
+                continue
+            updated_keys[key] = replacement or source_keys[key]
+            if not updated_keys[key]:
+                missing.add(key)
 
         if missing:
             return self.async_show_form(
                 step_id="provider_credentials",
-                data_schema=_options_credential_schema(target_mode, missing),
+                data_schema=_options_credential_schema(target_modes, current_data),
                 errors={key: "api_key_required" for key in missing},
+                description_placeholders=_credential_status_placeholders(current_data),
             )
 
         new_data = {
@@ -659,18 +716,8 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             }
         }
         new_data[CONF_PROVIDER_MODE] = target_mode
-        if target_mode == PROVIDER_PETROMAP:
-            petromap_key = api_key
-        elif target_mode == PROVIDER_TANKERKOENIG:
-            tankerkoenig_key = api_key
-        elif target_mode == PROVIDER_NAKORDONI:
-            nakordoni_key = api_key
-        if tankerkoenig_key:
-            new_data[CONF_TANKERKOENIG_API_KEY] = tankerkoenig_key
-        if petromap_key:
-            new_data[CONF_PETROMAP_API_KEY] = petromap_key
-        if nakordoni_key:
-            new_data[CONF_NAKORDONI_API_KEY] = nakordoni_key
+        new_data[CONF_PROVIDER_MODES] = target_modes
+        new_data.update({key: value for key, value in updated_keys.items() if value})
         if legacy_api_key and not legacy_key_is_unambiguous:
             # Preserve an unexpected generic key until its provider can be
             # identified; dropping it here could destroy a user's credential.
@@ -698,6 +745,7 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             if key
             not in {
                 CONF_PROVIDER_MODE,
+                CONF_PROVIDER_MODES,
                 CONF_API_KEY,
                 CONF_TANKERKOENIG_API_KEY,
                 CONF_PETROMAP_API_KEY,
@@ -710,6 +758,8 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             )
             options[CONF_FUEL_TYPE] = _stored_fuel_value(selected_fuels)
             options[CONF_FUEL_TYPES] = selected_fuels
+        options[CONF_PROVIDER_MODE] = target_mode
+        options[CONF_PROVIDER_MODES] = target_modes
         # Update data and options together.  The OptionsFlowManager applies the
         # returned options mapping after this step; passing the same mapping here
         # makes the entry update atomic and prevents the update listener from

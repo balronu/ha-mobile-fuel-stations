@@ -5,7 +5,7 @@
         "title": "Mobile Fuel Stations",
         "description": "Configure a provider and nearby-stations search.",
         "data": {
-          "provider_mode": "Data provider",
+          "provider_modes": "Data providers",
           "location_entity": "Vehicle location",
           "radius": "Search radius (km)",
           "fuel_type": "Fuel types",
@@ -18,7 +18,7 @@
           "sort_fuel": "Price sorting fuel"
         },
         "data_description": {
-          "provider_mode": "Automatically choose a suitable provider for the country and fuel type.",
+          "provider_modes": "Select one provider or multiple providers for automatic selection.",
           "location_entity": "Entity providing the vehicle location.",
           "radius": "Search for stations within this radius of the vehicle location.",
           "station_count": "Number of stations provided as sensors.",
@@ -44,6 +44,22 @@
         "description": "Enter the Nakordoni API key.",
         "data": {"nakordoni_api_key": "Nakordoni API key"}
       },
+      "provider_privacy": {
+        "title": "Provider privacy",
+        "description": "Selected providers may receive the vehicle location, radius, and fuel types."
+      },
+      "provider_credentials": {
+        "title": "Provider credentials",
+        "description": "Tankerkönig: {tankerkoenig_status}. Petromap: {petromap_status}. Nakordoni: {nakordoni_status}.",
+        "data": {
+          "tankerkoenig_api_key": "Tankerkönig API key (leave empty to keep it)",
+          "petromap_api_key": "Petromap API key (leave empty to keep it)",
+          "nakordoni_api_key": "Nakordoni API key (leave empty to keep it)",
+          "remove_tankerkoenig_api_key": "Remove Tankerkönig API key",
+          "remove_petromap_api_key": "Remove Petromap API key",
+          "remove_nakordoni_api_key": "Remove Nakordoni API key"
+        }
+      },
       "auto_credentials": {
         "title": "Automatic mode credentials",
         "description": "Enter both provider credentials.",
@@ -58,6 +74,7 @@
     },
     "error": {
       "api_key_required": "Enter an API key.",
+      "provider_required": "Select at least one data provider.",
       "invalid_location": "The selected entity has no valid latitude/longitude.",
       "invalid_auth": "The API key is invalid or expired.",
       "permission_error": "The API key lacks permission for this provider.",
@@ -73,7 +90,7 @@
       "init": {
         "title": "Mobile Fuel Stations options",
         "data": {
-          "provider_mode": "Data provider",
+          "provider_modes": "Data providers",
           "location_entity": "Vehicle location",
           "radius": "Search radius (km)",
           "fuel_type": "Fuel types",
@@ -86,7 +103,7 @@
           "sort_fuel": "Price sorting fuel"
         },
         "data_description": {
-          "provider_mode": "Automatically choose a suitable provider for the country and fuel type.",
+          "provider_modes": "Select one provider or multiple providers for automatic selection.",
           "location_entity": "Entity providing the vehicle location.",
           "radius": "Search for stations within this radius of the vehicle location.",
           "station_count": "Number of stations provided as sensors.",
@@ -105,25 +122,31 @@
         "title": "Nakordoni privacy",
         "description": "Location coordinates, radius, and fuel types may be sent to Nakordoni."
       },
+      "options_provider_privacy": {
+        "title": "Provider privacy",
+        "description": "Selected providers may receive the vehicle location, radius, and fuel types."
+      },
       "provider_credentials": {
         "title": "Provider credentials",
-        "description": "Enter only credentials missing for the selected provider mode.",
+        "description": "Tankerkönig: {tankerkoenig_status}. Petromap: {petromap_status}. Nakordoni: {nakordoni_status}.",
         "data": {
           "api_key": "Provider API key",
           "tankerkoenig_api_key": "Tankerkönig API key",
           "petromap_api_key": "Petromap API key",
-          "nakordoni_api_key": "Nakordoni API key"
+          "nakordoni_api_key": "Nakordoni API key",
+          "remove_tankerkoenig_api_key": "Remove Tankerkönig API key",
+          "remove_petromap_api_key": "Remove Petromap API key",
+          "remove_nakordoni_api_key": "Remove Nakordoni API key"
         }
       }
     }
   },
   "selector": {
-    "provider_mode": {
+    "provider_modes": {
       "options": {
           "tankerkoenig": "Tankerkönig",
           "petromap": "Petromap",
-          "nakordoni": "Nakordoni",
-          "auto": "Automatic (recommended)"
+          "nakordoni": "Nakordoni"
       }
     },
     "sort_mode": {

@@ -18,6 +18,7 @@ from .const import (
     CONF_PETROMAP_API_KEY,
     CONF_PETROMAP_PRIVACY_ACCEPTED,
     CONF_PROVIDER_MODE,
+    CONF_PROVIDER_MODES,
     CONF_FUEL_TYPE,
     CONF_FUEL_TYPES,
     CONF_TANKERKOENIG_API_KEY,
@@ -46,6 +47,11 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate legacy generic credentials without losing ambiguous data."""
 
     if entry.version >= CONFIG_ENTRY_VERSION:
+        data = dict(entry.data)
+        if CONF_PROVIDER_MODES not in data:
+            mode = data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+            data[CONF_PROVIDER_MODES] = _provider_modes_from_data(data, mode)
+            hass.config_entries.async_update_entry(entry, data=data)
         return True
     data = dict(entry.data)
     mode = data.get(CONF_PROVIDER_MODE)
@@ -77,6 +83,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     fuels = list(dict.fromkeys(fuel for fuel in fuels if fuel in FUEL_TYPES)) or [DEFAULT_FUEL_TYPE]
     data[CONF_FUEL_TYPES] = fuels
     data[CONF_FUEL_TYPE] = fuels[0] if len(fuels) == 1 else fuels
+    data[CONF_PROVIDER_MODES] = _provider_modes_from_data(
+        data, data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+    )
 
     if data != entry.data or entry.version != CONFIG_ENTRY_VERSION:
         hass.config_entries.async_update_entry(
@@ -85,6 +94,22 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             version=CONFIG_ENTRY_VERSION,
         )
     return True
+
+
+def _provider_modes_from_data(data: dict, mode: object) -> list[str]:
+    if mode == PROVIDER_AUTO:
+        return [
+            provider
+            for provider, key in (
+                (PROVIDER_TANKERKOENIG, CONF_TANKERKOENIG_API_KEY),
+                (PROVIDER_PETROMAP, CONF_PETROMAP_API_KEY),
+                (PROVIDER_NAKORDONI, "nakordoni_api_key"),
+            )
+            if data.get(key)
+        ]
+    return [mode] if mode in {
+        PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI
+    } else [PROVIDER_TANKERKOENIG]
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
