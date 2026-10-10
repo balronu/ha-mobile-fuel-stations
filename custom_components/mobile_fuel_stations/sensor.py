@@ -185,5 +185,9 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
             "requested_fuel": station.requested_fuel,
             "fallback_used": station.fallback_used,
         }
-        attributes.update({key: value for key, value in optional.items() if value is not None})
+        attributes.update({
+            key: value
+            for key, value in optional.items()
+            if value is not None and (key != "fallback_used" or value)
+        })
         return attributes

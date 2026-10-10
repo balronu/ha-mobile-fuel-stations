@@ -177,7 +177,12 @@ def choose_auto_provider(
     # Never infer country coverage from an API key or from a provider's global
     # fuel list.  Unknown Nakordoni coverage remains unavailable until it is
     # documented and verified.
-    coverage = petromap_coverage if petromap_coverage != CountryPriceCoverage.UNSUPPORTED else nakordoni_coverage
+    coverage = (
+        nakordoni_coverage
+        if petromap_coverage == CountryPriceCoverage.UNSUPPORTED
+        and nakordoni_coverage != CountryPriceCoverage.UNKNOWN
+        else petromap_coverage
+    )
     reason = {
         CountryPriceCoverage.NATIONAL_ONLY: "national_prices_only",
         CountryPriceCoverage.NO_PRICES: "no_station_prices",

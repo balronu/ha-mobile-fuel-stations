@@ -116,14 +116,13 @@ class _NoRequestSession:
         raise AssertionError("Petromap e10 must be rejected before HTTP")
 
 
-def test_petromap_e10_is_rejected_without_search_request(monkeypatch):
+def test_petromap_e10_uses_capability_declared_e5_fallback(monkeypatch):
     session = _NoRequestSession()
     coordinator = _coordinator(PetromapProvider(session, "dummy"), fuel="e10")
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
 
-    with pytest.raises(UpdateFailed):
-        asyncio.run(coordinator._async_update_data())
-    assert session.calls == 0
+    asyncio.run(coordinator._async_update_data())
+    assert session.calls == 1
 
 
 def test_petromap_401_requests_reauth(monkeypatch):

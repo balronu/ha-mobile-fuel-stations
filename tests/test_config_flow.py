@@ -99,7 +99,7 @@ def test_existing_entry_options_flow_starts_without_config_entry_setter_error():
     values = result["data_schema"]({})
     assert values[CONF_LOCATION_ENTITY] == "device_tracker.vehicle"
     assert values[CONF_RADIUS] == 20.0
-    assert values[CONF_FUEL_TYPE] == "diesel"
+    assert values[CONF_FUEL_TYPE] == ["diesel"]
     assert values[CONF_STATION_COUNT] == 5
     assert CONF_API_KEY not in str(result["data_schema"].schema)
 
@@ -116,7 +116,7 @@ def test_options_override_data_and_missing_values_use_defaults():
 
     assert values[CONF_LOCATION_ENTITY] == "device_tracker.vehicle"
     assert values[CONF_RADIUS] == 10.0
-    assert values[CONF_FUEL_TYPE] == "e10"
+    assert values[CONF_FUEL_TYPE] == ["e10"]
     assert values[CONF_STATION_COUNT] == DEFAULT_STATION_COUNT
     assert values[CONF_UPDATE_INTERVAL] == DEFAULT_UPDATE_INTERVAL
     assert values[CONF_MOVEMENT_UPDATES] is DEFAULT_MOVEMENT_UPDATES
@@ -187,7 +187,7 @@ def test_legacy_entry_with_empty_options_gets_a_complete_form():
 
     assert values[CONF_LOCATION_ENTITY] == "sensor.vehicle"
     assert values[CONF_RADIUS] == DEFAULT_RADIUS
-    assert values[CONF_FUEL_TYPE] == "diesel"
+    assert values[CONF_FUEL_TYPE] == ["diesel"]
     assert values[CONF_STATION_COUNT] == DEFAULT_STATION_COUNT
 
 
@@ -623,7 +623,7 @@ def test_ambiguous_generic_key_is_retained_during_migration():
     assert entry.version == 3
 
 
-def test_canonical_v2_data_at_version_one_is_promoted_without_mutation():
+def test_canonical_v2_data_at_version_one_is_promoted_with_fuel_metadata():
     entry = SimpleNamespace(
         version=1,
         data={
@@ -645,7 +645,11 @@ def test_canonical_v2_data_at_version_one_is_promoted_without_mutation():
     original_data = dict(entry.data)
     assert asyncio.run(integration.async_migrate_entry(hass, entry)) is True
     assert entry.version == 3
-    assert entry.data == original_data
+    assert entry.data == {
+        **original_data,
+        CONF_FUEL_TYPE: "diesel",
+        "fuel_types": ["diesel"],
+    }
 
 
 def test_config_entry_migration_lifecycle_persists_handler_version():
@@ -681,6 +685,6 @@ def test_config_entry_migration_lifecycle_persists_handler_version():
     hass.config_entries.async_update_entry = async_update_entry
 
     assert asyncio.run(hass.config_entries.async_migrate(entry)) is True
-    assert updates == [2]
+    assert updates == [3]
     assert entry.version == MobileFuelStationsConfigFlow.VERSION == 3
     assert entry.data[CONF_PETROMAP_API_KEY] == "legacy-pm"
