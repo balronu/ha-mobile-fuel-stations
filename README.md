@@ -47,7 +47,7 @@ stiller Fallback verwendet.
 
 | Anbieter | Schlüssel | Aktuelle Implementierungsabdeckung |
 | --- | --- | --- |
-| [Tankerkönig](https://creativecommons.tankerkoenig.de/) | Ja | Deutschland; Diesel, E5 und E10; API-Radius maximal 25 km |
+| [Tankerkönig](https://onboarding.tankerkoenig.de/) | Ja | Deutschland; Diesel, E5 und E10; API-Radius maximal 25 km |
 | [Petromap v2](https://developer.petromap.eu/) | Ja | DE/AT mit Stationspreisen für Diesel, E5 und LPG; weitere Länder sind abhängig von der verifizierten Petromap-Abdeckung |
 | [Nakordoni](https://nakordoni.dev/) | Ja | Implementiert für Diesel, E5, E10 und LPG; Marktfreigabe und Live-API-Zugang sind noch ausstehend |
 
@@ -56,12 +56,63 @@ hängt von einer tatsächlich verifizierten Provider- und Länder-Capability ab;
 HVO100 wird nicht pauschal als grundsätzlich unmöglich dokumentiert und nie
 still als Diesel ausgegeben.
 
-### API-Schlüssel
+### API-Schlüssel für normale Home-Assistant-Nutzer
 
-Jeder verwendete Anbieter benötigt seinen eigenen Schlüssel. Die offiziellen
-Bezugsquellen sind oben verlinkt. Schlüssel werden im Einrichtungs- oder
-Options-Flow eingetragen und niemals vollständig in der Oberfläche, in Logs,
-Diagnosen oder Git-Dateien angezeigt.
+Für jeden aktivierten Anbieter wird ein eigener Zugang benötigt. Du brauchst
+keine Programmierkenntnisse, keine eigene App und keinen eigenen API-Client.
+Öffne die offizielle Seite des Anbieters, registriere dich beziehungsweise
+beantrage den Zugang und warte die jeweilige Freigabe ab. Wenn nach dem
+Verwendungszweck gefragt wird, kannst du – sofern zutreffend – **Private
+Nutzung mit Home Assistant / Mobile Fuel Stations** angeben. Beachte immer die
+Nutzungsbedingungen, Registrierungseinschränkungen, Quoten und mögliche Kosten
+des Anbieters.
+
+#### Tankerkönig
+
+1. Öffne die [Tankerkönig-Onboarding-Seite](https://onboarding.tankerkoenig.de/).
+2. Registriere dich und beantrage den vorgesehenen Zugang.
+3. Gib bei einer Frage zum Zweck – sofern zutreffend – private Nutzung mit
+   Home Assistant / Mobile Fuel Stations an.
+4. Warte die Registrierung beziehungsweise Schlüsselvergabe ab und beachte
+   die Tankerkönig-Nutzungsbedingungen sowie mögliche Einschränkungen.
+5. Öffne in Home Assistant **Einstellungen → Geräte & Dienste → Mobile Fuel
+   Stations → Konfigurieren → Zugangsdaten verwalten**.
+6. Trage den Schlüssel ein und speichere ihn.
+7. Prüfe anschließend den angezeigten tatsächlichen Zugangsstatus. Ein
+   hinterlegter Schlüssel gilt nicht automatisch als erfolgreich geprüft.
+
+#### Petromap
+
+1. Öffne die [Petromap-Developer-Seite](https://developer.petromap.eu/).
+2. Registriere dich beziehungsweise beantrage den API-Zugang.
+3. Gib bei einer Frage zum Zweck – sofern zutreffend – private Nutzung mit
+   Home Assistant / Mobile Fuel Stations an.
+4. Warte die manuelle Petromap-Freigabe und die Schlüsselvergabe ab; eine
+   Registrierung allein garantiert noch keinen nutzbaren Zugang.
+5. Öffne in Home Assistant **Einstellungen → Geräte & Dienste → Mobile Fuel
+   Stations → Konfigurieren → Zugangsdaten verwalten**.
+6. Trage den Schlüssel ein und speichere ihn.
+7. Prüfe danach den tatsächlichen Zugangsstatus. Petromap bleibt bis zu einem
+   erfolgreichen eigenen Provideraufruf „hinterlegt – noch nicht geprüft“.
+
+#### Nakordoni
+
+1. Öffne die [Nakordoni-Developer-Seite](https://nakordoni.eu/en/developers).
+2. Registriere dich beziehungsweise beantrage die Schlüsselvergabe.
+3. Gib bei einer Frage zum Zweck – sofern zutreffend – private Nutzung mit
+   Home Assistant / Mobile Fuel Stations an.
+4. Warte sowohl auf die Schlüsselvergabe als auch auf die erforderliche
+   Freigabe für die benötigten Länder- und Kraftstoffdaten. Ein Schlüssel
+   allein bedeutet bei Nakordoni nicht automatisch, dass die Datenfreigabe
+   aktiv ist; die Live-Freigabe ist derzeit noch ausstehend.
+5. Öffne in Home Assistant **Einstellungen → Geräte & Dienste → Mobile Fuel
+   Stations → Konfigurieren → Zugangsdaten verwalten**.
+6. Trage den Schlüssel ein und speichere ihn.
+7. Prüfe den tatsächlichen Status. Eine sofortige Freigabe oder eine Nutzung
+   ohne Einschränkungen wird nicht vorausgesetzt.
+
+Schlüssel werden niemals vollständig in der Oberfläche, in Logs, Diagnosen oder
+Git-Dateien angezeigt.
 
 Im Options-Flow wird pro Anbieter ein nicht-sensibler Status angezeigt:
 
