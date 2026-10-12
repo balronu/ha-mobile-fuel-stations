@@ -74,6 +74,21 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "last_provider_success": _iso(getattr(coordinator, "last_provider_success", None)),
             "startup_recovery_status": getattr(coordinator, "recovery_status", None),
             "recovery_task_status": getattr(coordinator, "recovery_task_status", None),
+            "recovery_attempt_count": getattr(coordinator, "recovery_attempt_count", 0),
+            "recovery_trigger": getattr(coordinator, "recovery_trigger", None),
+            "recovery_next_retry_at": _iso(
+                getattr(coordinator, "recovery_next_retry_at", None)
+            ),
+            "recovery_last_gps_event_type": getattr(
+                coordinator, "recovery_last_gps_event_type", None
+            ),
+            "recovery_last_gps_event_at": _iso(
+                getattr(coordinator, "recovery_last_gps_event_at", None)
+            ),
+            "recovery_provider_in_flight": getattr(
+                coordinator, "recovery_provider_in_flight", False
+            ),
+            "recovery_error_class": getattr(coordinator, "recovery_error_class", None),
             "last_update_success": getattr(coordinator, "last_update_success", None),
             "result_count": len(coordinator.data or []),
             "error": type(coordinator.last_exception).__name__

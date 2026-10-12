@@ -76,6 +76,9 @@ def _coordinator(provider, fuel="diesel"):
     coordinator.reference_position = None
     coordinator.last_request = None
     coordinator.last_update_attempt = None
+    coordinator.last_update_result = None
+    coordinator.last_provider_attempt = None
+    coordinator.last_provider_success = None
     coordinator.last_update_error_at = None
     coordinator.last_update_error_class = None
     coordinator.last_update_error_provider = None
@@ -86,6 +89,21 @@ def _coordinator(provider, fuel="diesel"):
     coordinator._retry_not_before = None
     coordinator._movement_refresh_scheduled = False
     coordinator._movement_refresh_task = None
+    coordinator._unsub_position_report = None
+    coordinator.recovery_attempt_count = 0
+    coordinator.recovery_trigger = None
+    coordinator.recovery_next_retry_at = None
+    coordinator.recovery_last_gps_event_type = None
+    coordinator.recovery_last_gps_event_at = None
+    coordinator.recovery_provider_in_flight = False
+    coordinator.recovery_error_class = None
+    coordinator._recovery_timer_unsub = None
+    coordinator._recovery_active = False
+    coordinator._recovery_started_at = None
+    coordinator._recovery_startup_index = 0
+    coordinator._recovery_transient_failures = 0
+    coordinator._recovery_task = None
+    coordinator._recovery_request_scheduled = False
     coordinator._store = _Store()
     coordinator._provider_status_store = _Store()
     coordinator.provider_status = {}
@@ -116,6 +134,17 @@ def test_petromap_diesel_refresh_uses_one_search_query(monkeypatch):
     assert provider.calls[0].longitude == 7.0
     assert coordinator.hass.data["mobile_fuel_stations"]["provider_status"]["test-entry"][PROVIDER_PETROMAP]["status"] == "success"
     assert coordinator._provider_status_store.saved[PROVIDER_PETROMAP]["status"] == "success"
+
+
+def test_regular_core_success_finishes_active_startup_recovery(monkeypatch):
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    coordinator._recovery_active = True
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    assert asyncio.run(coordinator._async_update_data()) == [_station()]
+    assert coordinator._recovery_active is False
+    assert coordinator.recovery_status == "success"
 
 
 def test_startup_without_gps_keeps_coordinator_setup_recoverable(monkeypatch):
@@ -169,6 +198,135 @@ def test_startup_recovery_rechecks_current_gps_without_event(monkeypatch):
     coordinator.async_schedule_startup_recovery()
 
     create_task.assert_called_once()
+
+
+def test_startup_recovery_schedules_3_10_30_then_slow_checks(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator.recovery_status = "awaiting_location"
+    coordinator.last_update_result = "gps_unavailable"
+    scheduled = []
+    position = [None]
+
+    def fake_timer(_hass, delay, action):
+        scheduled.append((delay, action))
+        return lambda: None
+
+    coordinator.hass.async_create_task = Mock()
+    coordinator.hass.async_create_task.side_effect = lambda coroutine: coroutine.close()
+    monkeypatch.setattr(coordinator_module, "async_call_later", fake_timer)
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: position[0])
+
+    coordinator.async_schedule_startup_recovery()
+    assert 0 <= scheduled[0][0] <= 3.0
+    scheduled.pop(0)[1](None)
+    assert 0 <= scheduled[0][0] <= 10.0
+    scheduled.pop(0)[1](None)
+    assert 0 <= scheduled[0][0] <= 30.0
+    scheduled.pop(0)[1](None)
+    assert [item[0] for item in scheduled] == [60.0]
+    assert coordinator.hass.async_create_task.call_count == 0
+
+
+def test_gps_attribute_report_triggers_recovery_immediately(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator._recovery_active = True
+    create_task = Mock(side_effect=lambda coroutine: coroutine.close())
+    coordinator.hass.async_create_task = create_task
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    coordinator._async_position_reported(SimpleNamespace())
+
+    create_task.assert_called_once()
+    assert coordinator.recovery_last_gps_event_type == "state_reported"
+    assert coordinator.recovery_attempt_count == 1
+
+
+def test_gps_after_slow_recovery_timer_triggers_provider_refresh(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator.recovery_status = "awaiting_location"
+    coordinator.last_update_result = "gps_unavailable"
+    scheduled = []
+    position = [None]
+    create_task = Mock(side_effect=lambda coroutine: coroutine.close())
+    coordinator.hass.async_create_task = create_task
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: position[0])
+    monkeypatch.setattr(coordinator_module, "async_call_later", lambda _hass, delay, action: (
+        scheduled.append((delay, action)) or (lambda: None)
+    ))
+
+    coordinator.async_schedule_startup_recovery()
+    scheduled.pop(0)[1](None)
+    scheduled.pop(0)[1](None)
+    scheduled.pop(0)[1](None)
+    assert scheduled[0][0] == 60.0
+
+    position[0] = (49.2, 7.0)
+    scheduled.pop(0)[1](None)
+
+    create_task.assert_called_once()
+    assert coordinator.recovery_attempt_count == 1
+
+
+def test_recovery_trigger_is_deduplicated_while_task_is_running(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator._recovery_active = True
+    task = Mock()
+    task.done.return_value = False
+    create_task = Mock(return_value=task)
+    coordinator.hass.async_create_task = create_task
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    coordinator._request_recovery_refresh("gps_state_changed")
+    coordinator._request_recovery_refresh("gps_state_reported")
+
+    create_task.assert_called_once()
+    assert coordinator.recovery_attempt_count == 1
+    task_coroutine = create_task.call_args.args[0]
+    task_coroutine.close()
+
+
+def test_transient_recovery_respects_retry_after_and_uses_bounded_backoff(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator._recovery_active = True
+    coordinator.last_retry_after = 60
+    scheduled = []
+    monkeypatch.setattr(coordinator_module, "async_call_later", lambda _hass, delay, action: (
+        scheduled.append((delay, action)) or (lambda: None)
+    ))
+    monkeypatch.setattr(coordinator_module.random, "uniform", lambda _low, _high: 0.0)
+
+    coordinator._schedule_transient_recovery()
+
+    assert scheduled[0][0] == 60
+    assert coordinator.recovery_trigger == "provider_transient_failure"
+
+
+def test_successful_recovery_stops_recovery_timer(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator._recovery_active = True
+    coordinator.async_request_refresh = AsyncMock(
+        side_effect=lambda: setattr(coordinator, "last_update_result", "provider_success")
+    )
+    cancel = Mock()
+    coordinator._recovery_timer_unsub = cancel
+    asyncio.run(coordinator._async_request_recovery_refresh())
+
+    coordinator.async_request_refresh.assert_awaited_once()
+    assert coordinator._recovery_active is False
+    cancel.assert_called_once_with()
+    assert coordinator.recovery_task_status == "completed"
+
+
+def test_auth_failure_stops_recovery_without_retry(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator._recovery_active = True
+    coordinator.async_request_refresh = AsyncMock(side_effect=ConfigEntryAuthFailed("auth"))
+
+    with pytest.raises(ConfigEntryAuthFailed):
+        asyncio.run(coordinator._async_request_recovery_refresh())
+
+    assert coordinator._recovery_active is False
+    assert coordinator._recovery_timer_unsub is None
 
 
 def test_shutdown_unsubscribes_and_cancels_pending_recovery_task(monkeypatch):
@@ -234,6 +392,13 @@ def test_diagnostics_report_lifecycle_without_coordinates_or_secrets():
         last_provider_success=None,
         recovery_status="awaiting_location",
         recovery_task_status="not_scheduled",
+        recovery_attempt_count=2,
+        recovery_trigger="startup_retry",
+        recovery_next_retry_at=None,
+        recovery_last_gps_event_type="state_reported",
+        recovery_last_gps_event_at=None,
+        recovery_provider_in_flight=False,
+        recovery_error_class=None,
         last_update_success=True,
         data=None,
         last_exception=None,
@@ -254,6 +419,9 @@ def test_diagnostics_report_lifecycle_without_coordinates_or_secrets():
     assert result["runtime"]["periodic_refresh_callback_status"] == "scheduled"
     assert result["runtime"]["next_refresh_deadline"] is None
     assert result["runtime"]["gps_available"] is False
+    assert result["runtime"]["recovery_attempt_count"] == 2
+    assert result["runtime"]["recovery_trigger"] == "startup_retry"
+    assert result["runtime"]["recovery_last_gps_event_type"] == "state_reported"
     assert "api_key" not in result["config"]
     assert "SECRET" not in str(result)
 
@@ -398,6 +566,18 @@ def test_retry_after_prevents_extra_provider_call_until_window_expires(monkeypat
 
     asyncio.run(coordinator._async_update_data())
     assert len(provider.calls) == 2
+
+
+def test_retry_after_blocks_provider_without_cached_data(monkeypatch):
+    provider = _Provider(error=ProviderRateLimitError("RATE_LIMITED"))
+    provider.error.retry_after = 60
+    coordinator = _coordinator(provider)
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    assert asyncio.run(coordinator._async_update_data()) is None
+    assert len(provider.calls) == 1
+    assert asyncio.run(coordinator._async_update_data()) is None
+    assert len(provider.calls) == 1
 
 
 def test_nakordoni_failure_metadata_is_published_before_recovery_retry(monkeypatch):

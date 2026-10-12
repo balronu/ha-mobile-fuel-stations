@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0-beta.5 — Startup GPS recovery
+
+- Add bounded startup recovery checks after approximately 3, 10, and 30
+  seconds, followed by one-minute checks until GPS becomes available or the
+  entry is unloaded.
+- Track both state changes and state-reported GPS attribute updates so a
+  tracker that keeps the same state string can still trigger recovery.
+- Deduplicate startup, GPS-event, and timer triggers; preserve Core polling
+  and movement refresh behavior.
+- Add bounded transient-provider backoff with jitter, Retry-After enforcement,
+  stale-cache preservation, and permanent-error termination.
+- Extend secret-free diagnostics with recovery attempts, triggers, deadlines,
+  GPS event metadata, in-flight state, and error classification.
+
 ## 0.6.0-beta.4 — Coordinator polling lifecycle fix
 
 - Fix the collision with Home Assistant Core's `_schedule_refresh` method so
