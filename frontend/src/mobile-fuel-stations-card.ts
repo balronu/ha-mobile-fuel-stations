@@ -29,6 +29,7 @@ type HighlightStation = {
   fuel_type?: string | null;
   requested_fuel?: string | null;
   fallback_used?: boolean;
+  provider?: string | null;
   fuel_prices?: Record<string, number | null>;
   fuel_fallbacks?: Record<string, boolean>;
 };
@@ -145,7 +146,7 @@ function text(value: unknown): string | null {
 
 export class MobileFuelStationsCard extends LitElement {
   static styles = css`
-    :host { display: block; }
+    :host { display: block; container-type: inline-size; }
     ha-card { padding: 16px; color: var(--primary-text-color); background: var(--card-background-color); border-radius: var(--ha-card-border-radius, 12px); }
     .header { display: block; margin-bottom: 12px; }
     h2 { margin: 0; font-size: 1.1rem; }
@@ -155,7 +156,7 @@ export class MobileFuelStationsCard extends LitElement {
     .station { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; border-top: 1px solid var(--divider-color); padding: 8px 0; cursor: pointer; min-width: 0; }
     .station:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
     .icon { color: var(--primary-color); font-size: 1.5rem; }
-    .name, .address { overflow-wrap: anywhere; word-break: break-word; }
+    .name, .address { overflow-wrap: break-word; word-break: normal; hyphens: auto; min-width: 0; }
     .name { font-weight: 500; }
     .address { color: var(--secondary-text-color); font-size: .85rem; }
     .price { font-size: 1.05rem; font-weight: 700; text-align: right; white-space: nowrap; }
@@ -168,16 +169,31 @@ export class MobileFuelStationsCard extends LitElement {
     .open { color: var(--success-color, var(--primary-color)); }
     .closed { color: var(--secondary-text-color); }
     .message { color: var(--secondary-text-color); }
+    .stale-warning { color: var(--warning-color, var(--primary-color)); margin: 0 0 10px; font-size: .9rem; }
     .highlights { display: grid; gap: 6px; margin-bottom: 10px; }
     .highlight { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; border: 1px solid var(--divider-color); border-radius: var(--ha-card-border-radius, 12px); padding: 8px 10px; min-width: 0; }
     .highlight.is-link { cursor: pointer; }
     .highlight.is-link:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
     .highlight-label { color: var(--secondary-text-color); font-size: .82rem; font-weight: 600; text-transform: uppercase; }
-    .highlight-name { font-weight: 600; margin-top: 3px; overflow-wrap: anywhere; word-break: break-word; }
+    .highlight-name { font-weight: 600; margin-top: 3px; overflow-wrap: break-word; word-break: normal; hyphens: auto; min-width: 0; }
     .highlight-meta { color: var(--secondary-text-color); font-size: .9rem; margin-top: 3px; }
-    @media (min-width: 700px) { .highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (min-width: 700px) { .header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; } .summary { margin-top: 0; } .stations { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; } .station { min-width: 0; } }
-    @media (max-width: 480px) { ha-card { padding: 12px; } .station { grid-template-columns: 26px minmax(0, 1fr) auto; gap: 6px; } .station .prices { grid-column: 2; grid-row: 2; text-align: left; } .fuel-price { justify-content: flex-start; gap: 4px; } .station .navigate { grid-column: 3; grid-row: 1 / span 2; align-self: center; } .highlight { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; } .highlight .navigate { grid-column: auto; } }
+    .provider { color: var(--secondary-text-color); font-size: .8rem; margin-top: 3px; }
+    .stations { grid-template-columns: minmax(0, 1fr); }
+    @container (min-width: 600px) {
+      .highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+      .summary { margin-top: 0; }
+      .station { grid-template-columns: 32px minmax(12rem, 1fr) minmax(8rem, auto) auto; }
+    }
+    @container (max-width: 599px) {
+      ha-card { padding: 12px; }
+      .station { grid-template-columns: 26px minmax(0, 1fr) auto; gap: 6px; }
+      .station .prices { grid-column: 2; grid-row: 2; text-align: left; }
+      .fuel-price { justify-content: flex-start; gap: 4px; }
+      .station .navigate { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
+      .highlight { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+      .highlight .navigate { grid-column: auto; }
+    }
   `;
 
   private _config?: CardConfig;
@@ -218,8 +234,9 @@ export class MobileFuelStationsCard extends LitElement {
     const stations = ids.map((id) => ({ id, state: this._hass!.states[id]! })).filter(({ state }) => isUsableStation(state));
     return html`
       <ha-card>
-        <div class="header"><h2>${this._text("title")}</h2><span class="summary">${this._summary(overview)}</span></div>
-        ${overview.attributes.provider === "nakordoni" ? html`<div class="secondary"><a href="https://nakordoni.eu" target="_blank" rel="noopener">Data by nakordoni.eu</a></div>` : nothing}
+        <div class="header"><h2>${this._text("title")}</h2><span class="summary">${this._summary(overview, stations)}</span></div>
+        ${overview.attributes.data_stale === true ? html`<div class="stale-warning" role="status">${this._staleMessage(overview)}</div>` : nothing}
+        ${this._hasNakordoni(overview, stations) ? html`<div class="secondary"><a href="https://nakordoni.eu" target="_blank" rel="noopener">Data by nakordoni.eu</a></div>` : nothing}
         ${this._highlights(overview, ids)}
         ${stations.length ? html`<div class="stations">${stations.map(({ id, state }) => this._station(id, state))}</div>` : html`<div class="message">${this._text("none")}</div>`}
       </ha-card>
@@ -254,16 +271,18 @@ export class MobileFuelStationsCard extends LitElement {
     const fuelPrice = station.fuel_prices?.[station.requested_fuel ?? station.fuel_type ?? ""] ?? station.price;
     const price = formatPrice(fuelPrice, this._locale(), text(station.currency) ?? "EUR") ?? this._text("noPrice");
     const distance = formatDistance(station.distance, this._locale());
+    const providerEntity = stationId ? visibleIds.find((id) => this._hass?.states[id]?.attributes.station_id === stationId) : undefined;
+    const provider = this._providerLabel(station.provider ?? (providerEntity ? this._hass?.states[providerEntity]?.attributes.provider : undefined));
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(station.latitude, station.longitude, this._config?.navigation_provider ?? "auto") : null;
     const address = [station.street && station.house_number ? `${station.street} ${station.house_number}` : text(station.street), [station.postcode, station.place].filter(Boolean).join(" ")].filter(Boolean).join(", ");
     return html`<div class="highlight${entityId ? " is-link" : ""}" role=${entityId ? "button" : nothing} tabindex=${entityId ? "0" : nothing} aria-label="${name}" @click=${entityId ? () => this._moreInfo(entityId) : undefined} @keydown=${entityId ? (event: KeyboardEvent) => this._keyActivate(event, entityId) : undefined}>
-      <div><div class="highlight-label">${label}</div><div class="highlight-name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}</div>
+      <div><div class="highlight-label">${label}</div><div class="highlight-name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}<div class="provider">${this._text("source")}: ${provider}</div></div>
       <div><div class="price">${price}</div>${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
       ${navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing}
     </div>`;
   }
 
-  private _summary(overview: HassState): string {
+  private _summary(overview: HassState, stations: Array<{ id: string; state: HassState }>): string {
     const parts: string[] = [];
     const count = Number(overview.attributes.station_count);
     if (Number.isFinite(count)) parts.push(`${count} Tankstellen`);
@@ -276,13 +295,54 @@ export class MobileFuelStationsCard extends LitElement {
       const date = new Date(String(overview.attributes.last_successful_update));
       if (!Number.isNaN(date.getTime())) parts.push(`${this._text("asOf")} ${new Intl.DateTimeFormat(this._locale(), { hour: "2-digit", minute: "2-digit" }).format(date)}`);
     }
+    parts.push(`${this._text("source")}: ${this._providerSummary(stations.map(({ state }) => state.attributes.provider))}`);
     return parts.join(" · ");
+  }
+
+  private _providerId(value: unknown): string | null {
+    return typeof value === "string" && value.trim() ? value.trim().toLowerCase() : null;
+  }
+
+  private _providerLabel(value: unknown): string {
+    const labels: Record<string, string> = {
+      tankerkoenig: "Tankerkönig",
+      petromap: "Petromap",
+      nakordoni: "Nakordoni",
+    };
+    const id = this._providerId(value);
+    return id ? labels[id] ?? id : this._text("unknownSource");
+  }
+
+  private _providerSummary(values: unknown[]): string {
+    const providers = values.map((value) => this._providerId(value));
+    const known = new Set(providers.filter((value): value is string => value !== null));
+    if (known.size === 1 && providers.every((value) => value !== null)) return this._providerLabel([...known][0]);
+    if (known.size === 0) return this._text("unknownSource");
+    return this._text("multipleSources");
+  }
+
+  private _hasNakordoni(overview: HassState, stations: Array<{ id: string; state: HassState }>): boolean {
+    return this._providerId(overview.attributes.provider) === "nakordoni"
+      || stations.some(({ state }) => this._providerId(state.attributes.provider) === "nakordoni");
+  }
+
+  private _staleMessage(overview: HassState): string {
+    const raw = overview.attributes.last_successful_update;
+    const date = typeof raw === "string" ? new Date(raw) : undefined;
+    const at = date && !Number.isNaN(date.getTime())
+      ? ` · ${this._text("lastSuccessful")} ${new Intl.DateTimeFormat(this._locale(), { dateStyle: "short", timeStyle: "short" }).format(date)}`
+      : "";
+    const error = typeof overview.attributes.last_update_error_class === "string"
+      ? ` (${overview.attributes.last_update_error_class})`
+      : "";
+    return `${this._text("stale")}${error}${at}`;
   }
 
   private _station(id: string, state: HassState) {
     const a = state.attributes;
     const name = text(a.station_name) ?? text(a.name) ?? id;
     const brand = text(a.brand);
+    const provider = this._providerLabel(a.provider);
     const fuelPrices = a.fuel_prices && typeof a.fuel_prices === "object" ? a.fuel_prices as Record<string, unknown> : undefined;
     const addressParts = [a.street && a.house_number ? `${a.street} ${a.house_number}` : text(a.street), [a.postcode, a.place].filter(Boolean).join(" ")].filter(Boolean);
     const address = addressParts.join(", ");
@@ -295,7 +355,7 @@ export class MobileFuelStationsCard extends LitElement {
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
     return html`<div class="station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       <ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>
-      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
+      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}<div class="provider">${this._text("source")}: ${provider}</div>${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
       <div class="prices">${priceRows.map((row) => html`<div class="fuel-price"><span>${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}</span><strong>${row.value ?? this._text("noPrice")}</strong></div>`)}${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
       ${navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing}
     </div>`;
@@ -303,9 +363,9 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _message(message: string) { return html`<ha-card><div class="message">${message}</div></ha-card>`; }
   private _locale(): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? "en-US" : "de-DE"; }
-  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "priceAge" | "fallback"): string {
+  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "lastSuccessful" | "priceAge" | "fallback" | "source" | "unknownSource" | "multipleSources"): string {
     const english = this._locale() === "en-US";
-    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate to station", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Price stale", priceAge: "Confirmed", fallback: "E5 instead of E10" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigieren", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Preis veraltet", priceAge: "Bestätigt", fallback: "E5 statt E10" };
+    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Data stale", lastSuccessful: "last successful update", priceAge: "Confirmed", fallback: "E5 instead of E10", source: "Source", unknownSource: "Source unknown", multipleSources: "Multiple data sources" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigieren", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Daten veraltet", lastSuccessful: "letzte erfolgreiche Aktualisierung", priceAge: "Bestätigt", fallback: "E5 statt E10", source: "Quelle", unknownSource: "Quelle unbekannt", multipleSources: "Mehrere Datenquellen" };
     return values[key];
   }
   private _keyActivate(event: KeyboardEvent, id: string) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this._moreInfo(id); } }

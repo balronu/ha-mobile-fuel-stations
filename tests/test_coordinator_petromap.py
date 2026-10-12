@@ -74,6 +74,15 @@ def _coordinator(provider, fuel="diesel"):
     coordinator.last_successful_update = None
     coordinator.reference_position = None
     coordinator.last_request = None
+    coordinator.last_update_attempt = None
+    coordinator.last_update_error_at = None
+    coordinator.last_update_error_class = None
+    coordinator.last_update_error_provider = None
+    coordinator.last_retry_after = None
+    coordinator.data_stale = False
+    coordinator.recovery_status = "never"
+    coordinator.consecutive_failures = 0
+    coordinator._retry_not_before = None
     coordinator._store = _Store()
     coordinator._provider_status_store = _Store()
     coordinator.provider_status = {}
@@ -156,10 +165,50 @@ def test_petromap_rate_limit_keeps_last_valid_stations(monkeypatch):
     previous = coordinator.stations
 
     provider.error = ProviderRateLimitError("RATE_LIMITED")
+    stale = asyncio.run(coordinator._async_update_data())
+
+    assert stale == previous
+    assert coordinator.stations == previous
+    assert coordinator.data_stale is True
+    assert coordinator.last_update_error_class == "ProviderRateLimitError"
+    assert len(provider.calls) == 2
+
+    provider.error = None
+    recovered = asyncio.run(coordinator._async_update_data())
+
+    assert recovered == previous
+    assert coordinator.data_stale is False
+    assert coordinator.recovery_status == "recovered"
+    assert coordinator.consecutive_failures == 0
+    assert len(provider.calls) == 3
+
+
+def test_transient_timeout_without_cached_data_still_fails(monkeypatch):
+    provider = _Provider(error=ProviderTimeoutError("timeout"))
+    coordinator = _coordinator(provider)
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
     with pytest.raises(UpdateFailed):
         asyncio.run(coordinator._async_update_data())
 
-    assert coordinator.stations == previous
+    assert coordinator.data_stale is False
+    assert coordinator.last_update_error_class == "ProviderTimeoutError"
+
+
+def test_retry_after_prevents_extra_provider_call_until_window_expires(monkeypatch):
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+    asyncio.run(coordinator._async_update_data())
+
+    error = ProviderRateLimitError("RATE_LIMITED")
+    error.retry_after = 60
+    provider.error = error
+    asyncio.run(coordinator._async_update_data())
+    assert coordinator.last_retry_after == 60
+    assert len(provider.calls) == 2
+
+    asyncio.run(coordinator._async_update_data())
     assert len(provider.calls) == 2
 
 

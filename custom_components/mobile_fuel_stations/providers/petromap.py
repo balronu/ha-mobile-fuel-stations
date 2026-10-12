@@ -267,7 +267,10 @@ class PetromapProvider:
                         rate_limit=_optional_header_int(response.headers, "X-RateLimit-Limit"),
                         retry_after=_optional_header_int(response.headers, "Retry-After"),
                     )
-                    raise map_error(status, payload)
+                    error = map_error(status, payload)
+                    if self.last_response_metadata.retry_after is not None:
+                        error.retry_after = self.last_response_metadata.retry_after
+                    raise error
                 try:
                     payload = await response.json(content_type=None)
                 except (TypeError, ValueError) as err:

@@ -143,6 +143,15 @@ def _coordinator(monkeypatch, country, fuel="diesel", *, tk_error=None, pm_error
     coordinator.last_successful_update = None
     coordinator.reference_position = None
     coordinator.last_request = None
+    coordinator.last_update_attempt = None
+    coordinator.last_update_error_at = None
+    coordinator.last_update_error_class = None
+    coordinator.last_update_error_provider = None
+    coordinator.last_retry_after = None
+    coordinator.data_stale = False
+    coordinator.recovery_status = "never"
+    coordinator.consecutive_failures = 0
+    coordinator._retry_not_before = None
     coordinator._store = _Store()
     coordinator.auto_runtime_state = None
     coordinator.factory_keys = factory_keys

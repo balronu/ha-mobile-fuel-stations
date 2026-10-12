@@ -48,10 +48,14 @@ from .providers.base import (
     NoSuitableProviderError,
     ProviderAuthError,
     ProviderError,
+    ProviderNetworkError,
     ProviderRateLimitError,
     ProviderRequestDiagnostics,
+    ProviderResponseError,
     ProviderReauthContext,
     ProviderUnsupportedFuelError,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
     StationSearchQuery,
     resolve_fuel,
 )
@@ -66,6 +70,28 @@ from .providers.policy import (
 from .country_resolver import resolve
 
 _LOGGER = logging.getLogger(__name__)
+_TRANSIENT_PROVIDER_ERRORS = (
+    ProviderNetworkError,
+    ProviderRateLimitError,
+    ProviderResponseError,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+)
+_MAX_RETRY_AFTER_SECONDS = 3600
+
+
+def _retry_after_seconds(error: ProviderError) -> int | None:
+    """Read a bounded, provider-neutral Retry-After value."""
+
+    diagnostics = getattr(error, "diagnostics", None)
+    value = getattr(diagnostics, "retry_after", None)
+    if value is None:
+        value = getattr(error, "retry_after", None)
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return min(parsed, _MAX_RETRY_AFTER_SECONDS) if parsed >= 0 else None
 
 
 def _valid_position(hass: HomeAssistant, entity_id: str) -> tuple[float, float] | None:
@@ -171,6 +197,15 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self.last_successful_update: datetime | None = None
         self.reference_position: tuple[float, float] | None = None
         self.last_request: datetime | None = None
+        self.last_update_attempt: datetime | None = None
+        self.last_update_error_at: datetime | None = None
+        self.last_update_error_class: str | None = None
+        self.last_update_error_provider: str | None = None
+        self.last_retry_after: int | None = None
+        self.data_stale = False
+        self.recovery_status = "never"
+        self.consecutive_failures = 0
+        self._retry_not_before: datetime | None = None
         self._unsub_position = None
         self._movement_refresh_scheduled = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
@@ -309,6 +344,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         if isinstance(stored, dict):
             self.last_successful_update = self._parse_time(stored.get("last_successful_update"))
             self.last_request = self._parse_time(stored.get("last_request"))
+            self.last_update_attempt = self._parse_time(stored.get("last_update_attempt"))
+            self.last_update_error_at = self._parse_time(stored.get("last_update_error_at"))
+            self.last_update_error_class = stored.get("last_update_error_class")
+            self.last_update_error_provider = stored.get("last_update_error_provider")
+            self.last_retry_after = stored.get("last_retry_after")
+            self.data_stale = bool(stored.get("data_stale", False))
+            self.recovery_status = str(stored.get("recovery_status", "never"))
+            self.consecutive_failures = int(stored.get("consecutive_failures", 0))
             lat, lon = stored.get("reference_latitude"), stored.get("reference_longitude")
             if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
                 self.reference_position = (float(lat), float(lon))
@@ -352,6 +395,16 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             return None
 
     async def _async_update_data(self) -> list[Station]:
+        now = datetime.now().astimezone()
+        self.last_update_attempt = now
+        if self._retry_not_before and now < self._retry_not_before:
+            if self.stations and _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]):
+                _LOGGER.debug(
+                    "Skipping provider refresh during Retry-After window: provider=%s",
+                    self.last_update_error_provider or "unknown",
+                )
+                return self.stations
+
         configured_fuels = getattr(self, "fuel_types", self._configured_fuels(self.options))
         position = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         if position is None:
@@ -414,7 +467,6 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                         f"{provider_mode} does not support configured fuels"
                     ))
                 )
-        now = datetime.now().astimezone()
         self.last_request = now
         if self._is_auto:
             self._set_auto_runtime_state(decision, effective_provider=provider_mode)
@@ -458,8 +510,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             await self._set_provider_status(active_provider_mode, "uncheckable")
             if active_provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)
-                raise UpdateFailed(self._nakordoni_error_message(err)) from err
-            raise UpdateFailed("API rate limit reached") from err
+            return await self._handle_transient_failure(
+                err, active_provider_mode, position,
+                self._nakordoni_error_message(err)
+                if active_provider_mode == PROVIDER_NAKORDONI
+                else "API rate limit reached",
+            )
         except ProviderError as err:
             diagnostics = getattr(err, "diagnostics", None)
             status = "approval_pending" if getattr(diagnostics, "error_code", None) == "not_approved" else "uncheckable"
@@ -468,9 +524,15 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             await self._set_provider_status(active_provider_mode, status)
             if active_provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)
-                raise UpdateFailed(self._nakordoni_error_message(err)) from err
-            provider_label = active_provider_mode or "provider"
-            raise UpdateFailed(f"{provider_label} request failed") from err
+                message = self._nakordoni_error_message(err)
+            else:
+                provider_label = active_provider_mode or "provider"
+                message = f"{provider_label} request failed"
+            if isinstance(err, _TRANSIENT_PROVIDER_ERRORS):
+                return await self._handle_transient_failure(
+                    err, active_provider_mode, position, message,
+                )
+            raise UpdateFailed(message) from err
         result = merge_stations(result)
         self.nearest_station = nearest_station(result)
         if provider_mode == PROVIDER_NAKORDONI:
@@ -490,13 +552,80 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         )
         self.last_successful_update = now
         self.reference_position = position
+        recovered = self.data_stale
+        self.data_stale = False
+        self.last_update_error_at = None
+        self.last_update_error_class = None
+        self.last_update_error_provider = None
+        self.last_retry_after = None
+        self._retry_not_before = None
+        self.consecutive_failures = 0
+        self.recovery_status = "recovered" if recovered else "success"
         await self._store.async_save({
             "last_successful_update": now.isoformat(),
             "last_request": now.isoformat(),
+            "last_update_attempt": now.isoformat(),
+            "last_update_error_at": None,
+            "last_update_error_class": None,
+            "last_update_error_provider": None,
+            "last_retry_after": None,
+            "data_stale": False,
+            "recovery_status": self.recovery_status,
+            "consecutive_failures": 0,
             "reference_latitude": position[0],
             "reference_longitude": position[1],
         })
         return self.stations
+
+    async def _handle_transient_failure(
+        self,
+        error: ProviderError,
+        provider: str,
+        position: tuple[float, float] | None,
+        message: str,
+    ) -> list[Station]:
+        """Keep valid data visible while allowing the next scheduled poll to recover."""
+
+        now = datetime.now().astimezone()
+        retry_after = _retry_after_seconds(error)
+        self.last_update_error_at = now
+        self.last_update_error_class = type(error).__name__
+        self.last_update_error_provider = provider
+        self.last_retry_after = retry_after
+        self.consecutive_failures += 1
+        self.recovery_status = "retry_scheduled" if self.stations and position else "failed"
+        self.data_stale = bool(self.stations and position)
+        self._retry_not_before = (
+            now + timedelta(seconds=retry_after) if retry_after is not None else None
+        )
+        _LOGGER.warning(
+            "Mobile Fuel Stations refresh failed: provider=%s error_class=%s "
+            "cached_data=%s retry_after=%s consecutive_failures=%s",
+            provider,
+            type(error).__name__,
+            self.data_stale,
+            retry_after,
+            self.consecutive_failures,
+        )
+        await self._store.async_save({
+            "last_successful_update": self.last_successful_update.isoformat()
+            if self.last_successful_update else None,
+            "last_request": self.last_request.isoformat() if self.last_request else None,
+            "last_update_attempt": self.last_update_attempt.isoformat()
+            if self.last_update_attempt else None,
+            "last_update_error_at": now.isoformat(),
+            "last_update_error_class": type(error).__name__,
+            "last_update_error_provider": provider,
+            "last_retry_after": retry_after,
+            "data_stale": self.data_stale,
+            "recovery_status": self.recovery_status,
+            "consecutive_failures": self.consecutive_failures,
+            "reference_latitude": position[0] if position else None,
+            "reference_longitude": position[1] if position else None,
+        })
+        if self.data_stale:
+            return self.stations
+        raise UpdateFailed(message) from error
 
     @callback
     def _async_position_changed(self, event: Event) -> None:
@@ -505,7 +634,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         current = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         if current is None:
             return
-        elapsed = datetime.now().astimezone() - self.last_request
+        now = datetime.now().astimezone()
+        if self._retry_not_before and now < self._retry_not_before:
+            return
+        elapsed = now - self.last_request
         distance = haversine_km(self.reference_position, current)
         if distance < float(self.options[CONF_MOVEMENT_THRESHOLD]):
             return
@@ -527,6 +659,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             return None
         current = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         return haversine_km(self.reference_position, current) if current else None
+
+    @property
+    def data_age_seconds(self) -> float | None:
+        """Return the age of the last successful provider result."""
+
+        if self.last_successful_update is None:
+            return None
+        return max(0.0, (datetime.now().astimezone() - self.last_successful_update).total_seconds())
 
     @property
     def config(self) -> dict[str, Any]:

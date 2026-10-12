@@ -48,7 +48,14 @@ class TankerkoenigProvider:
         try:
             async with self._session.get(API_URL, params=params, timeout=self._timeout) as response:
                 if response.status == 429:
-                    raise ProviderRateLimitError
+                    error = ProviderRateLimitError("rate_limited")
+                    try:
+                        retry_after = int(response.headers.get("Retry-After", ""))
+                    except (TypeError, ValueError):
+                        retry_after = None
+                    if retry_after is not None and retry_after >= 0:
+                        error.retry_after = retry_after
+                    raise error
                 response.raise_for_status()
                 payload: dict[str, Any] = await response.json(content_type=None)
         except ClientResponseError as err:

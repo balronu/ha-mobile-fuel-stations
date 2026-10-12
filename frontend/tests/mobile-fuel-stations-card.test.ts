@@ -61,6 +61,43 @@ describe("card", () => {
   it("renders overview, one, five and ten stations in order", async () => {
     for (const count of [1, 5, 10]) { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ type: "custom:mobile-fuel-stations-card", entity: overviewId }); card.hass = hassFor(count); await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(count); expect(card.shadowRoot?.textContent).toContain("Station 1"); }
   });
+  it("renders stale data with an explicit warning and last-success time", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId });
+    card.hass = hassFor(1, { data_stale: true, last_successful_update: "2026-10-12T12:34:00+02:00", last_update_error_class: "ProviderTimeoutError" }, { price_stale: true });
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".stale-warning")?.textContent).toContain("Daten veraltet");
+    expect(card.shadowRoot?.querySelector(".stale-warning")?.textContent).toContain("ProviderTimeoutError");
+    expect(card.shadowRoot?.textContent).toContain("Daten veraltet");
+    expect(card.shadowRoot?.textContent).toContain("Quelle unbekannt");
+  });
+  it("shows the actual provider for stations and highlights", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, { nearest_station: { station_id: "sensor-1", station_name: "Nearest", provider: "petromap", latitude: 49, longitude: 8 } }, { station_id: "sensor-1", provider: "tankerkoenig", latitude: 49, longitude: 8 });
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".summary")?.textContent).toContain("Quelle: Tankerkönig");
+    expect(card.shadowRoot?.querySelector(".station .provider")?.textContent).toContain("Tankerkönig");
+    expect(card.shadowRoot?.querySelector(".highlight .provider")?.textContent).toContain("Petromap");
+  });
+  it("marks mixed and missing provider metadata without guessing", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId });
+    const hass = hassFor(2, {}, { provider: "tankerkoenig" });
+    hass.states["sensor.vehicle_station_2"]!.attributes.provider = "petromap";
+    card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".summary")?.textContent).toContain("Mehrere Datenquellen");
+    hass.states["sensor.vehicle_station_1"]!.attributes.provider = undefined;
+    hass.states["sensor.vehicle_station_2"]!.attributes.provider = undefined;
+    card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".summary")?.textContent).toContain("Quelle unbekannt");
+    expect(card.shadowRoot?.querySelector(".station .provider")?.textContent).toContain("Quelle unbekannt");
+  });
+  it("uses the card container instead of the window for responsive station layout", () => {
+    const css = String((MobileFuelStationsCard as unknown as { styles: unknown }).styles);
+    expect(css).toContain("container-type: inline-size");
+    expect(css).toContain("@container (min-width: 600px)");
+    expect(css).toContain(".stations { grid-template-columns: minmax(0, 1fr); }");
+    expect(css).not.toContain(".stations { grid-template-columns: repeat(2");
+  });
   it("renders nearest and cheapest highlights from the overview", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     const hass = hassFor(1, {
@@ -118,6 +155,15 @@ describe("card", () => {
   });
   it("shows open and closed states", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(1); hass.states["sensor.vehicle_station_1"]!.attributes.is_open = false; card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Geschlossen"); });
   it("renders required error states", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: "sensor.missing" }); card.hass = { states: {} }; await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("Overview entity not found"); card.hass = { states: { [overviewId]: state("unavailable") } }; card.setConfig({ entity: overviewId }); await card.updateComplete; expect(card.shadowRoot?.textContent).toContain("nicht verfügbar"); });
+  it("recovers from unavailable without remounting and survives a remount", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId });
+    card.hass = { states: { [overviewId]: state("unavailable") } }; await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("nicht verfügbar");
+    card.hass = hassFor(1); await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+    card.remove(); document.body.append(card); card.hass = hassFor(1); await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+  });
   it("dispatches more-info with the station entity id", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); card.hass = hassFor(1); await card.updateComplete; let event: Event | undefined; card.addEventListener("hass-more-info", (value) => { event = value; }); (card.shadowRoot?.querySelector(".station") as HTMLElement).click(); expect((event as CustomEvent).detail.entityId).toBe("sensor.vehicle_station_1"); });
   it("keeps header metadata below the title on mobile", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); card.hass = hassFor(1, { radius: 20, fuel_type: "diesel" }); await card.updateComplete; expect(card.shadowRoot?.querySelector(".header h2")).toBeTruthy(); expect(card.shadowRoot?.querySelector(".header .summary")).toBeTruthy(); });
   it("renders multiple selected fuels and station fuel metadata", async () => { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId }); const hass = hassFor(1, { fuel_types: ["diesel", "hvo100"] }, { fuel_type: "hvo100", requested_fuel: "hvo100" }); card.hass = hass; await card.updateComplete; expect(card.shadowRoot?.querySelector(".summary")?.textContent).toContain("Diesel, HVO100"); expect(card.shadowRoot?.textContent).toContain("HVO100"); });
