@@ -33,14 +33,14 @@ Wohnmobil- oder Geräte-Entity und stellt Tankstellen, Preise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.5.1` | Empfohlene stabile Version |
-| Pre-Release | `v0.6.0-beta.6` | Aktuelle veröffentlichte Beta |
-| Rollback | `v0.6.0-beta.5` | Vorherige Beta bleibt verfügbar |
+| Stable | `v0.6.0` | Aktuelle stabile Version |
+| Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
+| Letzter Release Candidate | `v0.6.0-beta.6` | Vorangegangene Beta |
 
-`v0.6.0` ohne Beta-Suffix ist noch nicht als Stable veröffentlicht. Beta.6
-enthält die verbesserte lokale Erkennung der sechs gebündelten Markenlogos und
+`v0.6.0` ist die aktuelle stabile Veröffentlichung. Sie enthält die aus Beta.6
+übernommene verbesserte lokale Erkennung der sechs gebündelten Markenlogos und
 die überarbeitete Dokumentation. Provider-Backend, Startup-Recovery und das
-reguläre Polling entsprechen dem Stand von Beta.5.
+reguläre Polling entsprechen dem geprüften Beta.5/Beta.6-Stand.
 
 Die Integration bietet unter anderem:
 
@@ -69,15 +69,15 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-Beta.6 ist ein Pre-Release. In HACS muss gegebenenfalls die Option für
-Beta-Versionen aktiviert oder die Version über die Release-Seite ausgewählt
-werden. Stable bleibt `v0.5.1`.
+`v0.6.0` ist die stabile HACS-Version. Beta.6 bleibt als letzter Release
+Candidate und Rollback-Referenz im GitHub-Archiv erhalten. Für einen Rücksprung
+steht `v0.5.1` als vorherige Stable-Version zur Verfügung.
 
 Die Lovelace-Karte wird von der Integration bereitgestellt und registriert. Die
 versionierte Ressource lautet für Beta.6:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0-beta.6
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0
 ```
 
 Bei einer bestehenden Installation können alte Ressourcen im Browser- oder
@@ -240,8 +240,9 @@ Zugangsdaten, Stationssensoren und kompatible Dashboard-Konfigurationen bleiben
 erhalten. Prüfe nach einem größeren Versionssprung die versionierte Karten-
 Ressource und lösche bei Bedarf einen veralteten Browser-Cache.
 
-Für einen Rücksprung bleibt `v0.6.0-beta.5` als GitHub-Release verfügbar.
-`v0.5.1` ist die stabile Version; ein Stable-Release `v0.6.0` existiert nicht.
+Für einen Rücksprung bleibt `v0.5.1` als vorherige Stable-Version verfügbar.
+Die Beta-Releases, einschließlich `v0.6.0-beta.6`, bleiben im GitHub-Archiv
+erhalten.
 
 ## Datenschutz und Einschränkungen
 
@@ -297,7 +298,7 @@ Recovery-Tests verwenden Mocks und Fixtures.
 
 Historische Release Notes liegen unverändert unter
 [`docs/releases/`](docs/releases/). Die aktuelle Beta ist in
-[`docs/releases/RELEASE_NOTES_v0.6.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.6.0-beta.6.md)
+[`docs/releases/RELEASE_NOTES_v0.6.0.md`](docs/releases/RELEASE_NOTES_v0.6.0.md)
 beschrieben. Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
 der [Markendokumentation](docs/BRAND_LOGOS.md) und im
 [GitHub-Release-Archiv](https://github.com/balronu/ha-mobile-fuel-stations/releases).
