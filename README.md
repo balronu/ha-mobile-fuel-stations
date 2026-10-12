@@ -11,13 +11,12 @@ bewegliche Objekte geeignet.
 
 | Kanal | Version | Zweck |
 | --- | --- | --- |
-| Stable | `v0.5.0` | Aktuelle empfohlene Version für produktive Installationen |
-| Pre-Release | `v0.5.1-beta.1` | Beta mit responsive Layout, Datenquellenanzeige und Lade-Recovery |
-| Vorherige Stable-Version | `v0.4.0` | Vorherige stabile Version |
+| Stable | `v0.5.1` | Aktuelle empfohlene Version für produktive Installationen |
+| Vorherige Stable-Version | `v0.5.0` | Vorherige stabile Version |
 
-Pre-Release-Versionen können sich ändern. Der sporadische Ladefehler unter
-Microsoft Edge und iOS Companion wurde mit dieser Beta noch nicht in der
-produktiven Home-Assistant-Umgebung verifiziert.
+Der sporadische Ladefehler unter Microsoft Edge und iOS Companion ist mit
+dieser Version noch nicht belastbar in der produktiven Home-Assistant-Umgebung
+verifiziert und darf daher nicht als vollständig behoben gelten.
 
 ## Funktionen
 
@@ -155,10 +154,10 @@ Home Assistant nicht unterstützt.
 4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** die
    Integration einrichten.
 
-Die Dashboard-Karte wird automatisch registriert. Beta 0.5.1-beta.1 verwendet die
+Die Dashboard-Karte wird automatisch registriert. Stable 0.5.1 verwendet die
 versionierte Resource-URL:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.1-beta.1`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.1`
 
 Das lokale Icon/Logo ist Home-Assistant-Branding. Ein HACS-Repository-Icon und
 das Home-Assistant-Integrationsbranding sind getrennte Dinge; zusätzliche
@@ -247,7 +246,7 @@ nakordoni.eu** erhalten bleiben.
 
 ## Entwicklung und Tests
 
-Die Beta-0.5.1-beta.1-Prüfung umfasst Python-Tests, Frontend-Tests, Produktions-Build,
+Die Stable-0.5.1-Prüfung umfasst Python-Tests, Frontend-Tests, Produktions-Build,
 Hassfest, JSON-/Syntaxprüfung, Bundle-Diff und `git diff --check`. Provider-
 und API-Tests verwenden zusätzlich Mocks und Fixtures; unbestätigte Live-
 Zugänge werden nicht als erfolgreich simuliert.

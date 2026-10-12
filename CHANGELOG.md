@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.1-beta.1 — Responsive card and load recovery
+## [0.5.1] — Responsive card and load recovery
 
 - Added a responsive layout using container queries and a single-column station list.
 - Show the actual data source for each result and distinguish stale data from
@@ -9,7 +9,7 @@
 - Added an idempotent custom-element registration fallback on the browser
   `load` event to recover from a frontend registry/load-order race.
 - The sporadic Microsoft Edge/iOS Companion loading issue remains unverified
-  in the production Home Assistant environment.
+  in the production Home Assistant environment and is not claimed as fully fixed.
 - Known `npm audit` warnings in development dependencies remain documented and
   were not addressed with an unreviewed major upgrade.
 

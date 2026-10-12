@@ -10,13 +10,12 @@ stations based on a vehicle or device entity exposing `latitude` and
 
 | Channel | Version | Purpose |
 | --- | --- | --- |
-| Stable | `v0.5.0` | Current recommended version for production installations |
-| Pre-release | `v0.5.1-beta.1` | Beta with responsive layout, data-source display, and load recovery |
-| Previous stable | `v0.4.0` | Previous stable version |
+| Stable | `v0.5.1` | Current recommended version for production installations |
+| Previous stable | `v0.5.0` | Previous stable version |
 
-Pre-release versions can change. The sporadic loading issue on Microsoft Edge
-and iOS Companion has not yet been verified in the production Home Assistant
-environment.
+The sporadic loading issue on Microsoft Edge and iOS Companion has not yet
+been conclusively verified in the production Home Assistant environment and
+must not be claimed as fully fixed.
 
 ## Features
 
@@ -137,10 +136,10 @@ form fields.
 3. Install it and restart Home Assistant completely.
 4. Add it under **Settings → Devices & services → Add integration**.
 
-The dashboard card registers automatically. Pre-release 0.5.1-beta.1 uses the versioned resource
+The dashboard card registers automatically. Stable 0.5.1 uses the versioned resource
 URL:
 
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.1-beta.1`
+`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.1`
 
 The local icon/logo is Home Assistant integration branding. A HACS repository
 icon and Home Assistant integration branding are separate mechanisms; no extra
@@ -214,7 +213,7 @@ attribution: **Data by nakordoni.eu**.
 
 ## Development and tests
 
-Pre-release 0.5.1-beta.1 is checked with Python tests, frontend tests, the production build,
+Stable 0.5.1 is checked with Python tests, frontend tests, the production build,
 Hassfest, JSON/syntax checks, bundle-diff validation, and `git diff --check`.
 Provider/API tests also use mocks and fixtures; unapproved live access is never
 claimed as successful.
