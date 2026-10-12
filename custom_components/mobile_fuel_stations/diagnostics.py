@@ -12,6 +12,28 @@ from .const import (
 )
 
 
+def _iso(value) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _listener_count(coordinator) -> int | None:
+    listeners = getattr(coordinator, "_listeners", None)
+    return len(listeners) if isinstance(listeners, dict) else None
+
+
+def _periodic_refresh_scheduled(coordinator) -> bool | None:
+    """Read HA Core's scheduled callback marker without changing it."""
+
+    if not hasattr(coordinator, "_unsub_refresh"):
+        return None
+    return getattr(coordinator, "_unsub_refresh") is not None
+
+
+def _update_interval_minutes(coordinator) -> float | None:
+    interval = getattr(coordinator, "update_interval", None)
+    return interval.total_seconds() / 60 if interval is not None else None
+
+
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     coordinator = getattr(entry, "runtime_data", None)
     runtime = {
@@ -21,13 +43,29 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
     }
     if coordinator is not None:
         runtime.update({
-            "gps_available": coordinator.current_distance_km is not None,
-            "last_successful_update": coordinator.last_successful_update.isoformat() if coordinator.last_successful_update else None,
+            "coordinator_instance_id": f"{id(coordinator):x}",
+            "coordinator_listener_count": _listener_count(coordinator),
+            "coordinator_update_interval_minutes": _update_interval_minutes(coordinator),
+            "periodic_refresh_scheduled": _periodic_refresh_scheduled(coordinator),
+            # HA Core stores only a cancellation callback, not the TimerHandle.
+            # A deadline is therefore intentionally UNKNOWN rather than guessed.
+            "next_refresh_deadline": None,
+            "gps_available": getattr(coordinator, "gps_available", None),
+            "gps_listener_registered": getattr(coordinator, "gps_listener_registered", None),
+            "last_successful_update": _iso(coordinator.last_successful_update),
+            "last_update_attempt": _iso(getattr(coordinator, "last_update_attempt", None)),
+            "last_update_result": getattr(coordinator, "last_update_result", None),
+            "last_provider_attempt": _iso(getattr(coordinator, "last_provider_attempt", None)),
+            "last_provider_success": _iso(getattr(coordinator, "last_provider_success", None)),
+            "startup_recovery_status": getattr(coordinator, "recovery_status", None),
+            "recovery_task_status": getattr(coordinator, "recovery_task_status", None),
+            "last_update_success": getattr(coordinator, "last_update_success", None),
             "result_count": len(coordinator.data or []),
-            "error": str(coordinator.last_exception) if coordinator.last_exception else None,
+            "error": type(coordinator.last_exception).__name__
+            if coordinator.last_exception else None,
         })
     return {
-        "version": 1,
+        "version": 2,
         "config": {
             key: value
             for key, value in {**entry.data, **entry.options}.items()

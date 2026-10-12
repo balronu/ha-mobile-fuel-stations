@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0-beta.3 — Coordinator lifecycle diagnostics
+
+- Add safe runtime diagnostics for coordinator identity, listener registration,
+  polling interval/scheduling, update/provider attempts, GPS listener state, and
+  startup-recovery task state without exposing coordinates or credentials.
+- Add lifecycle regression coverage for the actual Home Assistant coordinator
+  listener registration path and repeated polling after an initial GPS miss.
+- No speculative polling or retry behavior change is included because the live
+  beta.2 root cause was not proven.
+
 ## 0.6.0-beta.2 — Startup recovery and safe logo defaults
 
 - Close the startup race by re-checking the tracker after the initial setup

@@ -11,7 +11,7 @@ stations based on a vehicle or device entity exposing `latitude` and
 | Channel | Version | Purpose |
 | --- | --- | --- |
 | Stable | `v0.5.1` | Current recommended version for production installations |
-| Pre-release | `v0.6.0-beta.2` | Beta for startup recovery and safe local brand logos |
+| Pre-release | `v0.6.0-beta.3` | Beta for coordinator lifecycle diagnostics and safe local brand logos |
 | Previous stable | `v0.5.0` | Previous stable version |
 
 The sporadic loading issue on Microsoft Edge and iOS Companion has not yet
@@ -35,7 +35,7 @@ must not be claimed as fully fixed.
 - Local Home Assistant branding in `custom_components/mobile_fuel_stations/brand/`
 - General options can be saved independently of credential management
 
-## Brand logos (v0.6.0-beta.2)
+## Brand logos (v0.6.0-beta.3)
 
 The card can map the existing station `brand` attribute to a local logo
 independently of the data provider. New cards try logos by default; an explicit
@@ -84,12 +84,12 @@ show_brand_logos: true
 logo_path: /mobile_fuel_stations/logos/
 ```
 
-Stable `v0.5.1` does not contain this feature. `v0.6.0-beta.2` is a
+Stable `v0.5.1` does not contain this feature. `v0.6.0-beta.3` is a
 controlled beta; the six bundled logos are installed with the integration and
 additional brands use the fallback. No screenshot is currently stored in the repository; the YAML example
 and automated rendering tests provide the verifiable example.
 
-### Startup recovery in beta.2
+### Startup recovery in beta.3
 
 If the configured tracker is `unknown`, `unavailable`, or has no valid
 coordinates during HA startup, the entities are created but Nearby remains

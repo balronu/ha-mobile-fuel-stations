@@ -199,6 +199,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.reference_position: tuple[float, float] | None = None
         self.last_request: datetime | None = None
         self.last_update_attempt: datetime | None = None
+        self.last_update_result: str | None = None
+        self.last_provider_attempt: datetime | None = None
+        self.last_provider_success: datetime | None = None
         self.last_update_error_at: datetime | None = None
         self.last_update_error_class: str | None = None
         self.last_update_error_provider: str | None = None
@@ -208,8 +211,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.consecutive_failures = 0
         self._retry_not_before: datetime | None = None
         self._unsub_position = None
+        self.gps_listener_registered = False
         self._movement_refresh_scheduled = False
         self._movement_refresh_task: asyncio.Task | None = None
+        self.recovery_task_status = "not_scheduled"
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
         self._provider_status_store = Store(hass, 1, f"{DOMAIN}.provider_status.{entry.entry_id}")
         # Keep the status in the runtime object as well as hass.data.  The
@@ -367,6 +372,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self._unsub_position = async_track_state_change_event(
                 self.hass, [self.options[CONF_LOCATION_ENTITY]], self._async_position_changed
             )
+            self.gps_listener_registered = True
 
     async def _set_provider_status(self, provider: str, status: str) -> None:
         """Persist only non-sensitive result state from a real provider call."""
@@ -387,10 +393,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if self._unsub_position:
             self._unsub_position()
             self._unsub_position = None
+        self.gps_listener_registered = False
         task = getattr(self, "_movement_refresh_task", None)
         self._movement_refresh_task = None
         if task and not task.done():
             task.cancel()
+            self.recovery_task_status = "cancelled"
 
     def async_schedule_startup_recovery(self) -> None:
         """Recover once if GPS became valid during initial setup.
@@ -414,6 +422,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if self._movement_refresh_scheduled or (task and not task.done()):
             return
         self._movement_refresh_scheduled = True
+        self.recovery_task_status = "scheduled"
         self._movement_refresh_task = self.hass.async_create_task(
             self._async_request_movement_refresh()
         )
@@ -430,6 +439,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
     async def _async_update_data(self) -> list[Station]:
         now = datetime.now().astimezone()
         self.last_update_attempt = now
+        self.last_update_result = "started"
         if self._retry_not_before and now < self._retry_not_before:
             if self.stations and _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]):
                 _LOGGER.debug(
@@ -455,6 +465,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             # listener can trigger the first real refresh when GPS appears.
             self.recovery_status = "awaiting_location"
             self.data_stale = False
+            self.last_update_result = "gps_unavailable"
             # None means that no provider search has produced a result yet.
             # An empty list is reserved for a successful search with zero
             # stations, so the overview entity can distinguish unavailable
@@ -509,6 +520,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                     ))
                 )
         self.last_request = now
+        self.last_provider_attempt = now
         if self._is_auto:
             self._set_auto_runtime_state(decision, effective_provider=provider_mode)
         result: list[Station] = []
@@ -525,6 +537,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                         station_count=int(self.options[CONF_STATION_COUNT]),
                     )
                 )
+                self.last_provider_success = datetime.now().astimezone()
                 await self._set_provider_status(request_mode, "success")
                 if len(requests) > 1 or requested_fuel != effective_fuel:
                     found = [replace(
@@ -537,6 +550,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                     ) for station in found]
                 result.extend(found)
         except ProviderAuthError as err:
+            self.last_update_result = "provider_auth_failed"
             await self._set_provider_status(active_provider_mode, "auth_failed")
             if active_provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)
@@ -548,6 +562,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 raise ConfigEntryAuthFailed("API authentication failed") from err
             raise UpdateFailed("API authentication failed") from err
         except ProviderRateLimitError as err:
+            self.last_update_result = "provider_rate_limited"
             await self._set_provider_status(active_provider_mode, "uncheckable")
             if active_provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)
@@ -558,6 +573,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 else "API rate limit reached",
             )
         except ProviderError as err:
+            self.last_update_result = "provider_failed"
             diagnostics = getattr(err, "diagnostics", None)
             status = "approval_pending" if getattr(diagnostics, "error_code", None) == "not_approved" else "uncheckable"
             if isinstance(err, ProviderAuthError):
@@ -602,6 +618,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._retry_not_before = None
         self.consecutive_failures = 0
         self.recovery_status = "recovered" if recovered else "success"
+        self.last_update_result = "provider_success"
         await self._store.async_save({
             "last_successful_update": now.isoformat(),
             "last_request": now.isoformat(),
@@ -632,6 +649,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.last_update_error_at = now
         self.last_update_error_class = type(error).__name__
         self.last_update_error_provider = provider
+        self.last_update_result = "provider_transient_failure"
         self.last_retry_after = retry_after
         self.consecutive_failures += 1
         self.recovery_status = "retry_scheduled" if self.stations and position else "failed"
@@ -694,8 +712,17 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._schedule_refresh()
 
     async def _async_request_movement_refresh(self) -> None:
+        self.recovery_task_status = "running"
         try:
             await self.async_request_refresh()
+        except asyncio.CancelledError:
+            self.recovery_task_status = "cancelled"
+            raise
+        except Exception:
+            self.recovery_task_status = "failed"
+            raise
+        else:
+            self.recovery_task_status = "completed"
         finally:
             self._movement_refresh_scheduled = False
             self._movement_refresh_task = None
@@ -706,6 +733,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             return None
         current = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         return haversine_km(self.reference_position, current) if current else None
+
+    @property
+    def gps_available(self) -> bool:
+        """Expose only whether the configured tracker currently has a position."""
+
+        return _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]) is not None
 
     @property
     def data_age_seconds(self) -> float | None:

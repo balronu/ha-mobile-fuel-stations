@@ -1,9 +1,11 @@
 import asyncio
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from homeassistant.config_entries import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from mobile_fuel_stations import coordinator as coordinator_module
 from mobile_fuel_stations.const import (
     CONF_FUEL_TYPE,
@@ -14,6 +16,7 @@ from mobile_fuel_stations.const import (
     PROVIDER_PETROMAP,
 )
 from mobile_fuel_stations.coordinator import MobileFuelStationsCoordinator
+from mobile_fuel_stations.diagnostics import async_get_config_entry_diagnostics
 from mobile_fuel_stations.providers.base import (
     ProviderAuthError,
     ProviderPermissionError,
@@ -182,6 +185,81 @@ def test_shutdown_unsubscribes_and_cancels_pending_recovery_task():
     task.cancel.assert_called_once_with()
     assert coordinator._unsub_position is None
     assert coordinator._movement_refresh_task is None
+
+
+def test_data_update_coordinator_first_listener_registers_periodic_refresh():
+    """Exercise HA Core's real listener/periodic-refresh registration path."""
+
+    coordinator = object.__new__(MobileFuelStationsCoordinator)
+    coordinator._listeners = {}
+    coordinator._last_listener_id = 0
+    coordinator._schedule_refresh = Mock()
+    coordinator._unschedule_refresh = Mock()
+    coordinator._debounced_refresh = SimpleNamespace(async_cancel=Mock())
+
+    remove_first = DataUpdateCoordinator.async_add_listener(coordinator, Mock())
+    remove_second = DataUpdateCoordinator.async_add_listener(coordinator, Mock())
+
+    coordinator._schedule_refresh.assert_called_once_with()
+    assert len(coordinator._listeners) == 2
+    remove_first()
+    assert len(coordinator._listeners) == 1
+    remove_second()
+    assert coordinator._listeners == {}
+
+
+def test_diagnostics_report_lifecycle_without_coordinates_or_secrets():
+    coordinator = SimpleNamespace(
+        _listeners={1: (Mock(), None), 2: (Mock(), None)},
+        _unsub_refresh=Mock(),
+        update_interval=timedelta(minutes=15),
+        gps_available=False,
+        gps_listener_registered=True,
+        last_successful_update=None,
+        last_update_attempt=None,
+        last_update_result="gps_unavailable",
+        last_provider_attempt=None,
+        last_provider_success=None,
+        recovery_status="awaiting_location",
+        recovery_task_status="not_scheduled",
+        last_update_success=True,
+        data=None,
+        last_exception=None,
+    )
+    entry = SimpleNamespace(
+        entry_id="diagnostic-entry",
+        data={"api_key": "SECRET", "location_entity": "device_tracker.vehicle"},
+        options={},
+        runtime_data=coordinator,
+    )
+    hass = SimpleNamespace(data={})
+
+    result = asyncio.run(async_get_config_entry_diagnostics(hass, entry))
+
+    assert result["runtime"]["coordinator_listener_count"] == 2
+    assert result["runtime"]["coordinator_update_interval_minutes"] == 15
+    assert result["runtime"]["periodic_refresh_scheduled"] is True
+    assert result["runtime"]["next_refresh_deadline"] is None
+    assert result["runtime"]["gps_available"] is False
+    assert "api_key" not in result["config"]
+    assert "SECRET" not in str(result)
+
+
+def test_two_regular_poll_cycles_follow_initial_gps_miss(monkeypatch):
+    """A failed initial GPS read must not prevent later regular update calls."""
+
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    positions = iter([None, (49.2, 7.0), (49.2, 7.0)])
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: next(positions))
+
+    assert asyncio.run(coordinator._async_update_data()) is None
+    assert asyncio.run(coordinator._async_update_data()) == [_station()]
+    assert asyncio.run(coordinator._async_update_data()) == [_station()]
+
+    assert len(provider.calls) == 2
+    assert coordinator.last_update_result == "provider_success"
+    assert coordinator.last_provider_success is not None
 
 
 def test_petromap_e5_refresh_uses_one_search_query(monkeypatch):
