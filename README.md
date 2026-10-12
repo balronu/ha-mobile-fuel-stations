@@ -2,7 +2,7 @@
 
 🇩🇪 **Deutsch** | [🇬🇧 English](README.en.md)
 
-<p><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="160"></p>
+<p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration für nahe
 Tankstellen. Sie verwendet die Positionsdaten einer Fahrzeug-,

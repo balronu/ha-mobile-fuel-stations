@@ -2,7 +2,7 @@
 
 [🇩🇪 Deutsch](README.md) | 🇬🇧 **English**
 
-<p><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="160"></p>
+<p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 Mobile Fuel Stations is a Home Assistant custom integration for nearby fuel
 stations. It uses the coordinates of a vehicle, motorhome, or other device
