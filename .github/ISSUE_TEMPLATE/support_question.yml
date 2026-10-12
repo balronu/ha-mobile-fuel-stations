@@ -1,0 +1,65 @@
+name: Support question
+description: Ask for help using or configuring Mobile Fuel Stations
+title: "[Support]: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For general support, please read the [English documentation](https://github.com/balronu/ha-mobile-fuel-stations/blob/main/README.en.md) first.
+
+        Never include API keys, tokens, exact GPS coordinates, private IP addresses, private Home Assistant URLs, or personal data.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Specific question
+      description: What would you like help with?
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you already tried?
+      description: Include the relevant documentation sections, configuration changes, or troubleshooting steps you have tried.
+    validations:
+      required: true
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant Core version
+      placeholder: 2026.2.3
+    validations:
+      required: true
+
+  - type: input
+    id: integration_version
+    attributes:
+      label: Mobile Fuel Stations version
+      placeholder: 0.6.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Installation or configuration
+        - Provider or credentials
+        - GPS or polling
+        - Lovelace card
+        - Navigation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs_and_screenshots
+    attributes:
+      label: Redacted logs or screenshots (optional)
+      description: Remove API keys, tokens, exact GPS coordinates, private IP addresses, private URLs, and personal data before posting.
+      render: text

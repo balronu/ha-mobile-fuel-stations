@@ -1,29 +1,138 @@
 name: Bug report
-description: Report a reproducible integration problem
+description: Report a reproducible problem with the integration
+title: "[Bug]: "
+labels:
+  - bug
 body:
-  - type: input
-    id: integration_version
+  - type: markdown
     attributes:
-      label: Integration version
-    validations: {required: true}
+      value: |
+        Please do not include API keys, tokens, exact GPS coordinates, private IP addresses, private Home Assistant URLs, or personal data.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Short problem description
+      description: What went wrong? Please summarize the problem in one or two sentences.
+      placeholder: The station sensor remains unavailable after startup.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include visible error messages if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest reliable sequence that reproduces the problem.
+      placeholder: |
+        1. Configure ...
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+
   - type: input
     id: ha_version
     attributes:
-      label: Home Assistant version
-    validations: {required: true}
+      label: Home Assistant Core version
+      placeholder: 2026.2.3
+    validations:
+      required: true
+
+  - type: input
+    id: integration_version
+    attributes:
+      label: Mobile Fuel Stations version
+      placeholder: 0.6.0
+    validations:
+      required: true
+
   - type: dropdown
     id: installation
     attributes:
       label: Installation method
-      options: [HACS, Manual]
-    validations: {required: true}
-  - type: textarea
-    id: reproduction
+      options:
+        - HACS
+        - Manual
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
     attributes:
-      label: Reproduction steps
-    validations: {required: true}
+      label: Affected provider
+      options:
+        - Tankerkönig
+        - Petromap
+        - Nakordoni
+        - Automatic provider selection
+        - Not provider-specific
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: fuel_type
+    attributes:
+      label: Affected fuel type
+      options:
+        - E5
+        - E10
+        - Diesel
+        - LPG/Autogas
+        - HVO100
+        - Multiple fuel types
+        - Not fuel-specific
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: region
+    attributes:
+      label: Country or region (optional)
+      description: Country, state, or broad region only. Do not provide exact coordinates or a full private address.
+      placeholder: Saarland, Germany
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Problem category
+      options:
+        - Integration
+        - Provider
+        - GPS
+        - Lovelace card
+        - Navigation
+        - Other
+    validations:
+      required: true
+
   - type: textarea
     id: diagnostics
     attributes:
-      label: Redacted diagnostics and logs
-      description: Never post API keys or exact private coordinates.
+      label: Relevant logs or redacted diagnostics
+      description: Paste only redacted logs or diagnostics. NEVER include API keys, tokens, exact GPS coordinates, private IP addresses, private URLs, or personal data.
+      render: text
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots (optional)
+      description: You may drag in screenshots after removing private locations, URLs, identifiers, and other personal data.
