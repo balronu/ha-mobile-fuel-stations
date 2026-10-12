@@ -8,12 +8,17 @@ from dataclasses import replace
 import json
 import logging
 from math import asin, cos, radians, sin, sqrt
+import random
 from typing import Any, Callable
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryAuthFailed
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_state_change_event,
+    async_track_state_report_event,
+)
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -79,6 +84,10 @@ _TRANSIENT_PROVIDER_ERRORS = (
     ProviderUnavailableError,
 )
 _MAX_RETRY_AFTER_SECONDS = 3600
+_STARTUP_RECOVERY_DELAYS = (3.0, 10.0, 30.0)
+_STARTUP_RECOVERY_SLOW_INTERVAL = 60.0
+_RECOVERY_BACKOFF_BASE = 5.0
+_RECOVERY_BACKOFF_CAP = 300.0
 
 
 def _retry_after_seconds(error: ProviderError) -> int | None:
@@ -211,10 +220,25 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.consecutive_failures = 0
         self._retry_not_before: datetime | None = None
         self._unsub_position = None
+        self._unsub_position_report = None
         self.gps_listener_registered = False
         self._movement_refresh_scheduled = False
         self._movement_refresh_task: asyncio.Task | None = None
         self.recovery_task_status = "not_scheduled"
+        self.recovery_attempt_count = 0
+        self.recovery_trigger: str | None = None
+        self.recovery_next_retry_at: datetime | None = None
+        self.recovery_last_gps_event_type: str | None = None
+        self.recovery_last_gps_event_at: datetime | None = None
+        self.recovery_provider_in_flight = False
+        self.recovery_error_class: str | None = None
+        self._recovery_timer_unsub = None
+        self._recovery_active = False
+        self._recovery_started_at: datetime | None = datetime.now().astimezone()
+        self._recovery_startup_index = 0
+        self._recovery_transient_failures = 0
+        self._recovery_task: asyncio.Task | None = None
+        self._recovery_request_scheduled = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
         self._provider_status_store = Store(hass, 1, f"{DOMAIN}.provider_status.{entry.entry_id}")
         # Keep the status in the runtime object as well as hass.data.  The
@@ -372,6 +396,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self._unsub_position = async_track_state_change_event(
                 self.hass, [self.options[CONF_LOCATION_ENTITY]], self._async_position_changed
             )
+            self._unsub_position_report = async_track_state_report_event(
+                self.hass,
+                [self.options[CONF_LOCATION_ENTITY]],
+                self._async_position_reported,
+            )
             self.gps_listener_registered = True
 
     async def _set_provider_status(self, provider: str, status: str) -> None:
@@ -393,28 +422,150 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if self._unsub_position:
             self._unsub_position()
             self._unsub_position = None
+        unsub_position_report = getattr(self, "_unsub_position_report", None)
+        if unsub_position_report:
+            unsub_position_report()
+        self._unsub_position_report = None
         self.gps_listener_registered = False
+        self._cancel_recovery_timer()
+        self._recovery_active = False
         task = getattr(self, "_movement_refresh_task", None)
         self._movement_refresh_task = None
         if task and not task.done():
             task.cancel()
             self.recovery_task_status = "cancelled"
+        recovery_task = getattr(self, "_recovery_task", None)
+        self._recovery_task = None
+        self._recovery_request_scheduled = False
+        if recovery_task and not recovery_task.done() and recovery_task is not task:
+            recovery_task.cancel()
         await super().async_shutdown()
 
     def async_schedule_startup_recovery(self) -> None:
-        """Recover once if GPS became valid during initial setup.
+        """Start bounded startup recovery after an initial GPS miss."""
 
-        The state listener is installed before the first refresh, but a
-        tracker can become valid between the listener's registration and the
-        first callback.  Re-checking the current state after setup closes
-        that race without adding a timer or an unbounded retry loop.
-        """
-
-        if self.recovery_status != "awaiting_location":
+        if self.recovery_status != "awaiting_location" and self.last_update_result != "provider_transient_failure":
             return
+        if not self._recovery_active:
+            self._recovery_active = True
+            if self._recovery_started_at is None:
+                self._recovery_started_at = datetime.now().astimezone()
+            self._recovery_startup_index = 0
+            self._recovery_transient_failures = 0
+        self._request_recovery_refresh("startup_recheck")
+
+    def _cancel_recovery_timer(self) -> None:
+        cancel = getattr(self, "_recovery_timer_unsub", None)
+        self._recovery_timer_unsub = None
+        self.recovery_next_retry_at = None
+        if cancel:
+            cancel()
+
+    def _schedule_recovery_timer(self, delay: float, trigger: str) -> None:
+        if not self._recovery_active:
+            return
+        self._cancel_recovery_timer()
+        self.recovery_trigger = trigger
+        due = datetime.now().astimezone() + timedelta(seconds=delay)
+        self.recovery_next_retry_at = due
+
+        @callback
+        def _run(_now: datetime) -> None:
+            self._recovery_timer_unsub = None
+            self.recovery_next_retry_at = None
+            self._request_recovery_refresh("recovery_timer")
+
+        self._recovery_timer_unsub = async_call_later(self.hass, delay, _run)
+
+    def _schedule_next_startup_recovery(self) -> None:
+        if self._recovery_startup_index < len(_STARTUP_RECOVERY_DELAYS):
+            target_seconds = _STARTUP_RECOVERY_DELAYS[self._recovery_startup_index]
+            self._recovery_startup_index += 1
+            started_at = self._recovery_started_at or datetime.now().astimezone()
+            elapsed = (datetime.now().astimezone() - started_at).total_seconds()
+            delay = max(0.0, target_seconds - elapsed)
+        else:
+            delay = _STARTUP_RECOVERY_SLOW_INTERVAL
+        self._schedule_recovery_timer(delay, "startup_retry")
+
+    def _schedule_transient_recovery(self) -> None:
+        self._recovery_transient_failures += 1
+        delay = min(
+            _RECOVERY_BACKOFF_CAP,
+            _RECOVERY_BACKOFF_BASE * (2 ** (self._recovery_transient_failures - 1)),
+        )
+        delay = min(_RECOVERY_BACKOFF_CAP, delay + random.uniform(0, delay * 0.25))
+        retry_after = self.last_retry_after
+        if retry_after is not None:
+            delay = max(delay, float(retry_after))
+        self._schedule_recovery_timer(delay, "provider_transient_failure")
+
+    def _finish_recovery(self) -> None:
+        self._recovery_active = False
+        self._cancel_recovery_timer()
+        self.recovery_next_retry_at = None
+
+    def _request_recovery_refresh(self, trigger: str) -> None:
+        """Deduplicate GPS, timer, and startup recovery triggers."""
+
+        if not self._recovery_active:
+            return
+        self.recovery_trigger = trigger
         if _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]) is None:
+            self.recovery_task_status = "waiting_for_gps"
+            if self._recovery_timer_unsub is None:
+                self._schedule_next_startup_recovery()
             return
-        self._schedule_movement_refresh()
+        retry_not_before = self._retry_not_before
+        now = datetime.now().astimezone()
+        if retry_not_before and now < retry_not_before:
+            if self._recovery_timer_unsub is None:
+                self._schedule_recovery_timer(
+                    (retry_not_before - now).total_seconds(), "retry_after"
+                )
+            return
+        self._cancel_recovery_timer()
+        task = getattr(self, "_recovery_task", None)
+        if self._recovery_request_scheduled or (task and not task.done()):
+            return
+        self.recovery_attempt_count += 1
+        self.recovery_task_status = "scheduled"
+        self._recovery_request_scheduled = True
+        self._recovery_task = self.hass.async_create_task(
+            self._async_request_recovery_refresh()
+        )
+
+    async def _async_request_recovery_refresh(self) -> None:
+        self.recovery_task_status = "running"
+        try:
+            await self.async_request_refresh()
+        except asyncio.CancelledError:
+            self.recovery_task_status = "cancelled"
+            raise
+        except Exception as err:
+            self.recovery_error_class = type(err).__name__
+            self.recovery_task_status = "failed"
+            self._finish_recovery()
+            raise
+        finally:
+            self._recovery_task = None
+            self._recovery_request_scheduled = False
+        result = self.last_update_result
+        if result == "provider_success":
+            self.recovery_error_class = None
+            self.recovery_task_status = "completed"
+            self._finish_recovery()
+        elif result == "provider_transient_failure":
+            self.recovery_error_class = self.last_update_error_class
+            self.recovery_task_status = "retry_scheduled"
+            self._schedule_transient_recovery()
+        elif result == "gps_unavailable":
+            self.recovery_task_status = "waiting_for_gps"
+            self._schedule_next_startup_recovery()
+        else:
+            self.recovery_error_class = self.last_update_error_class
+            self.recovery_task_status = "permanent_failure"
+            self._finish_recovery()
 
     def _schedule_movement_refresh(self) -> None:
         """Schedule at most one movement/startup refresh task."""
@@ -442,12 +593,13 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.last_update_attempt = now
         self.last_update_result = "started"
         if self._retry_not_before and now < self._retry_not_before:
-            if self.stations and _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]):
+            if _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]):
                 _LOGGER.debug(
                     "Skipping provider refresh during Retry-After window: provider=%s",
                     self.last_update_error_provider or "unknown",
                 )
-                return self.stations
+                self.last_update_result = "provider_transient_failure"
+                return self.stations if self.stations else None
 
         configured_fuels = getattr(self, "fuel_types", self._configured_fuels(self.options))
         position = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
@@ -526,6 +678,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self._set_auto_runtime_state(decision, effective_provider=provider_mode)
         result: list[Station] = []
         active_provider_mode = provider_mode
+        self.recovery_provider_in_flight = True
         try:
             for request_mode, request_provider, requested_fuel, effective_fuel in requests:
                 active_provider_mode = request_mode
@@ -552,6 +705,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 result.extend(found)
         except ProviderAuthError as err:
             self.last_update_result = "provider_auth_failed"
+            if getattr(self, "_recovery_active", False):
+                self._finish_recovery()
             await self._set_provider_status(active_provider_mode, "auth_failed")
             if active_provider_mode == PROVIDER_NAKORDONI:
                 self._record_nakordoni_failure(err)
@@ -590,7 +745,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 return await self._handle_transient_failure(
                     err, active_provider_mode, position, message,
                 )
+            if getattr(self, "_recovery_active", False):
+                self._finish_recovery()
             raise UpdateFailed(message) from err
+        finally:
+            self.recovery_provider_in_flight = False
         result = merge_stations(result)
         self.nearest_station = nearest_station(result)
         if provider_mode == PROVIDER_NAKORDONI:
@@ -620,6 +779,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.consecutive_failures = 0
         self.recovery_status = "recovered" if recovered else "success"
         self.last_update_result = "provider_success"
+        if getattr(self, "_recovery_active", False):
+            self._finish_recovery()
         await self._store.async_save({
             "last_successful_update": now.isoformat(),
             "last_request": now.isoformat(),
@@ -692,8 +853,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
 
     @callback
     def _async_position_changed(self, event: Event) -> None:
+        self._record_gps_event(event, "state_changed")
         current = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         if current is None:
+            return
+        if self._recovery_active:
+            self._request_recovery_refresh("gps_state_changed")
             return
         # During HA startup the tracker may become valid after the initial
         # coordinator refresh.  There is no movement baseline yet, so the
@@ -711,6 +876,20 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if elapsed < timedelta(minutes=float(self.options[CONF_COOLDOWN])):
             return
         self._schedule_movement_refresh()
+
+    @callback
+    def _async_position_reported(self, event: Event) -> None:
+        """Handle GPS attribute-only updates missed by state-change tracking."""
+
+        self._record_gps_event(event, "state_reported")
+        if self._recovery_active and _valid_position(
+            self.hass, self.options[CONF_LOCATION_ENTITY]
+        ) is not None:
+            self._request_recovery_refresh("gps_state_reported")
+
+    def _record_gps_event(self, event: Event, event_type: str) -> None:
+        self.recovery_last_gps_event_type = event_type
+        self.recovery_last_gps_event_at = datetime.now().astimezone()
 
     async def _async_request_movement_refresh(self) -> None:
         self.recovery_task_status = "running"
