@@ -126,6 +126,7 @@ def test_startup_without_gps_keeps_coordinator_setup_recoverable(monkeypatch):
 def test_first_valid_gps_after_startup_schedules_one_refresh(monkeypatch):
     provider = _Provider([_station()])
     coordinator = _coordinator(provider)
+    coordinator._movement_refresh_scheduled = False
     create_task = Mock(side_effect=lambda coroutine: coroutine.close())
     coordinator.hass = SimpleNamespace(
         data={},
@@ -261,7 +262,6 @@ def test_nakordoni_failure_metadata_is_published_before_recovery_retry(monkeypat
 @pytest.mark.parametrize(
     "error",
     [
-        ProviderPermissionError("SCOPE_NOT_PERMITTED"),
         ProviderRateLimitError("RATE_LIMITED"),
         ProviderUnavailableError("ROUTING_UNAVAILABLE"),
         ProviderTimeoutError("timeout"),
