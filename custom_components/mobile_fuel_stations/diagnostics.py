@@ -21,12 +21,26 @@ def _listener_count(coordinator) -> int | None:
     return len(listeners) if isinstance(listeners, dict) else None
 
 
-def _periodic_refresh_scheduled(coordinator) -> bool | None:
-    """Read HA Core's scheduled callback marker without changing it."""
+def _periodic_refresh_status(coordinator) -> str:
+    """Describe the Core callback marker without guessing during refresh."""
 
     if not hasattr(coordinator, "_unsub_refresh"):
-        return None
-    return getattr(coordinator, "_unsub_refresh") is not None
+        return "unknown"
+    if getattr(coordinator, "_unsub_refresh") is not None:
+        return "scheduled"
+    # HA Core clears this callback while a refresh is running.  With listeners
+    # present, None therefore cannot distinguish an in-flight refresh from a
+    # missing schedule; report UNKNOWN instead of a misleading False.
+    if _listener_count(coordinator):
+        return "unknown"
+    return "not_scheduled"
+
+
+def _periodic_refresh_scheduled(coordinator) -> bool | None:
+    """Return a boolean only when the Core callback state is knowable."""
+
+    status = _periodic_refresh_status(coordinator)
+    return {"scheduled": True, "not_scheduled": False}.get(status)
 
 
 def _update_interval_minutes(coordinator) -> float | None:
@@ -47,6 +61,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "coordinator_listener_count": _listener_count(coordinator),
             "coordinator_update_interval_minutes": _update_interval_minutes(coordinator),
             "periodic_refresh_scheduled": _periodic_refresh_scheduled(coordinator),
+            "periodic_refresh_callback_status": _periodic_refresh_status(coordinator),
             # HA Core stores only a cancellation callback, not the TimerHandle.
             # A deadline is therefore intentionally UNKNOWN rather than guessed.
             "next_refresh_deadline": None,

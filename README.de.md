@@ -9,7 +9,7 @@ Browser-`load`-Event. Der sporadische Edge-/iOS-Ladefehler ist in der
 produktiven Home-Assistant-Umgebung noch nicht belastbar verifiziert und gilt
 nicht als vollständig behoben.
 
-## Markenlogos in v0.6.0-beta.3
+## Markenlogos in v0.6.0-beta.4
 
 Die Beta kann das vorhandene Stationsattribut `brand` provider-unabhängig auf
 lokale Nutzerlogos abbilden. Neue Karten versuchen Logos standardmäßig;

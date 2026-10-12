@@ -399,6 +399,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if task and not task.done():
             task.cancel()
             self.recovery_task_status = "cancelled"
+        await super().async_shutdown()
 
     def async_schedule_startup_recovery(self) -> None:
         """Recover once if GPS became valid during initial setup.
@@ -413,9 +414,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             return
         if _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]) is None:
             return
-        self._schedule_refresh()
+        self._schedule_movement_refresh()
 
-    def _schedule_refresh(self) -> None:
+    def _schedule_movement_refresh(self) -> None:
         """Schedule at most one movement/startup refresh task."""
 
         task = self._movement_refresh_task
@@ -698,7 +699,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         # coordinator refresh.  There is no movement baseline yet, so the
         # first valid position itself is the refresh trigger.
         if self.reference_position is None or self.last_request is None:
-            self._schedule_refresh()
+            self._schedule_movement_refresh()
             return
         now = datetime.now().astimezone()
         if self._retry_not_before and now < self._retry_not_before:
@@ -709,7 +710,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             return
         if elapsed < timedelta(minutes=float(self.options[CONF_COOLDOWN])):
             return
-        self._schedule_refresh()
+        self._schedule_movement_refresh()
 
     async def _async_request_movement_refresh(self) -> None:
         self.recovery_task_status = "running"

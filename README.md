@@ -12,7 +12,7 @@ bewegliche Objekte geeignet.
 | Kanal | Version | Zweck |
 | --- | --- | --- |
 | Stable | `v0.5.1` | Aktuelle empfohlene Version für produktive Installationen |
-| Pre-Release | `v0.6.0-beta.3` | Beta für Coordinator-Lifecycle-Diagnostik und sichere lokale Markenlogos |
+| Pre-Release | `v0.6.0-beta.4` | Beta mit behobenem HA-Core-Polling-Lifecycle und sicheren lokalen Markenlogos |
 | Vorherige Stable-Version | `v0.5.0` | Vorherige stabile Version |
 
 Der sporadische Ladefehler unter Microsoft Edge und iOS Companion ist mit
@@ -42,7 +42,7 @@ verifiziert und darf daher nicht als vollständig behoben gelten.
   `custom_components/mobile_fuel_stations/brand/`
 - Allgemeine Optionen werden unabhängig von der Zugangsdatenverwaltung gespeichert
 
-## Markenlogos (v0.6.0-beta.3)
+## Markenlogos (v0.6.0-beta.4)
 
 Die Karte kann das vorhandene Stationsattribut `brand` provider-unabhängig auf
 ein lokales Nutzerlogo abbilden. Neue Karten versuchen Logos standardmäßig;
@@ -92,7 +92,7 @@ show_brand_logos: true
 logo_path: /mobile_fuel_stations/logos/
 ```
 
-`v0.5.1` Stable enthält diese Funktion nicht. `v0.6.0-beta.3` ist ein
+`v0.5.1` Stable enthält diese Funktion nicht. `v0.6.0-beta.4` ist ein
 kontrollierter Beta-Test; die mitgelieferten sechs Logos werden mit der
 Integration installiert, weitere Marken bleiben beim Fallback. Ein Screenshot ist derzeit nicht Bestandteil des
 Repositorys; das YAML-Beispiel und die automatisierten Render-Tests sind die

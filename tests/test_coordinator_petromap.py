@@ -171,7 +171,7 @@ def test_startup_recovery_rechecks_current_gps_without_event(monkeypatch):
     create_task.assert_called_once()
 
 
-def test_shutdown_unsubscribes_and_cancels_pending_recovery_task():
+def test_shutdown_unsubscribes_and_cancels_pending_recovery_task(monkeypatch):
     coordinator = object.__new__(MobileFuelStationsCoordinator)
     unsubscribe = Mock()
     task = Mock()
@@ -179,10 +179,13 @@ def test_shutdown_unsubscribes_and_cancels_pending_recovery_task():
     coordinator._unsub_position = unsubscribe
     coordinator._movement_refresh_task = task
 
+    core_shutdown = AsyncMock()
+    monkeypatch.setattr(DataUpdateCoordinator, "async_shutdown", core_shutdown)
     asyncio.run(coordinator.async_shutdown())
 
     unsubscribe.assert_called_once_with()
     task.cancel.assert_called_once_with()
+    core_shutdown.assert_awaited_once_with()
     assert coordinator._unsub_position is None
     assert coordinator._movement_refresh_task is None
 
@@ -208,9 +211,18 @@ def test_data_update_coordinator_first_listener_registers_periodic_refresh():
     assert coordinator._listeners == {}
 
 
+def test_coordinator_keeps_ha_core_periodic_scheduler():
+    """The integration must not override HA Core's timer scheduler."""
+
+    assert (
+        MobileFuelStationsCoordinator._schedule_refresh
+        is DataUpdateCoordinator._schedule_refresh
+    )
+
+
 def test_diagnostics_report_lifecycle_without_coordinates_or_secrets():
     coordinator = SimpleNamespace(
-        _listeners={1: (Mock(), None), 2: (Mock(), None)},
+        _listeners={index: (Mock(), None) for index in range(1, 7)},
         _unsub_refresh=Mock(),
         update_interval=timedelta(minutes=15),
         gps_available=False,
@@ -236,28 +248,58 @@ def test_diagnostics_report_lifecycle_without_coordinates_or_secrets():
 
     result = asyncio.run(async_get_config_entry_diagnostics(hass, entry))
 
-    assert result["runtime"]["coordinator_listener_count"] == 2
+    assert result["runtime"]["coordinator_listener_count"] == 6
     assert result["runtime"]["coordinator_update_interval_minutes"] == 15
     assert result["runtime"]["periodic_refresh_scheduled"] is True
+    assert result["runtime"]["periodic_refresh_callback_status"] == "scheduled"
     assert result["runtime"]["next_refresh_deadline"] is None
     assert result["runtime"]["gps_available"] is False
     assert "api_key" not in result["config"]
     assert "SECRET" not in str(result)
 
 
-def test_two_regular_poll_cycles_follow_initial_gps_miss(monkeypatch):
+def test_diagnostics_report_unknown_during_refresh_without_claiming_missing_timer():
+    coordinator = SimpleNamespace(
+        _listeners={1: (Mock(), None)},
+        _unsub_refresh=None,
+        update_interval=timedelta(minutes=15),
+        gps_available=True,
+        gps_listener_registered=True,
+        last_successful_update=None,
+        last_update_attempt=None,
+        last_update_result="started",
+        last_provider_attempt=None,
+        last_provider_success=None,
+        recovery_status="success",
+        recovery_task_status="not_scheduled",
+        last_update_success=True,
+        data=[],
+        last_exception=None,
+    )
+    entry = SimpleNamespace(
+        entry_id="diagnostic-entry", data={}, options={}, runtime_data=coordinator
+    )
+
+    result = asyncio.run(async_get_config_entry_diagnostics(SimpleNamespace(data={}), entry))
+
+    assert result["runtime"]["periodic_refresh_scheduled"] is None
+    assert result["runtime"]["periodic_refresh_callback_status"] == "unknown"
+
+
+def test_three_regular_poll_cycles_follow_initial_gps_miss(monkeypatch):
     """A failed initial GPS read must not prevent later regular update calls."""
 
     provider = _Provider([_station()])
     coordinator = _coordinator(provider)
-    positions = iter([None, (49.2, 7.0), (49.2, 7.0)])
+    positions = iter([None, (49.2, 7.0), (49.2, 7.0), (49.2, 7.0)])
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: next(positions))
 
     assert asyncio.run(coordinator._async_update_data()) is None
     assert asyncio.run(coordinator._async_update_data()) == [_station()]
     assert asyncio.run(coordinator._async_update_data()) == [_station()]
+    assert asyncio.run(coordinator._async_update_data()) == [_station()]
 
-    assert len(provider.calls) == 2
+    assert len(provider.calls) == 3
     assert coordinator.last_update_result == "provider_success"
     assert coordinator.last_provider_success is not None
 
