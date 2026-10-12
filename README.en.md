@@ -2,7 +2,7 @@
 
 [🇩🇪 Deutsch](README.md) | 🇬🇧 **English**
 
-<p><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="160"></p>
+<p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 Mobile Fuel Stations is a Home Assistant custom integration for nearby fuel
 stations. It uses the coordinates of a vehicle, motorhome, or other device
@@ -11,19 +11,19 @@ through sensors and a Lovelace card.
 
 ## Contents
 
-- [Versions and features](#versions-and-features)
-- [Installation with HACS](#installation-with-hacs)
-- [Setup and configuration](#setup-and-configuration)
-- [Providers, countries, and fuels](#providers-countries-and-fuels)
-- [API keys](#api-keys)
-- [GPS, polling, and startup recovery](#gps-polling-and-startup-recovery)
-- [Lovelace card and brand logos](#lovelace-card-and-brand-logos)
-- [Prices, sorting, and navigation](#prices-sorting-and-navigation)
-- [Updates and migration](#updates-and-migration)
-- [Privacy and limitations](#privacy-and-limitations)
-- [Troubleshooting and diagnostics](#troubleshooting-and-diagnostics)
-- [Development and tests](#development-and-tests)
-- [Release archive](#release-archive)
+- [Versions and features](README.en.md#versions-and-features)
+- [Installation with HACS](README.en.md#installation-with-hacs)
+- [Setup and configuration](README.en.md#setup-and-configuration)
+- [Providers, countries, and fuels](README.en.md#providers-countries-and-fuels)
+- [API keys](README.en.md#api-keys)
+- [GPS, polling, and startup recovery](README.en.md#gps-polling-and-startup-recovery)
+- [Lovelace card and brand logos](README.en.md#lovelace-card-and-brand-logos)
+- [Prices, sorting, and navigation](README.en.md#prices-sorting-and-navigation)
+- [Updates and migration](README.en.md#updates-and-migration)
+- [Privacy and limitations](README.en.md#privacy-and-limitations)
+- [Troubleshooting and diagnostics](README.en.md#troubleshooting-and-diagnostics)
+- [Development and tests](README.en.md#development-and-tests)
+- [Release archive](README.en.md#release-archive)
 
 ## Versions and features
 
@@ -59,7 +59,7 @@ archive as the last release candidate; `v0.5.1` remains available as the
 previous stable rollback.
 
 The Lovelace card is supplied and registered by the integration. The versioned
-Beta.6 resource is:
+The Stable v0.6.0 resource is:
 
 ```text
 /mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0
@@ -139,7 +139,7 @@ navigation: true
 show_brand_logos: true
 ```
 
-Beta.6 recognizes the six bundled local SVGs: Aral (`aral.svg`), Shell
+v0.6.0 recognizes the six bundled local SVGs: Aral (`aral.svg`), Shell
 (`shell.svg`), JET (`jet.svg`), Total/TotalEnergies (`total.svg`),
 ORLEN/ORLEN Express (`orlen.svg`), and OMV (`omv.svg`). Matching normalizes
 case, Unicode accents, whitespace, and punctuation. If `brand` is missing or
@@ -211,8 +211,8 @@ recovery tests use mocks and fixtures rather than unverified live credentials.
 
 ## Release archive
 
-Historical release notes are preserved under
-[`docs/releases/`](docs/releases/), including the current
+Historical release notes are preserved in the
+[GitHub release archive](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/), including the current
 [`v0.6.0 release notes`](docs/releases/RELEASE_NOTES_v0.6.0.md).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
