@@ -40,8 +40,10 @@ overrides placed in `/config/www/fuel-logos/`.
 | ORLEN, ORLEN Express | `orlen.svg` |
 | OMV | `omv.svg` |
 
-Matching is based only on `brand`, with case, accents, punctuation, and repeated
-whitespace normalized. The station name is never used to infer a brand.
+Matching uses `brand` first, with case, accents, punctuation, and repeated
+whitespace normalized. If that does not resolve to a bundled asset, a complete
+supported brand phrase in the station name may be used; unsupported or
+ambiguous values remain on the fallback icon.
 
 ## Safe local paths and fallback
 

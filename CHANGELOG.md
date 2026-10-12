@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0-beta.6 — Brand matching and repository documentation
+
+- Resolve the six bundled logos from normalized brand variants and supported
+  brand names when a provider leaves `brand` empty or verbose.
+- Keep unknown brands and failed local assets on the generic pump fallback.
+- Archive historical release notes under `docs/releases/` without changing
+  their contents or release history.
+- Refresh the German and English documentation and provider capability matrix.
+
 ## 0.6.0-beta.5 — Startup GPS recovery
 
 - Add bounded startup recovery checks after approximately 3, 10, and 30
