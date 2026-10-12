@@ -4,10 +4,43 @@
 
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
-Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration für nahe
-Tankstellen. Sie verwendet die Positionsdaten einer Fahrzeug-,
-Wohnmobil- oder Geräte-Entity und stellt Tankstellen, Preise, Entfernung,
-Öffnungsstatus und Navigation als Sensoren und Lovelace-Karte bereit.
+<p align="center">
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.6.0"><img src="https://img.shields.io/badge/Stable-v0.6.0-16a34a" alt="Stable v0.6.0"></a>
+  <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
+  <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/actions/workflows/tests.yml"><img src="https://github.com/balronu/ha-mobile-fuel-stations/actions/workflows/tests.yml/badge.svg?branch=main" alt="Tests workflow"></a>
+</p>
+
+**Dynamische Tankstellensuche und Preisvergleich für Home Assistant** –
+GPS-basiert, providerübergreifend und mit Navigation direkt aus der Lovelace-
+Karte. Die Integration folgt der Position deines Fahrzeugs, Wohnmobils oder
+anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
+Öffnungsstatus und Zielnavigation.
+
+### Auf einen Blick
+
+- **GPS entlang der Route:** Tankstellen werden anhand der aktuellen Position
+  einer frei wählbaren Entity gesucht.
+- **Mehrere Datenquellen:** Tankerkönig, Petromap und Nakordoni mit
+  capability-basierter Provider-Auswahl.
+- **Kraftstoffpreise:** E5, E10, Diesel, LPG/Autogas und HVO100 mit
+  Entfernungs- oder Preis-Sortierung.
+- **Lovelace für unterwegs:** Responsive Karte, sechs lokale Markenlogos und
+  direkte Navigation zum ausgewählten Ziel.
+
+### Schnellstart
+
+1. Repository über [HACS](https://github.com/balronu/ha-mobile-fuel-stations)
+   installieren oder als benutzerdefiniertes Repository hinzufügen.
+2. Integration unter **Einstellungen → Geräte & Dienste** einrichten.
+3. Eine Entity mit `latitude` und `longitude`, Kraftstoffarten, Suchradius und
+   Provider auswählen.
+4. Die vollständige Anleitung beginnt bei [Installation über HACS](README.md#installation-über-hacs).
+
+Die echte Lovelace-Karte wird von der Integration bereitgestellt. Ein
+datenschutzbereinigter echter Card-Screenshot ist im Repository derzeit noch
+nicht vorhanden; deshalb wird hier kein künstliches Vorschaubild verwendet.
 
 > Diese README ist die ausführliche deutsche Hauptanleitung. Eine vollständige
 > englische Fassung steht unter [README.en.md](README.en.md); die identische
@@ -215,10 +248,10 @@ deaktiviert die Anzeige. Die vorhandenen Logoquellen und Prüfsummen stehen in
 
 Die Karte zeigt Stationsliste, Name, Adresse, Entfernung, Öffnungsstatus,
 Preisalter, verfügbare Preise, E5/E10-Ersatzhinweise und eine Navigation. Eine
-eigene lokale SVG kann unter `/config/www/fuel-logos/` abgelegt und über
-`/local/fuel-logos/...` referenziert werden; externe URLs und unsichere
-Pfadbestandteile werden abgelehnt. Fehler fallen auf das generische Symbol
-zurück.
+eigene lokale SVG kann im lokalen Home-Assistant-`www`-Verzeichnis abgelegt
+und über den zugehörigen `/local/...`-Pfad referenziert werden; externe URLs und
+unsichere Pfadbestandteile werden abgelehnt. Fehler fallen auf das generische
+Symbol zurück.
 
 ## Preise, Sortierung und Navigation
 
