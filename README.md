@@ -15,19 +15,19 @@ Wohnmobil- oder Geräte-Entity und stellt Tankstellen, Preise, Entfernung,
 
 ## Inhaltsübersicht
 
-- [Versionen und Funktionsumfang](#versionen-und-funktionsumfang)
-- [Installation über HACS](#installation-über-hacs)
-- [Einrichtung und Konfiguration](#einrichtung-und-konfiguration)
-- [Provider, Länder und Kraftstoffe](#provider-länder-und-kraftstoffe)
-- [API-Schlüssel](#api-schlüssel)
-- [GPS, Polling und Startup-Recovery](#gps-polling-und-startup-recovery)
-- [Lovelace-Karte und Markenlogos](#lovelace-karte-und-markenlogos)
-- [Preise, Sortierung und Navigation](#preise-sortierung-und-navigation)
-- [Updates und Migration](#updates-und-migration)
-- [Datenschutz und Einschränkungen](#datenschutz-und-einschränkungen)
-- [Fehlerbehebung und Diagnostics](#fehlerbehebung-und-diagnostics)
-- [Entwicklung und Tests](#entwicklung-und-tests)
-- [Release-Archiv](#release-archiv)
+- [Versionen und Funktionsumfang](README.md#versionen-und-funktionsumfang)
+- [Installation über HACS](README.md#installation-über-hacs)
+- [Einrichtung und Konfiguration](README.md#einrichtung-und-konfiguration)
+- [Provider, Länder und Kraftstoffe](README.md#provider-länder-und-kraftstoffe)
+- [API-Schlüssel](README.md#api-schlüssel)
+- [GPS, Polling und Startup-Recovery](README.md#gps-polling-und-startup-recovery)
+- [Lovelace-Karte und Markenlogos](README.md#lovelace-karte-und-markenlogos)
+- [Preise, Sortierung und Navigation](README.md#preise-sortierung-und-navigation)
+- [Updates und Migration](README.md#updates-und-migration)
+- [Datenschutz und Einschränkungen](README.md#datenschutz-und-einschränkungen)
+- [Fehlerbehebung und Diagnostics](README.md#fehlerbehebung-und-diagnostics)
+- [Entwicklung und Tests](README.md#entwicklung-und-tests)
+- [Release-Archiv](README.md#release-archiv)
 
 ## Versionen und Funktionsumfang
 
@@ -74,7 +74,7 @@ Candidate und Rollback-Referenz im GitHub-Archiv erhalten. Für einen Rücksprun
 steht `v0.5.1` als vorherige Stable-Version zur Verfügung.
 
 Die Lovelace-Karte wird von der Integration bereitgestellt und registriert. Die
-versionierte Ressource lautet für Beta.6:
+versionierte Ressource lautet für Stable v0.6.0:
 
 ```text
 /mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0
@@ -195,7 +195,7 @@ navigation: true
 show_brand_logos: true
 ```
 
-Beta.6 erkennt die sechs mitgelieferten lokalen SVGs:
+v0.6.0 erkennt die sechs mitgelieferten lokalen SVGs:
 
 | Marke | Datei |
 | --- | --- |
@@ -296,8 +296,9 @@ Recovery-Tests verwenden Mocks und Fixtures.
 
 ## Release-Archiv
 
-Historische Release Notes liegen unverändert unter
-[`docs/releases/`](docs/releases/). Die aktuelle Beta ist in
+Historische Release Notes liegen unverändert im
+[Release-Archiv auf GitHub](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/).
+Die Stable-Release Notes stehen in
 [`docs/releases/RELEASE_NOTES_v0.6.0.md`](docs/releases/RELEASE_NOTES_v0.6.0.md)
 beschrieben. Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
 der [Markendokumentation](docs/BRAND_LOGOS.md) und im
