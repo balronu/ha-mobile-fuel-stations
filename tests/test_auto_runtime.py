@@ -374,6 +374,9 @@ def test_first_refresh_expected_auto_state_is_accepted(monkeypatch, expected):
             except UpdateFailed as update_error:
                 raise integration.ConfigEntryNotReady("mobile") from update_error
 
+        def async_schedule_startup_recovery(self):
+            pass
+
     entry = SimpleNamespace(
         entry_id="test-auto-entry",
         data={CONF_PROVIDER_MODE: PROVIDER_AUTO},
