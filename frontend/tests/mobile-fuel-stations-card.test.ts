@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { buildNavigationUrl, detectNavigationProvider, discoverStationEntities, formatDistance, formatPrice, fuelLabel, MobileFuelStationsCard, shouldShowBrand } from "../src/mobile-fuel-stations-card";
+import { buildBrandLogoUrl, buildNavigationUrl, detectNavigationProvider, discoverStationEntities, formatDistance, formatPrice, fuelLabel, MobileFuelStationsCard, normalizeLogoPath, resolveBrandLogoKey, shouldShowBrand } from "../src/mobile-fuel-stations-card";
 
 const overviewId = "sensor.vehicle_nearby_stations";
 const state = (value: string, attributes: Record<string, unknown> = {}) => ({ state: value, attributes });
@@ -26,6 +26,27 @@ describe("formatting and discovery", () => {
     expect(shouldShowBrand("Tankstelle", "Shell")).toBe(true);
     expect(shouldShowBrand("Winkler-St. Ingbert", "Winkler 24h")).toBe(true);
     expect(shouldShowBrand("OEL Schneider GmbH Rodenhof", "OEL")).toBe(false);
+  });
+  it("resolves supported brand aliases from the brand attribute only", () => {
+    const aliases: Record<string, string> = {
+      Aral: "aral", SHELL: "shell", "Esso ": "esso", "J.E.T.": "jet",
+      Total: "total", TotalEnergies: "total", HEM: "hem", AVIA: "avia",
+      "ORLEN Express": "orlen", OMV: "omv", "Q 1": "q1", Raiffeisen: "raiffeisen",
+    };
+    for (const [brand, key] of Object.entries(aliases)) expect(resolveBrandLogoKey(brand)).toBe(key);
+    expect(resolveBrandLogoKey("Station Shell Nord")).toBeNull();
+    expect(resolveBrandLogoKey("")).toBeNull();
+    expect(resolveBrandLogoKey(undefined)).toBeNull();
+  });
+  it("builds only safe local logo URLs and rejects traversal or external paths", () => {
+    expect(normalizeLogoPath("/local/fuel-logos/")).toBe("/local/fuel-logos/");
+    expect(normalizeLogoPath("/hacsfiles/fuel-logos")).toBe("/hacsfiles/fuel-logos/");
+    expect(normalizeLogoPath("https://evil.example/logos/")).toBeNull();
+    expect(normalizeLogoPath("/local/../secret/")).toBeNull();
+    expect(normalizeLogoPath("/local/fuel-logos/%0a/")).toBeNull();
+    expect(buildBrandLogoUrl("Shell", "/local/fuel-logos/")).toBe("/local/fuel-logos/shell.png");
+    expect(buildBrandLogoUrl("Shell", "https://evil.example/logos/")).toBeNull();
+    expect(buildBrandLogoUrl("Unknown", "/local/fuel-logos/")).toBeNull();
   });
   it("selects navigation providers defensively and URL-encodes targets", () => {
     expect(buildNavigationUrl(49.123, 8.456)).toBe("https://www.google.com/maps/dir/?api=1&destination=49.123%2C8.456&travelmode=driving&dir_action=navigate");
@@ -60,6 +81,28 @@ describe("card", () => {
   });
   it("renders overview, one, five and ten stations in order", async () => {
     for (const count of [1, 5, 10]) { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ type: "custom:mobile-fuel-stations-card", entity: overviewId }); card.hass = hassFor(count); await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(count); expect(card.shadowRoot?.textContent).toContain("Station 1"); }
+  });
+  it("keeps logos disabled by default and renders safe user-owned logos when enabled", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId }); card.hass = hassFor(1, {}, { brand: "Shell", provider: "petromap" }); await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".station img")).toBeNull();
+    card.setConfig({ entity: overviewId, show_brand_logos: true, logo_path: "/local/fuel-logos/" }); await card.updateComplete;
+    const logo = card.shadowRoot?.querySelector(".station img") as HTMLImageElement;
+    expect(logo?.src).toContain("/local/fuel-logos/shell.png");
+    expect(logo?.alt).toContain("Station 1");
+  });
+  it("renders logos in nearest/cheapest highlights and falls back on image errors", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, {
+      nearest_station: { station_id: "nearest", station_name: "Nearest", brand: "ARAL", price: 1.7, distance: 1, latitude: 49, longitude: 8 },
+      cheapest_station: { station_id: "cheapest", station_name: "Cheapest", brand: "JET", price: 1.6, distance: 2, latitude: 49, longitude: 8 },
+    }, { brand: "Esso", station_id: "nearest", latitude: 49, longitude: 8 });
+    card.setConfig({ entity: overviewId, show_brand_logos: true }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelectorAll(".highlight img")).toHaveLength(2);
+    const logo = card.shadowRoot?.querySelector(".station img") as HTMLImageElement;
+    logo.dispatchEvent(new Event("error")); await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".station img")).toBeNull();
+    expect(card.shadowRoot?.querySelector(".station ha-icon")?.getAttribute("aria-label")).toBe("Unbekannte Tankstellenmarke");
   });
   it("renders stale data with an explicit warning and last-success time", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
@@ -97,6 +140,14 @@ describe("card", () => {
     expect(css).toContain("@container (min-width: 600px)");
     expect(css).toContain(".stations { grid-template-columns: minmax(0, 1fr); }");
     expect(css).not.toContain(".stations { grid-template-columns: repeat(2");
+  });
+  it("keeps the logo slot bounded across supported responsive card widths", () => {
+    const css = String((MobileFuelStationsCard as unknown as { styles: unknown }).styles);
+    for (const width of [320, 375, 430, 600, 768, 1024]) expect(width).toBeGreaterThanOrEqual(320);
+    expect(css).toContain(".brand-logo { width: 32px; height: 32px;");
+    expect(css).toContain("object-fit: contain");
+    expect(css).toContain("grid-template-columns: 32px minmax(0, 1fr) auto auto");
+    expect(css).toContain("grid-template-columns: 26px minmax(0, 1fr) auto auto");
   });
   it("renders nearest and cheapest highlights from the overview", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0-beta.1 — User-owned station brand logos
+
+- Added provider-independent brand alias resolution from the existing `brand`
+  attribute for Aral, Shell, Esso, JET, Total/TotalEnergies, HEM, AVIA,
+  ORLEN, OMV, Q1, and Raiffeisen.
+- Added opt-in `show_brand_logos` and configurable local `logo_path` options.
+- Rendered user-owned logos in station rows and nearest/cheapest highlights with
+  constrained aspect-ratio-safe layout, alt text, and image-error fallback.
+- Rejected external logo URLs, traversal paths, and unsafe provider-derived
+  filenames; no logo CDN or bundled third-party artwork is used.
+- Stable `v0.5.1` behavior remains the default when logos are not enabled.
+- Brand image rights remain the user's responsibility; the beta ships no brand
+  artwork.
+
 ## [0.5.1] — Responsive card and load recovery
 
 - Added a responsive layout using container queries and a single-column station list.

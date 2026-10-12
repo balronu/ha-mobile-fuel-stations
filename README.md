@@ -12,6 +12,7 @@ bewegliche Objekte geeignet.
 | Kanal | Version | Zweck |
 | --- | --- | --- |
 | Stable | `v0.5.1` | Aktuelle empfohlene Version für produktive Installationen |
+| Pre-Release | `v0.6.0-beta.1` | Beta für lokale Tankstellen-Markenlogos |
 | Vorherige Stable-Version | `v0.5.0` | Vorherige stabile Version |
 
 Der sporadische Ladefehler unter Microsoft Edge und iOS Companion ist mit
@@ -37,6 +38,66 @@ verifiziert und darf daher nicht als vollständig behoben gelten.
 - Lokales Home-Assistant-Branding unter
   `custom_components/mobile_fuel_stations/brand/`
 - Allgemeine Optionen werden unabhängig von der Zugangsdatenverwaltung gespeichert
+
+## Markenlogos (v0.6.0-beta.1)
+
+Die Karte kann das vorhandene Stationsattribut `brand` provider-unabhängig auf
+ein lokales Nutzerlogo abbilden. Die Funktion ist mit `show_brand_logos: false`
+standardmäßig deaktiviert; bestehende Dashboards bleiben dadurch unverändert.
+
+Automatisch mitgelieferte Markenbilder gibt es nicht. Das Repository enthält
+keine fremden Tankstellenlogos, weil eine MIT-Lizenz für den Referenz-Code nicht
+automatisch Markenrechte oder die Lizenz der Bilddateien überträgt. Nutzer legen
+nur Logos ab, für die sie selbst die erforderlichen Nutzungsrechte besitzen.
+
+Unterstützte Marken-Aliase sind derzeit:
+
+- Aral → `aral.png`
+- Shell → `shell.png`
+- Esso → `esso.png`
+- JET → `jet.png`
+- Total und TotalEnergies → `total.png`
+- HEM → `hem.png`
+- AVIA und AVIA Express → `avia.png`
+- ORLEN und ORLEN Express → `orlen.png`
+- OMV → `omv.png`
+- Q1 / Q 1 → `q1.png`
+- Raiffeisen → `raiffeisen.png`
+
+Die Erkennung normalisiert Groß-/Kleinschreibung, Unicode-Akzente,
+Leerzeichen und Satzzeichen. Sie wertet ausschließlich `brand` aus und leitet
+keine Marke aus dem Stationsnamen ab. Unbekannte oder leere Werte verwenden
+das Zapfsäulen-Symbol.
+
+### Eigene Logos
+
+1. Logo-Dateien nach `/config/www/fuel-logos/` kopieren.
+2. Ausschließlich sichere Dateinamen im Schema `<alias>.png` verwenden, zum
+   Beispiel `/config/www/fuel-logos/shell.png`.
+3. In Home Assistant ist derselbe Ordner unter `/local/fuel-logos/` erreichbar.
+
+Unterstützt werden lokale PNG-Dateien. Die Karte akzeptiert für `logo_path`
+`/local/...` oder `/hacsfiles/...`; externe URLs, Querystrings, Backslashes und
+Pfadbestandteile wie `..` werden abgelehnt. Bildfehler fallen zuverlässig auf
+das Zapfsäulen-Symbol zurück. Logos erscheinen in der Stationsliste sowie in
+den Kacheln **Nächste** und **Günstigste**. Bilder werden mit begrenzter Fläche,
+erhaltenem Seitenverhältnis und beschreibendem Alt-Text dargestellt.
+
+Beispiel:
+
+```yaml
+type: custom:mobile-fuel-stations-card
+entity: sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations
+navigation: true
+show_brand_logos: true
+logo_path: /local/fuel-logos/
+```
+
+`v0.5.1` Stable enthält diese Funktion nicht. `v0.6.0-beta.1` ist ein
+kontrollierter Beta-Test; es werden keine Logos automatisch installiert oder
+über HACS nachgeladen. Ein Screenshot ist derzeit nicht Bestandteil des
+Repositorys; das YAML-Beispiel und die automatisierten Render-Tests sind die
+nachvollziehbare Darstellung.
 
 ## Datenanbieter und Abdeckung
 
