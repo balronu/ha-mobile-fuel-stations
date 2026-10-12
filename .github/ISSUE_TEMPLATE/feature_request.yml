@@ -1,17 +1,53 @@
 name: Feature request
-description: Suggest an improvement
+description: Suggest an improvement or new capability
+title: "[Feature]: "
+labels:
+  - enhancement
 body:
   - type: textarea
     id: problem
     attributes:
       label: Problem or use case
-    validations: {required: true}
+      description: What problem would this feature solve, and who would benefit from it?
+    validations:
+      required: true
+
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed solution
-    validations: {required: true}
-  - type: input
-    id: provider
+      label: Desired behavior
+      description: Describe what you would like the integration to do.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
     attributes:
-      label: Provider or fuel type
+      label: Alternatives considered
+      description: What other approaches, workarounds, or existing features have you considered?
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature category
+      options:
+        - Provider
+        - Fuel type
+        - Country or region
+        - Lovelace card
+        - Navigation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: provider_or_fuel
+    attributes:
+      label: Related provider or fuel type (optional)
+      description: If relevant, name the provider or fuel type. Do not include credentials.
+
+  - type: textarea
+    id: additional_information
+    attributes:
+      label: Additional information
+      description: Add examples, links to public documentation, or other context. Do not include private data or secrets.
