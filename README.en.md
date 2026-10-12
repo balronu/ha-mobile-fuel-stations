@@ -29,14 +29,14 @@ through sensors and a Lovelace card.
 
 | Channel | Version | Meaning |
 | --- | --- | --- |
-| Stable | `v0.5.1` | Recommended stable version |
-| Pre-release | `v0.6.0-beta.6` | Current published beta |
-| Rollback | `v0.6.0-beta.5` | Previous beta remains available |
+| Stable | `v0.6.0` | Current stable release |
+| Previous stable | `v0.5.1` | Available rollback version |
+| Last release candidate | `v0.6.0-beta.6` | Previous beta |
 
-`v0.6.0` without a beta suffix has not been released as stable. Beta.6
-contains improved local detection of the six bundled brand logos and updated
-documentation. The provider backend, startup recovery, and regular polling are
-unchanged from beta.5.
+`v0.6.0` is the current stable release. It includes the improved local
+detection of the six bundled brand logos and the updated documentation from
+Beta.6. The provider backend, startup recovery, and regular polling retain the
+validated beta.5/beta.6 behavior.
 
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
@@ -54,14 +54,15 @@ polling, movement refreshes, navigation, and a responsive Lovelace card.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-Beta.6 is a pre-release. Enable beta versions in HACS or select the version
-from the GitHub releases page when required. Stable remains `v0.5.1`.
+`v0.6.0` is the stable HACS version. Beta.6 remains available in the GitHub
+archive as the last release candidate; `v0.5.1` remains available as the
+previous stable rollback.
 
 The Lovelace card is supplied and registered by the integration. The versioned
 Beta.6 resource is:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0-beta.6
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0
 ```
 
 For technical resource-loading details, see
@@ -166,8 +167,8 @@ Google Maps, Waze, or automatic selection.
 Create a Home Assistant backup before updating. Update through HACS and fully
 restart Home Assistant. Existing config entries, credentials, station sensors,
 and compatible dashboard configurations are retained. Check the versioned card
-resource and browser cache after a major update. `v0.6.0-beta.5` remains
-available as a rollback; `v0.5.1` remains the stable release.
+resource and browser cache after a major update. `v0.5.1` remains available as
+the previous stable rollback; beta releases remain in the GitHub archive.
 
 ## Privacy and limitations
 
@@ -212,7 +213,7 @@ recovery tests use mocks and fixtures rather than unverified live credentials.
 
 Historical release notes are preserved under
 [`docs/releases/`](docs/releases/), including the current
-[`v0.6.0-beta.6 notes`](docs/releases/RELEASE_NOTES_v0.6.0-beta.6.md).
+[`v0.6.0 release notes`](docs/releases/RELEASE_NOTES_v0.6.0.md).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).

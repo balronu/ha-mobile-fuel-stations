@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 — Stable release
+
+- Promote the validated beta.6 functionality to the stable `v0.6.0` release.
+- Keep the six bundled brand logos reliable through normalized brand matching,
+  station-name fallback, and a generic fallback for unknown brands.
+- Include startup GPS recovery after approximately 3, 10, and 30 seconds,
+  slower one-minute checks, bounded provider backoff, Retry-After handling,
+  stale-cache preservation, and request deduplication.
+- Preserve the Home Assistant Core polling lifecycle, movement refresh,
+  provider selection, entity compatibility, and the complete German/English
+  documentation.
+
 ## 0.6.0-beta.6 — Brand matching and repository documentation
 
 - Resolve the six bundled logos from normalized brand variants and supported
