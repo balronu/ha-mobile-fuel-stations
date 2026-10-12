@@ -42,6 +42,35 @@ describe("formatting and discovery", () => {
     expect(resolveBrandLogoKey("")).toBeNull();
     expect(resolveBrandLogoKey(undefined)).toBeNull();
   });
+  it("recognizes every named reference inventory entry without enabling unlicensed assets", () => {
+    const referenceAliases: Record<string, string> = {
+      Access: "access", Allguth: "allguth", "Bell Oil": "bell-oil", Calpam: "calpam",
+      "citi oil SB-Tankstelle": "citi-oil-sb-tankstelle", "E-Center": "e-center", ELAN: "elan",
+      Feneberg: "feneberg", "Fläming Tank": "flaeming-tank", Greenline: "greenline", Grüne: "gruene",
+      Hessol: "hessol", Hornbach: "hornbach", "Jantzon Tankstelle": "jantzon-tankstelle", Joiss: "joiss",
+      "K+K Klaas & Kock": "kk-klaas--kock", "Minera Automatenstation": "minera-automatenstation", Minera: "minera",
+      "Mr. Wash Autoservice AG": "mr-wash-autoservice-ag", MTB: "mtb", "Mundorf Tank": "mundorf-tank",
+      Nordoel: "nordoel", Oktan: "oktan", PIN: "pin", RAN: "ran", "Roth Energie": "roth-energie", SB: "sb",
+      Schillhorn: "schillhorn-tankstelle", Schindele: "schindele", SCORE: "score", Spreves: "spreves",
+      "Supermarkt-Tankstelle": "supermarkt-tankstelle", Trigema: "trigema", "V-Markt": "v-markt",
+    };
+    for (const [brand, key] of Object.entries(referenceAliases)) expect(resolveBrandLogoKey(brand)).toBe(key);
+    for (const [brand] of Object.entries(referenceAliases)) expect(buildBrandLogoUrl(brand)).toBeNull();
+  });
+  it("covers all 62 named reference stems while keeping the 404 entry non-brand", () => {
+    const referenceStems = [
+      "access", "agip-eni", "allguth", "aral", "avia-xpress", "avia", "baywa", "bell-oil", "bft", "calpam",
+      "citi-oil-sb-tankstelle", "classic", "e-center", "ed", "edeka", "elan", "esso", "feneberg", "flaeming-tank",
+      "globus", "greenline", "gruene", "hem", "hessol", "hornbach", "hoyer", "jantzon-tankstelle", "jet", "joiss",
+      "kk-klaas--kock", "minera-automatenstation", "minera", "mol", "mr-wash-autoservice-ag", "mtb", "mundorf-tank",
+      "nordoel", "oil", "oktan", "omv", "orlen", "pin", "q1", "raiffeisen", "ran", "roth-energie", "sb",
+      "schillhorn-tankstelle", "schindele", "score", "shell", "spreves", "sprint", "star", "supermarkt-tankstelle",
+      "svg", "team", "total", "totalenergies", "trigema", "v-markt", "westfalen",
+    ];
+    expect(referenceStems).toHaveLength(62);
+    for (const stem of referenceStems) expect(resolveBrandLogoKey(stem), stem).not.toBeNull();
+    expect(resolveBrandLogoKey("404")).toBeNull();
+  });
   it("builds only safe local logo URLs and rejects traversal or external paths", () => {
     expect(normalizeLogoPath("/local/fuel-logos/")).toBe("/local/fuel-logos/");
     expect(normalizeLogoPath("/hacsfiles/fuel-logos")).toBe("/hacsfiles/fuel-logos/");
