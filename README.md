@@ -35,6 +35,9 @@ verifiziert und darf daher nicht als vollständig behoben gelten.
   Navigation zu einer Station
 - Stabile Stations-Entities und konfigurierbare Anzahl von 1 bis 10 Slots
 - Bewegungsupdates mit Schwelle und Cooldown
+- Start-Recovery, wenn GPS oder ein Provider beim HA-Start kurzzeitig nicht
+  verfügbar sind; der erste gültige Tracker-Zustand löst automatisch einen
+  einzelnen Refresh aus
 - Lokales Home-Assistant-Branding unter
   `custom_components/mobile_fuel_stations/brand/`
 - Allgemeine Optionen werden unabhängig von der Zugangsdatenverwaltung gespeichert
@@ -98,6 +101,16 @@ kontrollierter Beta-Test; es werden keine Logos automatisch installiert oder
 über HACS nachgeladen. Ein Screenshot ist derzeit nicht Bestandteil des
 Repositorys; das YAML-Beispiel und die automatisierten Render-Tests sind die
 nachvollziehbare Darstellung.
+
+### Start-Recovery in der Beta
+
+Wenn der konfigurierte Tracker beim HA-Start noch `unknown`, `unavailable` oder
+ohne gültige Koordinaten ist, werden die Entities trotzdem angelegt. Sobald
+der Tracker gültige Koordinaten liefert, wird genau ein ereignisgesteuerter
+Refresh geplant. Ein vorübergehender Provider-/Netzwerkfehler lässt die
+Entities ebenfalls angelegt und wird durch den normalen Polling-Zyklus erneut
+versucht. Ein echter Neustarttest in der produktiven HA-Umgebung wurde nicht
+durchgeführt.
 
 ## Datenanbieter und Abdeckung
 

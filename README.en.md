@@ -30,6 +30,8 @@ must not be claimed as fully fixed.
 - Opening status, price age, missing-price states, E10/E5 fallback notices, and navigation
 - Stable station entities and configurable 1–10 station slots
 - Movement updates with threshold and cooldown
+- Startup recovery when GPS or a provider is temporarily unavailable; the first
+  valid tracker state schedules one automatic refresh
 - Local Home Assistant branding in `custom_components/mobile_fuel_stations/brand/`
 - General options can be saved independently of credential management
 
@@ -89,6 +91,15 @@ Stable `v0.5.1` does not contain this feature. `v0.6.0-beta.1` is a
 controlled beta; logos are not installed automatically or downloaded through
 HACS. No screenshot is currently stored in the repository; the YAML example
 and automated rendering tests provide the verifiable example.
+
+### Startup recovery in this beta
+
+If the configured tracker is `unknown`, `unavailable`, or has no valid
+coordinates during HA startup, the entities are still created. When valid GPS
+coordinates arrive, exactly one event-driven refresh is scheduled. A transient
+provider/network failure also leaves the entities created and is retried by the
+normal polling cycle. A real restart test in the production HA environment was
+not performed.
 
 ## Providers and coverage
 

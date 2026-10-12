@@ -1,11 +1,9 @@
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from homeassistant.config_entries import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import UpdateFailed
-
 from mobile_fuel_stations import coordinator as coordinator_module
 from mobile_fuel_stations.const import (
     CONF_FUEL_TYPE,
@@ -115,6 +113,32 @@ def test_petromap_diesel_refresh_uses_one_search_query(monkeypatch):
     assert coordinator._provider_status_store.saved[PROVIDER_PETROMAP]["status"] == "success"
 
 
+def test_startup_without_gps_keeps_coordinator_setup_recoverable(monkeypatch):
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: None)
+
+    assert asyncio.run(coordinator._async_update_data()) == []
+    assert coordinator.recovery_status == "awaiting_location"
+    assert provider.calls == []
+
+
+def test_first_valid_gps_after_startup_schedules_one_refresh(monkeypatch):
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    create_task = Mock(side_effect=lambda coroutine: coroutine.close())
+    coordinator.hass = SimpleNamespace(
+        data={},
+        async_create_task=create_task,
+    )
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    coordinator._async_position_changed(SimpleNamespace())
+    coordinator._async_position_changed(SimpleNamespace())
+
+    create_task.assert_called_once()
+
+
 def test_petromap_e5_refresh_uses_one_search_query(monkeypatch):
     provider = _Provider([_station()])
     coordinator = _coordinator(provider, fuel="e5")
@@ -183,13 +207,12 @@ def test_petromap_rate_limit_keeps_last_valid_stations(monkeypatch):
     assert len(provider.calls) == 3
 
 
-def test_transient_timeout_without_cached_data_still_fails(monkeypatch):
+def test_transient_timeout_without_cached_data_keeps_entities_recoverable(monkeypatch):
     provider = _Provider(error=ProviderTimeoutError("timeout"))
     coordinator = _coordinator(provider)
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
 
-    with pytest.raises(UpdateFailed):
-        asyncio.run(coordinator._async_update_data())
+    assert asyncio.run(coordinator._async_update_data()) == []
 
     assert coordinator.data_stale is False
     assert coordinator.last_update_error_class == "ProviderTimeoutError"
@@ -212,7 +235,7 @@ def test_retry_after_prevents_extra_provider_call_until_window_expires(monkeypat
     assert len(provider.calls) == 2
 
 
-def test_nakordoni_failure_metadata_is_published_before_update_failed(monkeypatch):
+def test_nakordoni_failure_metadata_is_published_before_recovery_retry(monkeypatch):
     provider = _Provider(error=ProviderRateLimitError("qps_exceeded"))
     provider.error.diagnostics = ProviderRequestDiagnostics(
         "nakordoni", 429, "qps_exceeded", 60, 1000, 999, False, False
@@ -221,8 +244,7 @@ def test_nakordoni_failure_metadata_is_published_before_update_failed(monkeypatc
     coordinator.options[CONF_PROVIDER_MODE] = "nakordoni"
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
 
-    with pytest.raises(UpdateFailed, match="qps_exceeded"):
-        asyncio.run(coordinator._async_update_data())
+    assert asyncio.run(coordinator._async_update_data()) == []
 
     assert coordinator.hass.data["mobile_fuel_stations"]["last_request_diagnostics"]["test-entry"] == {
         "provider": "nakordoni",
@@ -246,13 +268,12 @@ def test_nakordoni_failure_metadata_is_published_before_update_failed(monkeypatc
         ProviderResponseError("malformed"),
     ],
 )
-def test_petromap_non_auth_failures_are_update_failures_without_provider_switch(
+def test_petromap_non_auth_failures_leave_startup_recovery_available(
     monkeypatch, error
 ):
     provider = _Provider(error=error)
     coordinator = _coordinator(provider)
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
 
-    with pytest.raises(UpdateFailed):
-        asyncio.run(coordinator._async_update_data())
+    assert asyncio.run(coordinator._async_update_data()) == []
     assert len(provider.calls) == 1

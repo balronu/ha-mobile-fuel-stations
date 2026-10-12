@@ -15,6 +15,13 @@ Die Beta kann das vorhandene Stationsattribut `brand` provider-unabhängig auf
 lokale Nutzerlogos abbilden. `show_brand_logos` ist standardmäßig `false`,
 damit v0.5.1-Dashboards unverändert bleiben.
 
+Die Beta hält die Entities auch dann angelegt, wenn der GPS-Tracker beim
+Home-Assistant-Start vorübergehend `unknown`, `unavailable` oder ohne gültige
+Koordinaten ist. Der erste gültige Tracker-Zustand löst genau einen
+ereignisgesteuerten Refresh aus. Vorübergehende Provider-/Netzwerkfehler werden
+über den normalen Polling-Zyklus erneut versucht; ein echter Neustarttest in
+der produktiven HA-Umgebung wurde nicht durchgeführt.
+
 Es werden **keine fremden Markenbilder mitgeliefert**. Die MIT-Lizenz von
 Referenz-Code überträgt nicht automatisch Markenrechte oder Bildlizenzen.
 Unterstützte Aliase sind Aral, Shell, Esso, JET, Total/TotalEnergies, HEM,

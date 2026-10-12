@@ -384,6 +384,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
     async def async_shutdown(self) -> None:
         if self._unsub_position:
             self._unsub_position()
+            self._unsub_position = None
 
     @staticmethod
     def _parse_time(value: Any) -> datetime | None:
@@ -413,12 +414,16 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
                     None, None, CountryPriceCoverage.UNKNOWN, "location_unavailable"
                 )
                 self._set_auto_runtime_state(decision)
-                raise UpdateFailed("Auto location is unavailable") from NoSuitableProviderError(
-                    decision.reason
-                )
             if self.stations:
+                self.data_stale = True
+                self.recovery_status = "awaiting_location"
                 return self.stations
-            raise UpdateFailed("Location entity has no valid GPS coordinates")
+            # A tracker can be unknown during HA startup.  Return an empty
+            # successful result so entities are created and the state-change
+            # listener can trigger the first real refresh when GPS appears.
+            self.recovery_status = "awaiting_location"
+            self.data_stale = False
+            return []
         observed_decision = self.country_auto_context.observe_position(position)
         if self._is_auto:
             decision = observed_decision
@@ -625,14 +630,23 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         })
         if self.data_stale:
             return self.stations
-        raise UpdateFailed(message) from error
+        # A transient provider failure before the first successful result must
+        # not abort config-entry setup.  The coordinator remains available
+        # with an empty result and the regular poll will retry automatically.
+        return []
 
     @callback
     def _async_position_changed(self, event: Event) -> None:
-        if self.reference_position is None or self.last_request is None:
-            return
         current = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         if current is None:
+            return
+        # During HA startup the tracker may become valid after the initial
+        # coordinator refresh.  There is no movement baseline yet, so the
+        # first valid position itself is the refresh trigger.
+        if self.reference_position is None or self.last_request is None:
+            if not self._movement_refresh_scheduled:
+                self._movement_refresh_scheduled = True
+                self.hass.async_create_task(self._async_request_movement_refresh())
             return
         now = datetime.now().astimezone()
         if self._retry_not_before and now < self._retry_not_before:

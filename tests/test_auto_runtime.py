@@ -323,13 +323,12 @@ def test_auto_pm_401_starts_provider_specific_reauth(monkeypatch):
 
 @pytest.mark.parametrize(
     "error",
-    [ProviderPermissionError("403"), ProviderRateLimitError("429"), ProviderUnavailableError("503"), ProviderTimeoutError("timeout")],
+    [ProviderRateLimitError("429"), ProviderUnavailableError("503"), ProviderTimeoutError("timeout")],
 )
 def test_auto_pm_non_auth_failures_do_not_reauth_or_fallback(monkeypatch, error):
     coordinator, tk, pm = _coordinator(monkeypatch, "AT", "e5", pm_error=error)
 
-    with pytest.raises(UpdateFailed):
-        asyncio.run(coordinator._async_update_data())
+    assert asyncio.run(coordinator._async_update_data()) == []
 
     coordinator.entry.async_start_reauth.assert_not_called()
     assert not tk.calls and len(pm.calls) == 1

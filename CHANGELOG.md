@@ -13,6 +13,11 @@
 - Stable `v0.5.1` behavior remains the default when logos are not enabled.
 - Brand image rights remain the user's responsibility; the beta ships no brand
   artwork.
+- Kept config-entry setup alive when the GPS tracker is temporarily unavailable
+  or a provider has a transient startup failure; the first valid tracker state
+  now schedules one automatic refresh without a manual integration reload.
+- Added regression coverage for startup GPS recovery, transient provider
+  recovery, listener deduplication, and repeated reload cleanup.
 
 ## [0.5.1] — Responsive card and load recovery
 
