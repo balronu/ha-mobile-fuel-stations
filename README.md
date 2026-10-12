@@ -1,322 +1,45 @@
 # Mobile Fuel Stations
 
-<p><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="160"></p>
+Home Assistant custom integration for nearby fuel stations based on a vehicle
+or device entity exposing valid latitude and longitude. It provides provider-
+aware prices, stable station entities, movement updates, startup GPS recovery,
+stale-data diagnostics, and an optional Lovelace card.
 
-Mobile Fuel Stations ist eine Home-Assistant-Custom-Integration für nahe
-gelegene Tankstellen anhand einer Fahrzeug- oder Geräte-Entity mit
-`latitude`/`longitude`. Die Integration ist für Autos, Wohnmobile und andere
-bewegliche Objekte geeignet.
+## Versions
 
-## Versionen
-
-| Kanal | Version | Zweck |
+| Channel | Version | Meaning |
 | --- | --- | --- |
-| Stable | `v0.5.1` | Aktuelle empfohlene Version für produktive Installationen |
-| Pre-Release | `v0.6.0-beta.4` | Beta mit behobenem HA-Core-Polling-Lifecycle und sicheren lokalen Markenlogos |
-| Vorherige Stable-Version | `v0.5.0` | Vorherige stabile Version |
+| Stable | `v0.5.1` | Recommended for production |
+| Published beta | `v0.6.0-beta.5` | Startup GPS recovery and bounded provider retry |
+| Development target | `v0.6.0-beta.6` | Logo matching and documentation; not released |
 
-Der sporadische Ladefehler unter Microsoft Edge und iOS Companion ist mit
-dieser Version noch nicht belastbar in der produktiven Home-Assistant-Umgebung
-verifiziert und darf daher nicht als vollständig behoben gelten.
+The beta branch is for controlled testing. A real production Home Assistant
+restart test is still outstanding.
 
-## Funktionen
+## Features
 
-- E5, E10, Diesel, LPG/Autogas und HVO100 gleichzeitig auswählbar
-- Eine Tankstellenkarte pro Station mit allen verfügbaren ausgewählten Preisen
-- Fachlich getrennte Preisbewertung je Kraftstoffart; unterschiedliche
-  Kraftstoffe werden niemals in einer Rangliste vermischt
-- Nächste Tankstelle nach Entfernung und günstigste Tankstelle je Kraftstoff
-- Zusammengeführte Highlight-Karten, wenn dieselbe Station sicher anhand ihrer
-  stabilen Stations-ID identifiziert wird
-- Sortierung nach Entfernung oder nach dem Preis einer ausdrücklich gewählten
-  Kraftstoffart
-- Kompakte responsive Dashboard-Karte für Smartphones, Tablets und Desktop
-- Öffnungsstatus, Preisalter, fehlende Preise, E10/E5-Ersatzhinweise und
-  Navigation zu einer Station
-- Stabile Stations-Entities und konfigurierbare Anzahl von 1 bis 10 Slots
-- Bewegungsupdates mit Schwelle und Cooldown
-- Start-Recovery, wenn GPS oder ein Provider beim HA-Start kurzzeitig nicht
-  verfügbar sind; der erste gültige Tracker-Zustand löst automatisch einen
-  einzelnen Refresh aus
-- Lokales Home-Assistant-Branding unter
-  `custom_components/mobile_fuel_stations/brand/`
-- Allgemeine Optionen werden unabhängig von der Zugangsdatenverwaltung gespeichert
+- Tankerkönig, Petromap, and Nakordoni provider adapters
+- Diesel, E5, E10, LPG, and HVO100 where the selected provider supports them
+- Radius, station count, sorting, refresh interval, movement threshold/cooldown
+  and provider selection
+- Startup GPS recovery, normal polling, bounded provider backoff, Retry-After
+  handling, stale-data preservation, and secret-free diagnostics
+- Responsive Lovelace card with navigation and optional local brand logos
 
-## Markenlogos (v0.6.0-beta.4)
+## Documentation
 
-Die Karte kann das vorhandene Stationsattribut `brand` provider-unabhängig auf
-ein lokales Nutzerlogo abbilden. Neue Karten versuchen Logos standardmäßig;
-ein ausdrücklich gesetztes `show_brand_logos: false` deaktiviert die Funktion.
+- [Deutsch](README.de.md)
+- [English](README.en.md)
+- [Changelog](CHANGELOG.md)
+- [Releases](docs/releases/)
+- [Brand-logo sources and hashes](BRAND_LOGOS.md)
 
-Beta.2 liefert sechs geprüfte, lokal installierte SVGs für Aral, Shell, JET,
-TotalEnergies, ORLEN und OMV mit. Quellen, SHA256-Prüfsummen und verbleibende
-Markenrechtsrisiken stehen in [`BRAND_LOGOS.md`](BRAND_LOGOS.md). Die Logos
-behaupten keine Partnerschaft oder Unterstützung durch die Marken.
+## Installation
 
-Unterstützte Marken-Aliase sind derzeit:
+Install **Mobile Fuel Stations** through HACS → Integrations, or add this
+repository as a custom Integration repository. Then restart Home Assistant and
+add the integration through **Settings → Devices & services**. Stable and
+pre-release versions are selected in HACS; beta.6 is not published yet.
 
-- Aral → `aral.svg`
-- Shell → `shell.svg`
-- JET → `jet.svg`
-- Total und TotalEnergies → `total.svg`
-- ORLEN und ORLEN Express → `orlen.svg`
-- OMV → `omv.svg`
-
-Die Erkennung normalisiert Groß-/Kleinschreibung, Unicode-Akzente,
-Leerzeichen und Satzzeichen. Sie wertet ausschließlich `brand` aus und leitet
-keine Marke aus dem Stationsnamen ab. Unbekannte oder leere Werte verwenden
-das Zapfsäulen-Symbol.
-
-### Eigene Logos
-
-1. Mitgelieferte Logos werden automatisch über HACS installiert.
-2. Eigene Logo-Dateien können nach `/config/www/fuel-logos/` kopiert werden.
-   Verwende das sichere Schema `<alias>.svg`, zum Beispiel
-   `/config/www/fuel-logos/shell.svg`.
-3. In Home Assistant ist derselbe Ordner unter `/local/fuel-logos/` erreichbar.
-
-Unterstützt werden lokale SVG-Dateien. Die Karte akzeptiert für `logo_path`
-`/local/...` oder `/hacsfiles/...`; externe URLs, Querystrings, Backslashes und
-Pfadbestandteile wie `..` werden abgelehnt. Bildfehler fallen zuverlässig auf
-das Zapfsäulen-Symbol zurück. Logos erscheinen in der Stationsliste sowie in
-den Kacheln **Nächste** und **Günstigste**. Bilder werden mit begrenzter Fläche,
-erhaltenem Seitenverhältnis und beschreibendem Alt-Text dargestellt.
-
-Beispiel:
-
-```yaml
-type: custom:mobile-fuel-stations-card
-entity: sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations
-navigation: true
-show_brand_logos: true
-logo_path: /mobile_fuel_stations/logos/
-```
-
-`v0.5.1` Stable enthält diese Funktion nicht. `v0.6.0-beta.4` ist ein
-kontrollierter Beta-Test; die mitgelieferten sechs Logos werden mit der
-Integration installiert, weitere Marken bleiben beim Fallback. Ein Screenshot ist derzeit nicht Bestandteil des
-Repositorys; das YAML-Beispiel und die automatisierten Render-Tests sind die
-nachvollziehbare Darstellung.
-
-### Start-Recovery in beta.3
-
-Wenn der konfigurierte Tracker beim HA-Start noch `unknown`, `unavailable` oder
-ohne gültige Koordinaten ist, werden die Entities angelegt, aber Nearby bleibt
-unavailable. Nach dem Initial-Refresh wird der Tracker erneut geprüft und bei
-gültigem GPS genau ein deduplizierter Recovery-Refresh geplant. Nur eine
-erfolgreiche Suche ohne Treffer zeigt `0`; vorhandene Daten bleiben bei
-transienten Fehlern stale. Ein echter Neustarttest in der produktiven
-HA-Umgebung wurde nicht durchgeführt.
-
-## Datenanbieter und Abdeckung
-
-Die Anbieter werden über offizielle Home-Assistant-Checkboxen ausgewählt. Ein
-Anbieter wird direkt verwendet. Sind mindestens zwei Anbieter aktiviert, nutzt
-die automatische Auswahl ausschließlich diese aktivierten und konfigurierten
-Anbieter; deaktivierte oder nicht authentifizierte Anbieter werden nicht als
-stiller Fallback verwendet.
-
-| Anbieter | Schlüssel | Aktuelle Implementierungsabdeckung |
-| --- | --- | --- |
-| [Tankerkönig](https://onboarding.tankerkoenig.de/) | Ja | Deutschland; Diesel, E5 und E10; API-Radius maximal 25 km |
-| [Petromap v2](https://developer.petromap.eu/) | Ja | DE/AT mit Stationspreisen für Diesel, E5 und LPG; weitere Länder sind abhängig von der verifizierten Petromap-Abdeckung |
-| [Nakordoni](https://nakordoni.dev/) | Ja | Implementiert für Diesel, E5, E10 und LPG; Marktfreigabe und Live-API-Zugang sind noch ausstehend |
-
-HVO100 ist eine echte, auswählbare Kraftstoffart. Ob dafür Preise erscheinen,
-hängt von einer tatsächlich verifizierten Provider- und Länder-Capability ab;
-HVO100 wird nicht pauschal als grundsätzlich unmöglich dokumentiert und nie
-still als Diesel ausgegeben.
-
-### API-Schlüssel für normale Home-Assistant-Nutzer
-
-Für jeden aktivierten Anbieter wird ein eigener Zugang benötigt. Du brauchst
-keine Programmierkenntnisse, keine eigene App und keinen eigenen API-Client.
-Öffne die offizielle Seite des Anbieters, registriere dich beziehungsweise
-beantrage den Zugang und warte die jeweilige Freigabe ab. Wenn nach dem
-Verwendungszweck gefragt wird, kannst du – sofern zutreffend – **Private
-Nutzung mit Home Assistant / Mobile Fuel Stations** angeben. Beachte immer die
-Nutzungsbedingungen, Registrierungseinschränkungen, Quoten und mögliche Kosten
-des Anbieters.
-
-#### Tankerkönig
-
-1. Öffne die [Tankerkönig-Onboarding-Seite](https://onboarding.tankerkoenig.de/).
-2. Registriere dich und beantrage den vorgesehenen Zugang.
-3. Gib bei einer Frage zum Zweck – sofern zutreffend – private Nutzung mit
-   Home Assistant / Mobile Fuel Stations an.
-4. Warte die Registrierung beziehungsweise Schlüsselvergabe ab und beachte
-   die Tankerkönig-Nutzungsbedingungen sowie mögliche Einschränkungen.
-5. Öffne in Home Assistant **Einstellungen → Geräte & Dienste → Mobile Fuel
-   Stations → Konfigurieren → Zugangsdaten verwalten**.
-6. Trage den Schlüssel ein und speichere ihn.
-7. Prüfe anschließend den angezeigten tatsächlichen Zugangsstatus. Ein
-   hinterlegter Schlüssel gilt nicht automatisch als erfolgreich geprüft.
-
-#### Petromap
-
-1. Öffne die [Petromap-Developer-Seite](https://developer.petromap.eu/).
-2. Registriere dich beziehungsweise beantrage den API-Zugang.
-3. Gib bei einer Frage zum Zweck – sofern zutreffend – private Nutzung mit
-   Home Assistant / Mobile Fuel Stations an.
-4. Warte die manuelle Petromap-Freigabe und die Schlüsselvergabe ab; eine
-   Registrierung allein garantiert noch keinen nutzbaren Zugang.
-5. Öffne in Home Assistant **Einstellungen → Geräte & Dienste → Mobile Fuel
-   Stations → Konfigurieren → Zugangsdaten verwalten**.
-6. Trage den Schlüssel ein und speichere ihn.
-7. Prüfe danach den tatsächlichen Zugangsstatus. Petromap bleibt bis zu einem
-   erfolgreichen eigenen Provideraufruf „hinterlegt – noch nicht geprüft“.
-
-#### Nakordoni
-
-1. Öffne die [Nakordoni-Developer-Seite](https://nakordoni.eu/en/developers).
-2. Registriere dich beziehungsweise beantrage die Schlüsselvergabe.
-3. Gib bei einer Frage zum Zweck – sofern zutreffend – private Nutzung mit
-   Home Assistant / Mobile Fuel Stations an.
-4. Warte sowohl auf die Schlüsselvergabe als auch auf die erforderliche
-   Freigabe für die benötigten Länder- und Kraftstoffdaten. Ein Schlüssel
-   allein bedeutet bei Nakordoni nicht automatisch, dass die Datenfreigabe
-   aktiv ist; die Live-Freigabe ist derzeit noch ausstehend.
-5. Öffne in Home Assistant **Einstellungen → Geräte & Dienste → Mobile Fuel
-   Stations → Konfigurieren → Zugangsdaten verwalten**.
-6. Trage den Schlüssel ein und speichere ihn.
-7. Prüfe den tatsächlichen Status. Eine sofortige Freigabe oder eine Nutzung
-   ohne Einschränkungen wird nicht vorausgesetzt.
-
-Schlüssel werden niemals vollständig in der Oberfläche, in Logs, Diagnosen oder
-Git-Dateien angezeigt.
-
-Im Options-Flow wird pro Anbieter ein nicht-sensibler Status angezeigt:
-
-- Kein API-Schlüssel hinterlegt
-- API-Schlüssel hinterlegt – noch nicht geprüft
-- Zugang erfolgreich geprüft
-- Authentifizierung fehlgeschlagen
-- Zugang derzeit nicht prüfbar
-- API-Freigabe ausstehend
-- Nicht ausgewählt
-
-„API-Schlüssel hinterlegt“ bedeutet ausdrücklich nicht „Zugang erfolgreich
-geprüft“. Ein erfolgreicher Runtime-Provideraufruf setzt den Prüfstatus; beim
-bloßen Öffnen des Options-Flows werden keine Netzwerkanfragen gestartet.
-
-Die allgemeinen Einstellungen werden direkt gespeichert. Über **Zugangsdaten
-verwalten** kann anschließend der separate Credential-Manager geöffnet werden.
-Ein leeres Eingabefeld lässt einen vorhandenen Schlüssel unverändert; Ersetzen
-erfolgt durch Eingabe eines neuen Werts, Entfernen nur über die ausdrückliche
-Entfernen-Option. Status wird nach Schlüsseländerungen invalidiert. Die
-gespeicherten Schlüssel werden bei einer Aktualisierung nicht neu erfunden oder
-ungefragt überschrieben.
-
-Die native Home-Assistant-Form rendert die kompakten Statuszeilen als
-Formularbeschreibung oberhalb der Felder. Danach folgen Anbieter-Auswahl,
-Zugangsdatenverwaltung und allgemeine Einstellungen in dieser Reihenfolge.
-Eine frei platzierbare Statussektion innerhalb des nativen Formulars wird von
-Home Assistant nicht unterstützt.
-
-## Installation über HACS
-
-1. **HACS → Integrationen** öffnen.
-2. Nach **Mobile Fuel Stations** suchen. Falls das Repository nicht gelistet
-   ist, unter **Benutzerdefinierte Repositories**
-   `https://github.com/balronu/ha-mobile-fuel-stations` als **Integration**
-   hinzufügen.
-3. Installieren und Home Assistant vollständig neu starten.
-4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** die
-   Integration einrichten.
-
-Die Dashboard-Karte wird automatisch registriert. Stable 0.5.1 verwendet die
-versionierte Resource-URL:
-
-`/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.5.1`
-
-Das lokale Icon/Logo ist Home-Assistant-Branding. Ein HACS-Repository-Icon und
-das Home-Assistant-Integrationsbranding sind getrennte Dinge; zusätzliche
-Manifest-Felder sind dafür nicht erforderlich.
-
-## Einrichtung
-
-Im Flow werden gewählt:
-
-- Standort-Entity des Fahrzeugs
-- Suchradius von 1 bis 25 km
-- eine oder mehrere Kraftstoffarten
-- 1 bis 10 Tankstellenplätze
-- Aktualisierungsintervall
-- Bewegungsupdates, Bewegungsschwelle und Cooldown
-- Sortierung nach Entfernung oder Kraftstoffpreis
-- ein oder mehrere Datenanbieter
-
-Die automatische Auswahl startet ab zwei aktivierten Anbietern. Sie berücksichtigt
-Land, Kraftstoff-Capability, Stationspreis-Abdeckung und vorhandene Schlüssel.
-Bei nur einem Anbieter wird ausschließlich dieser Anbieter verwendet.
-
-E10 kann in Ländern ohne verifizierte E10-Abdeckung durch E5 ersetzt werden.
-Die Karte kennzeichnet dies als **E5 statt E10**. Kein E5-Ersatz erfolgt für
-Diesel, LPG oder HVO100 und auch nicht allein wegen eines temporären API- oder
-Stationsfehlers.
-
-## Preise, Karte und Navigation
-
-Die Standardreihenfolge ist Entfernung aufsteigend. Für eine Preissortierung
-muss die maßgebliche Kraftstoffart eindeutig gewählt werden; Stationen ohne
-gültigen Preis dafür stehen am Ende. Bei mehreren Kraftstoffen konkurrieren
-Diesel, E10, E5, LPG und HVO100 nicht miteinander.
-
-Die Custom Card zeigt je Station Name, Adresse, Öffnungsstatus, Entfernung,
-alle verfügbaren Preise, Ersatzhinweise und einen Navigationsbutton. Lange
-Namen und Adressen umbrechen ohne horizontalen Überlauf. Navigation kann als
-Apple Maps, Google Maps, Waze oder automatisch konfiguriert werden.
-
-Eine aktuelle UI-Screenshot-Datei ist im Repository nicht vorhanden. Die
-freigegebene Branding-Vorschau ist unter
-[`assets/branding/preview.png`](assets/branding/preview.png) verfügbar.
-Die GitHub-Social-Preview ist als [`assets/github-social-preview.png`](assets/github-social-preview.png)
-vorbereitet. GitHub verwendet sie erst nach dem manuellen Upload unter
-**Repository → Settings → General → Social preview**.
-
-## Aktualisierung bestehender Installationen
-
-Vor dem Update ein Home-Assistant-Backup erstellen, über HACS aktualisieren und
-Home Assistant vollständig neu starten. Bestehende Config Entries,
-Credentials, Stations-Slots, Sensor-Entity-IDs, Dashboard-Ressourcen und
-kompatible Sensorattribute bleiben erhalten. Alte einzelne Providerwerte werden
-verlustfrei in die neue Anbieterauswahl übernommen.
-
-## Datenschutz und Attribution
-
-Je nach ausgewähltem Anbieter können Standortkoordinaten, Radius und
-Kraftstoffauswahl an den Anbieter gesendet werden. Die Integration protokolliert
-keine vollständigen API-Schlüssel und gibt keine exakten Standortdaten in
-Diagnosen aus. Bei Nakordoni muss die sichtbare Attribution **Data by
-nakordoni.eu** erhalten bleiben.
-
-## Fehlerbehebung
-
-- **Keine Tankstellen:** Standort-Entity, Koordinaten, Radius, Provider-Capability
-  und API-Key prüfen.
-- **Preis nicht verfügbar:** Das bedeutet, dass für genau diese Station und
-  Kraftstoffart kein gültiger Preis vorliegt; es wird kein anderer Kraftstoff
-  eingesetzt.
-- **Provider nicht aktiv:** Prüfen, ob der Anbieter in der Checkbox-Auswahl
-  aktiviert und ein Schlüssel hinterlegt ist.
-- **Karte nach Update veraltet:** Home Assistant vollständig neu starten. Die
-  versionierte Resource-URL verhindert normalerweise die Wiederverwendung
-  alter Card-Skripte.
-- **Nakordoni:** Live-Freigabe, Marktberechtigung und Quoten sind weiterhin
-  externe Voraussetzungen und nicht als erfolgreich verfügbar
-  behauptet.
-
-## Bekannte Einschränkungen
-
-- Nakordoni-Live-Freigabe ist noch ausstehend.
-- Provider- und Länderabdeckung kann sich durch externe API-Verträge,
-  Berechtigungen, Quoten und Stationsdaten ändern.
-- HVO100 wird nur bei verifizierter Provider-/Länder-Capability mit Preisen
-  angezeigt.
-
-## Entwicklung und Tests
-
-Die Stable-0.5.1-Prüfung umfasst Python-Tests, Frontend-Tests, Produktions-Build,
-Hassfest, JSON-/Syntaxprüfung, Bundle-Diff und `git diff --check`. Provider-
-und API-Tests verwenden zusätzlich Mocks und Fixtures; unbestätigte Live-
-Zugänge werden nicht als erfolgreich simuliert.
+See the language-specific guides for setup, provider coverage, startup
+recovery, logo fallback behavior, troubleshooting, privacy, and limitations.

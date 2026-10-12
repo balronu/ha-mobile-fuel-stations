@@ -112,9 +112,19 @@ function normalizeBrand(value: string): string {
     .trim();
 }
 
-export function resolveBrandLogoKey(brand: unknown): string | null {
-  if (typeof brand !== "string" || !brand.trim()) return null;
-  return BRAND_ALIASES[normalizeBrand(brand)] ?? null;
+export function resolveBrandLogoKey(brand: unknown, stationName?: unknown): string | null {
+  const normalizedBrand = typeof brand === "string" ? normalizeBrand(brand) : "";
+  const direct = normalizedBrand ? BRAND_ALIASES[normalizedBrand] : undefined;
+  if (direct) return direct;
+  const candidates = [normalizedBrand, typeof stationName === "string" ? normalizeBrand(stationName) : ""];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const candidateWords = new Set(candidate.split(" "));
+    for (const [alias, key] of Object.entries(BRAND_ALIASES)) {
+      if (BUNDLED_LOGO_KEYS.has(key) && alias.split(" ").every((word) => candidateWords.has(word))) return key;
+    }
+  }
+  return null;
 }
 
 export function normalizeLogoPath(value: unknown): string | null {
@@ -126,8 +136,8 @@ export function normalizeLogoPath(value: unknown): string | null {
   return `${path.replace(/\/+$/, "")}/`;
 }
 
-export function buildBrandLogoUrl(brand: unknown, logoPath: unknown = DEFAULT_LOGO_PATH): string | null {
-  const key = resolveBrandLogoKey(brand);
+export function buildBrandLogoUrl(brand: unknown, logoPath: unknown = DEFAULT_LOGO_PATH, stationName?: unknown): string | null {
+  const key = resolveBrandLogoKey(brand, stationName);
   const base = normalizeLogoPath(logoPath);
   if (!key || !base) return null;
   if (base === DEFAULT_LOGO_PATH && !BUNDLED_LOGO_KEYS.has(key)) return null;
@@ -464,7 +474,7 @@ export class MobileFuelStationsCard extends LitElement {
   private _brandLogo(brand: unknown, alt: string) {
     const config = this._config;
     if (!config || config.show_brand_logos === false) return html`<ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>`;
-    const url = buildBrandLogoUrl(brand, config.logo_path);
+    const url = buildBrandLogoUrl(brand, config.logo_path, alt);
     const cacheKey = url ?? "fallback";
     if (!url || this._failedBrandLogos.has(cacheKey)) return html`<ha-icon class="icon" icon="mdi:gas-station" aria-label="${this._text("unknownBrand")}"></ha-icon>`;
     return html`<span class="brand-logo"><img src=${url} alt="${alt} ${this._text("brandLogo")}" @error=${() => { this._failedBrandLogos.add(cacheKey); this.requestUpdate(); }}></span>`;
