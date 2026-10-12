@@ -103,20 +103,20 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "last_successful_update": self.coordinator.last_successful_update.isoformat()
             if self.coordinator.last_successful_update
             else None,
-            "last_update_attempt": self.coordinator.last_update_attempt.isoformat()
-            if self.coordinator.last_update_attempt
+            "last_update_attempt": getattr(self.coordinator, "last_update_attempt", None).isoformat()
+            if getattr(self.coordinator, "last_update_attempt", None)
             else None,
             "last_update_success": getattr(self.coordinator, "last_update_success", None),
-            "data_stale": self.coordinator.data_stale,
-            "data_age_seconds": self.coordinator.data_age_seconds,
-            "last_update_error_at": self.coordinator.last_update_error_at.isoformat()
-            if self.coordinator.last_update_error_at
+            "data_stale": getattr(self.coordinator, "data_stale", False),
+            "data_age_seconds": getattr(self.coordinator, "data_age_seconds", None),
+            "last_update_error_at": getattr(self.coordinator, "last_update_error_at", None).isoformat()
+            if getattr(self.coordinator, "last_update_error_at", None)
             else None,
-            "last_update_error_class": self.coordinator.last_update_error_class,
-            "last_update_error_provider": self.coordinator.last_update_error_provider,
-            "last_retry_after": self.coordinator.last_retry_after,
-            "recovery_status": self.coordinator.recovery_status,
-            "consecutive_failures": self.coordinator.consecutive_failures,
+            "last_update_error_class": getattr(self.coordinator, "last_update_error_class", None),
+            "last_update_error_provider": getattr(self.coordinator, "last_update_error_provider", None),
+            "last_retry_after": getattr(self.coordinator, "last_retry_after", None),
+            "recovery_status": getattr(self.coordinator, "recovery_status", "never"),
+            "consecutive_failures": getattr(self.coordinator, "consecutive_failures", 0),
             "reference_latitude": ref[0] if ref else None,
             "reference_longitude": ref[1] if ref else None,
             "distance_since_last_search": self.coordinator.current_distance_km,
@@ -210,11 +210,11 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
             for key, value in optional.items()
             if value is not None and (key != "fallback_used" or value)
         })
-        if self.coordinator.data_stale:
+        if getattr(self.coordinator, "data_stale", False):
             attributes["price_stale"] = True
             attributes["data_stale"] = True
             attributes["data_age_hours"] = (
                 self.coordinator.data_age_seconds / 3600
-                if self.coordinator.data_age_seconds is not None else None
+                if getattr(self.coordinator, "data_age_seconds", None) is not None else None
             )
         return attributes

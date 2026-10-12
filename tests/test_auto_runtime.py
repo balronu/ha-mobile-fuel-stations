@@ -294,10 +294,12 @@ def test_auto_pm_failure_preserves_last_valid_data_without_tk_fallback(monkeypat
     asyncio.run(coordinator._async_update_data())
     previous = coordinator.stations
 
-    with pytest.raises(UpdateFailed):
-        asyncio.run(coordinator._async_update_data())
+    stale = asyncio.run(coordinator._async_update_data())
 
+    assert stale == previous
     assert coordinator.stations == previous
+    assert coordinator.data_stale is True
+    assert coordinator.last_update_error_class == "ProviderTimeoutError"
     assert len(tk.calls) == 3
     assert len(pm.calls) == 1
     assert coordinator.auto_runtime_state.effective_provider == PROVIDER_PETROMAP
