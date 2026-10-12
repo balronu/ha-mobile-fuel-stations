@@ -26,8 +26,9 @@ opening status, and destination navigation.
   capability-aware provider selection.
 - **Fuel prices:** E5, E10, diesel, LPG, and HVO100 with distance or price
   sorting.
-- **Built for Lovelace:** Responsive card, six local station-brand logos, and
-  direct navigation to the selected destination.
+- **Built for Lovelace:** Responsive card, recognition of many brand spellings,
+  six local station-brand logos, and direct navigation to the selected
+  destination.
 
 ### Preview
 
@@ -185,6 +186,21 @@ does not match, the station name is checked as a fallback. Unknown, empty, or
 unloadable logos use the generic fuel-pump symbol. Set
 `show_brand_logos: false` to disable logos. Sources and checksums are listed in
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md).
+
+Alias matching now recognizes substantially more brand names and provider
+spellings. This does not mean that an image is bundled for every recognized
+brand: only the six local SVGs listed above are currently included. Concrete
+image rights for additional brands must be clarified separately; until then,
+they use the neutral fuel-pump symbol while the brand name remains readable.
+The complete reference inventory is documented in
+[docs/BRAND_LOGO_INVENTORY.md](docs/BRAND_LOGO_INVENTORY.md).
+
+Local user-owned logos can still be used through the supported `logo_path`
+configuration from `/local/...` or `/hacsfiles/...`. External logo URLs are
+neither required nor allowed. Brands are shown solely to identify actual fuel
+stations; the project has no official relationship with the brand owners.
+Trademark rights and concrete image-redistribution rights are documented
+separately and are not granted as a blanket permission.
 
 The card shows station name, address, distance, opening status, price age,
 available prices, E5/E10 substitution hints, and navigation. Local SVGs may be

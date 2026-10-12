@@ -1,5 +1,20 @@
 # Bundled station-brand logos
 
+## Factual trademark identification
+
+Mobile Fuel Stations is an independent open-source project and has no
+commercial relationship with the displayed station brands.
+
+Brand names and marks are shown solely to identify the relevant station and
+to make fuel-price information understandable. Factual identification may be
+permitted under the applicable conditions of § 23(1)(3) and § 23(2) MarkenG,
+but this wording is not a legal opinion or a blanket permission.
+
+All brands and designations belong to their respective owners. Copyright and
+redistribution rights for each concrete image file are assessed separately
+and documented below. A trademark disclaimer does not replace a missing image
+license.
+
 Beta.2 bundles only the six sanitized SVG assets listed below. They are
 installed with the integration and served locally from
 `/mobile_fuel_stations/logos/`; no logo request is made to a CDN at runtime.
