@@ -29,6 +29,10 @@ opening status, and destination navigation.
 - **Built for Lovelace:** Responsive card, six local station-brand logos, and
   direct navigation to the selected destination.
 
+### Preview
+
+<p align="center"><img src="docs/assets/mobile-fuel-stations-mobile.jpg" alt="Mobile Lovelace card showing nearby fuel stations, prices, distances, and navigation" width="320"></p>
+
 ### Quick start
 
 1. Install the repository through
@@ -38,10 +42,6 @@ opening status, and destination navigation.
 3. Select an entity with `latitude` and `longitude`, fuel types, search radius,
    and provider mode.
 4. Continue with the complete [HACS installation guide](README.en.md#installation-with-hacs).
-
-The real Lovelace card is supplied by the integration. A privacy-redacted,
-real card screenshot is not currently present in the repository, so no
-synthetic preview image is used here.
 
 > This README is the complete English guide. The full German primary guide is
 > available in [README.md](README.md); the byte-identical German language copy

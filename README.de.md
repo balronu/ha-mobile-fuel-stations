@@ -29,6 +29,10 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 - **Lovelace für unterwegs:** Responsive Karte, sechs lokale Markenlogos und
   direkte Navigation zum ausgewählten Ziel.
 
+### Vorschau
+
+<p align="center"><img src="docs/assets/mobile-fuel-stations-mobile.jpg" alt="Mobile Lovelace-Karte mit Tankstellen in der Nähe, Kraftstoffpreisen, Entfernungen und Navigation" width="320"></p>
+
 ### Schnellstart
 
 1. Repository über [HACS](https://github.com/balronu/ha-mobile-fuel-stations)
@@ -37,10 +41,6 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 3. Eine Entity mit `latitude` und `longitude`, Kraftstoffarten, Suchradius und
    Provider auswählen.
 4. Die vollständige Anleitung beginnt bei [Installation über HACS](README.md#installation-über-hacs).
-
-Die echte Lovelace-Karte wird von der Integration bereitgestellt. Ein
-datenschutzbereinigter echter Card-Screenshot ist im Repository derzeit noch
-nicht vorhanden; deshalb wird hier kein künstliches Vorschaubild verwendet.
 
 > Diese README ist die ausführliche deutsche Hauptanleitung. Eine vollständige
 > englische Fassung steht unter [README.en.md](README.en.md); die identische
