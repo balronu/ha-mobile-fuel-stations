@@ -61,6 +61,7 @@ def test_config_entry_preloads_country_data_in_executor():
     coordinator = SimpleNamespace(
         async_setup=AsyncMock(),
         async_config_entry_first_refresh=AsyncMock(),
+        async_schedule_startup_recovery=Mock(),
     )
 
     with patch("mobile_fuel_stations.MobileFuelStationsCoordinator", return_value=coordinator):
@@ -70,6 +71,7 @@ def test_config_entry_preloads_country_data_in_executor():
     assert executor.await_args.args[0].__name__ == "load_countries"
     coordinator.async_setup.assert_awaited_once()
     coordinator.async_config_entry_first_refresh.assert_awaited_once()
+    coordinator.async_schedule_startup_recovery.assert_called_once()
 
 
 def test_frontend_bundle_and_versioned_resource_url():
@@ -93,7 +95,7 @@ def test_frontend_bundle_and_versioned_resource_url():
 
 
 def test_frontend_resource_url_is_stable_across_updates():
-    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0-beta.1"
+    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0-beta.2"
 
 
 def test_versions_are_synchronized():
@@ -102,7 +104,7 @@ def test_versions_are_synchronized():
         (root / "custom_components" / DOMAIN / "manifest.json").read_text()
     )
     package = json.loads((root / "frontend" / "package.json").read_text())
-    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.6.0-beta.1"
-    assert json.loads((root / "frontend" / "package-lock.json").read_text())["version"] == "0.6.0-beta.1"
-    assert json.loads((root / "frontend" / "package-lock.json").read_text())["packages"][""]["version"] == "0.6.0-beta.1"
-    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.6.0-beta.1"
+    assert manifest["version"] == FRONTEND_VERSION == package["version"] == "0.6.0-beta.2"
+    assert json.loads((root / "frontend" / "package-lock.json").read_text())["version"] == "0.6.0-beta.2"
+    assert json.loads((root / "frontend" / "package-lock.json").read_text())["packages"][""]["version"] == "0.6.0-beta.2"
+    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.6.0-beta.2"

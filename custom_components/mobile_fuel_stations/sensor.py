@@ -89,6 +89,12 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
         return len(self.coordinator.data or [])
 
     @property
+    def available(self) -> bool:
+        # A real empty provider response is [] and remains state 0.  None is
+        # reserved for missing GPS or a provider failure before any result.
+        return self.coordinator.data is not None and super().available
+
+    @property
     def extra_state_attributes(self):
         ref = self.coordinator.reference_position
         return {

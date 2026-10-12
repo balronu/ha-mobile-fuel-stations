@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta
 from dataclasses import replace
 import json
@@ -164,7 +165,7 @@ class CountryAutoContext:
         return self.auto_provider_decision
 
 
-class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
+class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None]):
     """Fetch and retain nearby stations."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -208,6 +209,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         self._retry_not_before: datetime | None = None
         self._unsub_position = None
         self._movement_refresh_scheduled = False
+        self._movement_refresh_task: asyncio.Task | None = None
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
         self._provider_status_store = Store(hass, 1, f"{DOMAIN}.provider_status.{entry.entry_id}")
         # Keep the status in the runtime object as well as hass.data.  The
@@ -385,6 +387,36 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         if self._unsub_position:
             self._unsub_position()
             self._unsub_position = None
+        task = getattr(self, "_movement_refresh_task", None)
+        self._movement_refresh_task = None
+        if task and not task.done():
+            task.cancel()
+
+    def async_schedule_startup_recovery(self) -> None:
+        """Recover once if GPS became valid during initial setup.
+
+        The state listener is installed before the first refresh, but a
+        tracker can become valid between the listener's registration and the
+        first callback.  Re-checking the current state after setup closes
+        that race without adding a timer or an unbounded retry loop.
+        """
+
+        if self.recovery_status != "awaiting_location":
+            return
+        if _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]) is None:
+            return
+        self._schedule_refresh()
+
+    def _schedule_refresh(self) -> None:
+        """Schedule at most one movement/startup refresh task."""
+
+        task = self._movement_refresh_task
+        if self._movement_refresh_scheduled or (task and not task.done()):
+            return
+        self._movement_refresh_scheduled = True
+        self._movement_refresh_task = self.hass.async_create_task(
+            self._async_request_movement_refresh()
+        )
 
     @staticmethod
     def _parse_time(value: Any) -> datetime | None:
@@ -423,7 +455,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             # listener can trigger the first real refresh when GPS appears.
             self.recovery_status = "awaiting_location"
             self.data_stale = False
-            return []
+            # None means that no provider search has produced a result yet.
+            # An empty list is reserved for a successful search with zero
+            # stations, so the overview entity can distinguish unavailable
+            # startup data from a real zero-result response.
+            return None
         observed_decision = self.country_auto_context.observe_position(position)
         if self._is_auto:
             decision = observed_decision
@@ -633,7 +669,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         # A transient provider failure before the first successful result must
         # not abort config-entry setup.  The coordinator remains available
         # with an empty result and the regular poll will retry automatically.
-        return []
+        return None
 
     @callback
     def _async_position_changed(self, event: Event) -> None:
@@ -644,9 +680,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
         # coordinator refresh.  There is no movement baseline yet, so the
         # first valid position itself is the refresh trigger.
         if self.reference_position is None or self.last_request is None:
-            if not self._movement_refresh_scheduled:
-                self._movement_refresh_scheduled = True
-                self.hass.async_create_task(self._async_request_movement_refresh())
+            self._schedule_refresh()
             return
         now = datetime.now().astimezone()
         if self._retry_not_before and now < self._retry_not_before:
@@ -657,15 +691,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station]]):
             return
         if elapsed < timedelta(minutes=float(self.options[CONF_COOLDOWN])):
             return
-        if not self._movement_refresh_scheduled:
-            self._movement_refresh_scheduled = True
-            self.hass.async_create_task(self._async_request_movement_refresh())
+        self._schedule_refresh()
 
     async def _async_request_movement_refresh(self) -> None:
         try:
             await self.async_request_refresh()
         finally:
             self._movement_refresh_scheduled = False
+            self._movement_refresh_task = None
 
     @property
     def current_distance_km(self) -> float | None:

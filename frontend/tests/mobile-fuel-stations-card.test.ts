@@ -44,7 +44,9 @@ describe("formatting and discovery", () => {
     expect(normalizeLogoPath("https://evil.example/logos/")).toBeNull();
     expect(normalizeLogoPath("/local/../secret/")).toBeNull();
     expect(normalizeLogoPath("/local/fuel-logos/%0a/")).toBeNull();
-    expect(buildBrandLogoUrl("Shell", "/local/fuel-logos/")).toBe("/local/fuel-logos/shell.png");
+    expect(buildBrandLogoUrl("Shell", "/local/fuel-logos/")).toBe("/local/fuel-logos/shell.svg");
+    expect(buildBrandLogoUrl("Shell")).toBe("/mobile_fuel_stations/logos/shell.svg");
+    expect(buildBrandLogoUrl("Esso")).toBeNull();
     expect(buildBrandLogoUrl("Shell", "https://evil.example/logos/")).toBeNull();
     expect(buildBrandLogoUrl("Unknown", "/local/fuel-logos/")).toBeNull();
   });
@@ -82,13 +84,15 @@ describe("card", () => {
   it("renders overview, one, five and ten stations in order", async () => {
     for (const count of [1, 5, 10]) { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ type: "custom:mobile-fuel-stations-card", entity: overviewId }); card.hass = hassFor(count); await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(count); expect(card.shadowRoot?.textContent).toContain("Station 1"); }
   });
-  it("keeps logos disabled by default and renders safe user-owned logos when enabled", async () => {
+  it("shows logos by default and respects an explicit opt-out", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     card.setConfig({ entity: overviewId }); card.hass = hassFor(1, {}, { brand: "Shell", provider: "petromap" }); await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".station img")?.getAttribute("src")).toContain("/mobile_fuel_stations/logos/shell.svg");
+    card.setConfig({ entity: overviewId, show_brand_logos: false, logo_path: "/local/fuel-logos/" }); await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".station img")).toBeNull();
-    card.setConfig({ entity: overviewId, show_brand_logos: true, logo_path: "/local/fuel-logos/" }); await card.updateComplete;
+    card.setConfig({ entity: overviewId, logo_path: "/local/fuel-logos/" }); await card.updateComplete;
     const logo = card.shadowRoot?.querySelector(".station img") as HTMLImageElement;
-    expect(logo?.src).toContain("/local/fuel-logos/shell.png");
+    expect(logo?.src).toContain("/local/fuel-logos/shell.svg");
     expect(logo?.alt).toContain("Station 1");
   });
   it("renders logos in nearest/cheapest highlights and falls back on image errors", async () => {
@@ -96,7 +100,7 @@ describe("card", () => {
     const hass = hassFor(1, {
       nearest_station: { station_id: "nearest", station_name: "Nearest", brand: "ARAL", price: 1.7, distance: 1, latitude: 49, longitude: 8 },
       cheapest_station: { station_id: "cheapest", station_name: "Cheapest", brand: "JET", price: 1.6, distance: 2, latitude: 49, longitude: 8 },
-    }, { brand: "Esso", station_id: "nearest", latitude: 49, longitude: 8 });
+    }, { brand: "ARAL", station_id: "nearest", latitude: 49, longitude: 8 });
     card.setConfig({ entity: overviewId, show_brand_logos: true }); card.hass = hass; await card.updateComplete;
     expect(card.shadowRoot?.querySelectorAll(".highlight img")).toHaveLength(2);
     const logo = card.shadowRoot?.querySelector(".station img") as HTMLImageElement;

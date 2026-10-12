@@ -328,7 +328,7 @@ def test_auto_pm_401_starts_provider_specific_reauth(monkeypatch):
 def test_auto_pm_non_auth_failures_do_not_reauth_or_fallback(monkeypatch, error):
     coordinator, tk, pm = _coordinator(monkeypatch, "AT", "e5", pm_error=error)
 
-    assert asyncio.run(coordinator._async_update_data()) == []
+    assert asyncio.run(coordinator._async_update_data()) is None
 
     coordinator.entry.async_start_reauth.assert_not_called()
     assert not tk.calls and len(pm.calls) == 1
@@ -373,6 +373,9 @@ def test_first_refresh_expected_auto_state_is_accepted(monkeypatch, expected):
                 raise UpdateFailed("mobile") from expected
             except UpdateFailed as update_error:
                 raise integration.ConfigEntryNotReady("mobile") from update_error
+
+        def async_schedule_startup_recovery(self):
+            pass
 
     entry = SimpleNamespace(
         entry_id="test-auto-entry",
