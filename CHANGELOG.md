@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0-beta.4 — Coordinator polling lifecycle fix
+
+- Fix the collision with Home Assistant Core's `_schedule_refresh` method so
+  the normal `DataUpdateCoordinator` polling timer remains Core-controlled.
+- Delegate coordinator shutdown to Home Assistant Core after cancelling the
+  integration's movement-recovery task and GPS listener.
+- Report an explicit UNKNOWN polling-callback state while Core is refreshing,
+  instead of claiming that periodic polling is absent.
+- Add regression coverage for six listeners, three regular poll cycles after
+  an initial GPS miss, scheduler preservation, shutdown cleanup, and diagnostics.
+- Preserve provider selection, GPS recovery, stale-data behavior, frontend
+  behavior, and bundled brand assets.
+
 ## 0.6.0-beta.3 — Coordinator lifecycle diagnostics
 
 - Add safe runtime diagnostics for coordinator identity, listener registration,
