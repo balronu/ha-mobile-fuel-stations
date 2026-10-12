@@ -1,11 +1,11 @@
 # Mobile Fuel Stations resource loading
 
-## v0.5.1 loading path
+## v0.5.1-beta.1 loading path
 
 The integration serves the versioned module through Home Assistant's supported
 `add_extra_js_url` API and serves the file through
 `async_register_static_paths`. The static path uses `cache_headers=False`; the
-URL contains the integration version (`?v=0.5.1`). Registration is idempotent.
+URL contains the integration version (`?v=0.5.1-beta.1`). Registration is idempotent.
 
 The bundle registers immediately and retries registration once on the browser
 `load` event. This covers the observed case where Home Assistant imports an
@@ -35,5 +35,5 @@ manual storage-mode migration is:
    testing the dashboard.
 4. Reload dashboard resources through the HA UI.
 
-No such switch is made by v0.5.1; existing dashboard configurations remain
+No such switch is made by v0.5.1-beta.1; existing dashboard configurations remain
 unchanged.

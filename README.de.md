@@ -1,10 +1,9 @@
 # Mobile Fuel Stations – deutsche Dokumentation
 
 Die vollständige deutsche Dokumentation befindet sich in [README.md](README.md).
-Beta 0.5.0-beta.10 enthält zusätzlich zum Beta.9-Funktionsumfang die geprüfte
-Multi-Provider-Auswahl mit sicherer API-Key-Verwaltung und kompaktere mobile
-Tankstellenkarten. Beta.9 enthielt einen
-event-loop-sicheren, einmaligen Ladevorgang der Offline-Länderdaten. Beta.8
-enthält getrennte Preisbewertungen je Kraftstoffart,
-Entfernungssortierung als Standard, explizite Preissortierung, responsive
-Mehrfachpreis-Karten und das freigegebene Home-Assistant-Branding.
+Die Pre-Release `v0.5.1-beta.1` ergänzt das responsive Layout mit Container
+Queries, eine einspaltige Tankstellenliste, die Anzeige der tatsächlichen
+Datenquelle, Stale-Daten- und automatische Recovery-Zustände, verbesserte
+Fehlerdiagnose sowie eine zusätzliche Custom-Element-Registrierung beim
+Browser-`load`-Event. Der sporadische Edge-/iOS-Ladefehler ist in der
+produktiven Home-Assistant-Umgebung noch nicht verifiziert.
