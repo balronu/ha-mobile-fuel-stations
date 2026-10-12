@@ -81,6 +81,8 @@ def test_frontend_bundle_and_versioned_resource_url():
     assert 'customElements.get("mobile-fuel-stations-card-editor")' in bundle_text
     assert 'customElements.get("mobile-fuel-stations-card")||customElements.define' in bundle_text
     assert 'customElements.get("mobile-fuel-stations-card-editor")||customElements.define' in bundle_text
+    assert "function registerCustomElements" in bundle_text
+    assert 'window.addEventListener("load",registerCustomElements,{once:!0})' in bundle_text
     assert FRONTEND_URL == f"/{DOMAIN}/{FRONTEND_FILENAME}?v={FRONTEND_VERSION}"
     assert FRONTEND_RESOURCE_URL == FRONTEND_URL
     assert f"?v={FRONTEND_VERSION}" in FRONTEND_URL

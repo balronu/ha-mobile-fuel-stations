@@ -395,11 +395,21 @@ class MobileFuelStationsCardEditor extends LitElement {
   private _text(key: "entity" | "choose" | "none" | "navigation" | "provider" | "auto" | "apple" | "google" | "waze" | "selectEntity"): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? { entity: "Overview entity", choose: "Select an entity", none: "No overview sensors found", navigation: "Show navigation", provider: "Navigation provider", auto: "Automatic", apple: "Apple Maps", google: "Google Maps", waze: "Waze", selectEntity: "Select an overview entity" }[key] : { entity: "Overview-Entity", choose: "Bitte auswählen", none: "Keine Overview-Sensoren gefunden", navigation: "Navigation anzeigen", provider: "Navigationsanbieter", auto: "Automatisch", apple: "Apple Karten", google: "Google Maps", waze: "Waze", selectEntity: "Bitte eine Overview-Entity auswählen" }[key]; }
 }
 
-if (!customElements.get("mobile-fuel-stations-card")) {
-  customElements.define("mobile-fuel-stations-card", MobileFuelStationsCard);
+function registerCustomElements(): void {
+  // HA can replace the registry after an early extra_module_url import.  The
+  // one-shot load hook makes the registration visible in the final registry
+  // without polling, reloading the page, or defining an element twice.
+  if (!customElements.get("mobile-fuel-stations-card")) {
+    customElements.define("mobile-fuel-stations-card", MobileFuelStationsCard);
+  }
+  if (!customElements.get("mobile-fuel-stations-card-editor")) {
+    customElements.define("mobile-fuel-stations-card-editor", MobileFuelStationsCardEditor);
+  }
 }
-if (!customElements.get("mobile-fuel-stations-card-editor")) {
-  customElements.define("mobile-fuel-stations-card-editor", MobileFuelStationsCardEditor);
+
+registerCustomElements();
+if (document.readyState === "loading") {
+  window.addEventListener("load", registerCustomElements, { once: true });
 }
 
 declare global { interface Window { customCards?: Array<Record<string, unknown>>; } }
