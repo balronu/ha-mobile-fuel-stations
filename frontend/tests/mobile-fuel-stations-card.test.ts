@@ -84,6 +84,18 @@ describe("formatting and discovery", () => {
     expect(buildBrandLogoUrl("Shell", "https://evil.example/logos/")).toBeNull();
     expect(buildBrandLogoUrl("Unknown", "/local/fuel-logos/")).toBeNull();
   });
+  it("keeps short or ambiguous aliases exact and rejects substring matches", () => {
+    for (const [brand, key] of [["ED", "ed"], ["SB", "sb"], ["OIL", "oil"], ["PIN", "pin"], ["Q1", "q1"], ["SVG", "svg"]]) {
+      expect(resolveBrandLogoKey(brand)).toBe(key);
+    }
+    for (const brand of ["ED Station", "SB24", "OILFIELD", "PINK", "Q10", "SVGStation", "Aralissimo"]) {
+      expect(resolveBrandLogoKey(brand)).toBeNull();
+      expect(buildBrandLogoUrl(brand, "/local/fuel-logos/")).toBeNull();
+    }
+    expect(resolveBrandLogoKey(null, "ED Station Nord")).toBeNull();
+    expect(resolveBrandLogoKey(null, "Q10 Tankstelle")).toBeNull();
+    expect(resolveBrandLogoKey(null, "Aral Tankstelle Nord")).toBe("aral");
+  });
   it("selects navigation providers defensively and URL-encodes targets", () => {
     expect(buildNavigationUrl(49.123, 8.456)).toBe("https://www.google.com/maps/dir/?api=1&destination=49.123%2C8.456&travelmode=driving&dir_action=navigate");
     expect(buildNavigationUrl(49.123, 8.456, "apple", "Tankstelle Ä")).toBe("https://maps.apple.com/directions?destination=49.123%2C8.456&mode=driving");

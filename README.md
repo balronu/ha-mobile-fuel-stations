@@ -26,8 +26,9 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
   capability-basierter Provider-Auswahl.
 - **Kraftstoffpreise:** E5, E10, Diesel, LPG/Autogas und HVO100 mit
   Entfernungs- oder Preis-Sortierung.
-- **Lovelace für unterwegs:** Responsive Karte, sechs lokale Markenlogos und
-  direkte Navigation zum ausgewählten Ziel.
+- **Lovelace für unterwegs:** Responsive Karte, Erkennung vieler
+  Markenschreibweisen, sechs lokale Markenlogos und direkte Navigation zum
+  ausgewählten Ziel.
 
 ### Vorschau
 
@@ -245,6 +246,21 @@ zusätzlich der Stationsname als Fallback geprüft. Unbekannte, leere oder nicht
 ladbare Logos zeigen das generische Zapfsäulensymbol. `show_brand_logos: false`
 deaktiviert die Anzeige. Die vorhandenen Logoquellen und Prüfsummen stehen in
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md).
+
+Die Alias-Erkennung versteht nun deutlich mehr Markennamen und
+Provider-Schreibweisen. Das bedeutet nicht, dass für jede erkannte Marke ein
+Bild gebündelt ist: Aktuell sind weiterhin nur die sechs oben genannten lokalen
+SVGs enthalten. Für weitere Marken werden konkrete Bildrechte zunächst separat
+geklärt; bis dahin bleiben sie beim neutralen Tankstellensymbol, während der
+Markenname lesbar bleibt. Die vollständige Referenzinventur steht in
+[docs/BRAND_LOGO_INVENTORY.md](docs/BRAND_LOGO_INVENTORY.md).
+
+Lokale Benutzerlogos können weiterhin über die unterstützte `logo_path`-
+Konfiguration aus `/local/...` oder `/hacsfiles/...` verwendet werden. Externe
+Logo-URLs sind weder erforderlich noch zulässig. Marken werden ausschließlich
+zur sachlichen Identifizierung tatsächlicher Tankstellen verwendet; es besteht
+keine offizielle Verbindung zu den Markeninhabern. Markenrechte und konkrete
+Bildnutzungsrechte werden getrennt dokumentiert und nicht pauschal freigegeben.
 
 Die Karte zeigt Stationsliste, Name, Adresse, Entfernung, Öffnungsstatus,
 Preisalter, verfügbare Preise, E5/E10-Ersatzhinweise und eine Navigation. Eine
