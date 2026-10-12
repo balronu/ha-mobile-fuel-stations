@@ -45,7 +45,9 @@ export type CardConfig = {
 };
 
 const unavailable = new Set(["unknown", "unavailable"]);
-export const DEFAULT_LOGO_PATH = "/local/fuel-logos/";
+export const DEFAULT_LOGO_PATH = "/mobile_fuel_stations/logos/";
+
+const BUNDLED_LOGO_KEYS = new Set(["aral", "jet", "omv", "orlen", "shell", "total"]);
 
 const BRAND_ALIASES: Record<string, string> = {
   aral: "aral",
@@ -65,6 +67,38 @@ const BRAND_ALIASES: Record<string, string> = {
   q1: "q1",
   "q 1": "q1",
   raiffeisen: "raiffeisen",
+  oil: "oil",
+  star: "star",
+  bft: "bft",
+  westfalen: "westfalen",
+  sprint: "sprint",
+  hoyer: "hoyer",
+  classic: "classic",
+  team: "team",
+  ed: "ed",
+  "freie tankstelle": "freie-tankstelle",
+  baywa: "baywa",
+  globus: "globus",
+  kaufland: "kaufland",
+  edeka: "edeka",
+  eni: "eni",
+  agip: "eni",
+  bp: "bp",
+  mol: "mol",
+  "circle k": "circle-k",
+  q8: "q8",
+  tamoil: "tamoil",
+  avanti: "avanti",
+  turmol: "turmol",
+  socar: "socar",
+  ina: "ina",
+  petrol: "petrol",
+  rompetrol: "rompetrol",
+  lukoil: "lukoil",
+  "nis petrol": "nis-petrol",
+  gazprom: "gazprom",
+  okko: "okko",
+  wog: "wog",
 };
 
 function normalizeBrand(value: string): string {
@@ -88,14 +122,16 @@ export function normalizeLogoPath(value: unknown): string | null {
   const path = value.trim();
   if (!path || !path.startsWith("/") || path.includes("\\") || path.includes("..") || path.includes("%")) return null;
   if (/[\u0000-\u001f\u007f?#]/.test(path) || /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(path)) return null;
-  if (!/^\/(?:local|hacsfiles)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\/?$/.test(path)) return null;
+  if (!/^\/(?:local|hacsfiles|mobile_fuel_stations)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\/?$/.test(path)) return null;
   return `${path.replace(/\/+$/, "")}/`;
 }
 
 export function buildBrandLogoUrl(brand: unknown, logoPath: unknown = DEFAULT_LOGO_PATH): string | null {
   const key = resolveBrandLogoKey(brand);
   const base = normalizeLogoPath(logoPath);
-  return key && base ? `${base}${key}.png` : null;
+  if (!key || !base) return null;
+  if (base === DEFAULT_LOGO_PATH && !BUNDLED_LOGO_KEYS.has(key)) return null;
+  return `${base}${key}.svg`;
 }
 
 export function formatPrice(value: unknown, locale = "de-DE", currency = "EUR"): string | null {
@@ -264,12 +300,12 @@ export class MobileFuelStationsCard extends LitElement {
 
   setConfig(config: Partial<CardConfig>): void {
     if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
-      this._config = { ...(config ?? {}), type: config?.type ?? "custom:mobile-fuel-stations-card", navigation: config?.navigation !== false, navigation_provider: config?.navigation_provider ?? "auto", show_brand_logos: config?.show_brand_logos === true, logo_path: config?.logo_path ?? DEFAULT_LOGO_PATH };
+      this._config = { ...(config ?? {}), type: config?.type ?? "custom:mobile-fuel-stations-card", navigation: config?.navigation !== false, navigation_provider: config?.navigation_provider ?? "auto", show_brand_logos: config?.show_brand_logos !== false, logo_path: config?.logo_path ?? DEFAULT_LOGO_PATH };
       this._configError = this._text("selectEntity");
       this.requestUpdate();
       return;
     }
-    this._config = { ...config, type: config.type ?? "custom:mobile-fuel-stations-card", entity: config.entity, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto", show_brand_logos: config.show_brand_logos === true, logo_path: config.logo_path ?? DEFAULT_LOGO_PATH };
+    this._config = { ...config, type: config.type ?? "custom:mobile-fuel-stations-card", entity: config.entity, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto", show_brand_logos: config.show_brand_logos !== false, logo_path: config.logo_path ?? DEFAULT_LOGO_PATH };
     this._configError = undefined;
     this.requestUpdate();
   }
@@ -426,8 +462,9 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _message(message: string) { return html`<ha-card><div class="message">${message}</div></ha-card>`; }
   private _brandLogo(brand: unknown, alt: string) {
-    if (!this._config?.show_brand_logos) return html`<ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>`;
-    const url = buildBrandLogoUrl(brand, this._config.logo_path);
+    const config = this._config;
+    if (!config || config.show_brand_logos === false) return html`<ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>`;
+    const url = buildBrandLogoUrl(brand, config.logo_path);
     const cacheKey = url ?? "fallback";
     if (!url || this._failedBrandLogos.has(cacheKey)) return html`<ha-icon class="icon" icon="mdi:gas-station" aria-label="${this._text("unknownBrand")}"></ha-icon>`;
     return html`<span class="brand-logo"><img src=${url} alt="${alt} ${this._text("brandLogo")}" @error=${() => { this._failedBrandLogos.add(cacheKey); this.requestUpdate(); }}></span>`;
@@ -449,13 +486,13 @@ class MobileFuelStationsCardEditor extends LitElement {
     select, input { box-sizing: border-box; width: 100%; padding: 8px; color: var(--primary-text-color); background: var(--card-background-color); border: 1px solid var(--divider-color); border-radius: 4px; }
     .row { margin-top: 16px; }
   `;
-  private _config: CardConfig = { navigation: true, navigation_provider: "auto", show_brand_logos: false, logo_path: DEFAULT_LOGO_PATH };
+  private _config: CardConfig = { navigation: true, navigation_provider: "auto", show_brand_logos: true, logo_path: DEFAULT_LOGO_PATH };
   private _hass?: Hass;
-  setConfig(config: CardConfig): void { this._config = { ...config, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto", show_brand_logos: config.show_brand_logos === true, logo_path: config.logo_path ?? DEFAULT_LOGO_PATH }; this.requestUpdate(); }
+  setConfig(config: CardConfig): void { this._config = { ...config, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto", show_brand_logos: config.show_brand_logos !== false, logo_path: config.logo_path ?? DEFAULT_LOGO_PATH }; this.requestUpdate(); }
   set hass(value: Hass) { this._hass = value; this.requestUpdate(); }
   protected render() {
     const entities = Object.entries(this._hass?.states ?? {}).filter(([id, value]) => this._isOverview(id, value));
-    return html`<label>${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label><div class="row"><label><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}> ${this._text("navigation")}</label></div><div class="row"><label>${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option><option value="waze">${this._text("waze")}</option></select></label></div><div class="row"><label><input type="checkbox" .checked=${this._config.show_brand_logos === true} @change=${(event: Event) => this._changeBrandLogos(event)}> ${this._text("brandLogos")}</label><label>${this._text("logoPath")}<input .value=${this._config.logo_path ?? DEFAULT_LOGO_PATH} @change=${(event: Event) => this._changeLogoPath(event)}></label></div>`;
+    return html`<label>${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label><div class="row"><label><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}> ${this._text("navigation")}</label></div><div class="row"><label>${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option><option value="waze">${this._text("waze")}</option></select></label></div><div class="row"><label><input type="checkbox" .checked=${this._config.show_brand_logos !== false} @change=${(event: Event) => this._changeBrandLogos(event)}> ${this._text("brandLogos")}</label><label>${this._text("logoPath")}<input .value=${this._config.logo_path ?? DEFAULT_LOGO_PATH} @change=${(event: Event) => this._changeLogoPath(event)}></label></div>`;
   }
   private _isOverview(id: string, value: HassState | undefined): boolean { return Boolean(id.startsWith("sensor.") && value && (Array.isArray(value.attributes.station_entities) || (id.endsWith("_nearby_stations") && value.attributes.station_count !== undefined))); }
   private _changeEntity(event: Event) { this._configChanged({ ...this._config, entity: (event.target as HTMLSelectElement).value }); }

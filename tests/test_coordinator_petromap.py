@@ -118,9 +118,18 @@ def test_startup_without_gps_keeps_coordinator_setup_recoverable(monkeypatch):
     coordinator = _coordinator(provider)
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: None)
 
-    assert asyncio.run(coordinator._async_update_data()) == []
+    assert asyncio.run(coordinator._async_update_data()) is None
     assert coordinator.recovery_status == "awaiting_location"
     assert provider.calls == []
+
+
+def test_successful_empty_provider_response_is_real_zero(monkeypatch):
+    provider = _Provider([])
+    coordinator = _coordinator(provider)
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    assert asyncio.run(coordinator._async_update_data()) == []
+    assert coordinator.recovery_status == "success"
 
 
 def test_first_valid_gps_after_startup_schedules_one_refresh(monkeypatch):
@@ -138,6 +147,39 @@ def test_first_valid_gps_after_startup_schedules_one_refresh(monkeypatch):
     coordinator._async_position_changed(SimpleNamespace())
 
     create_task.assert_called_once()
+
+
+def test_startup_recovery_rechecks_current_gps_without_event(monkeypatch):
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    coordinator.recovery_status = "awaiting_location"
+    create_task = Mock(side_effect=lambda coroutine: coroutine.close())
+    coordinator.hass = SimpleNamespace(
+        data={},
+        async_create_task=create_task,
+    )
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    coordinator.async_schedule_startup_recovery()
+    coordinator.async_schedule_startup_recovery()
+
+    create_task.assert_called_once()
+
+
+def test_shutdown_unsubscribes_and_cancels_pending_recovery_task():
+    coordinator = object.__new__(MobileFuelStationsCoordinator)
+    unsubscribe = Mock()
+    task = Mock()
+    task.done.return_value = False
+    coordinator._unsub_position = unsubscribe
+    coordinator._movement_refresh_task = task
+
+    asyncio.run(coordinator.async_shutdown())
+
+    unsubscribe.assert_called_once_with()
+    task.cancel.assert_called_once_with()
+    assert coordinator._unsub_position is None
+    assert coordinator._movement_refresh_task is None
 
 
 def test_petromap_e5_refresh_uses_one_search_query(monkeypatch):
@@ -213,7 +255,7 @@ def test_transient_timeout_without_cached_data_keeps_entities_recoverable(monkey
     coordinator = _coordinator(provider)
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
 
-    assert asyncio.run(coordinator._async_update_data()) == []
+    assert asyncio.run(coordinator._async_update_data()) is None
 
     assert coordinator.data_stale is False
     assert coordinator.last_update_error_class == "ProviderTimeoutError"
@@ -245,7 +287,7 @@ def test_nakordoni_failure_metadata_is_published_before_recovery_retry(monkeypat
     coordinator.options[CONF_PROVIDER_MODE] = "nakordoni"
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
 
-    assert asyncio.run(coordinator._async_update_data()) == []
+    assert asyncio.run(coordinator._async_update_data()) is None
 
     assert coordinator.hass.data["mobile_fuel_stations"]["last_request_diagnostics"]["test-entry"] == {
         "provider": "nakordoni",
@@ -275,5 +317,5 @@ def test_petromap_non_auth_failures_leave_startup_recovery_available(
     coordinator = _coordinator(provider)
     monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
 
-    assert asyncio.run(coordinator._async_update_data()) == []
+    assert asyncio.run(coordinator._async_update_data()) is None
     assert len(provider.calls) == 1

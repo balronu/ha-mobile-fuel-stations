@@ -9,30 +9,32 @@ Browser-`load`-Event. Der sporadische Edge-/iOS-Ladefehler ist in der
 produktiven Home-Assistant-Umgebung noch nicht belastbar verifiziert und gilt
 nicht als vollständig behoben.
 
-## Markenlogos in v0.6.0-beta.1
+## Markenlogos in v0.6.0-beta.2
 
 Die Beta kann das vorhandene Stationsattribut `brand` provider-unabhängig auf
-lokale Nutzerlogos abbilden. `show_brand_logos` ist standardmäßig `false`,
-damit v0.5.1-Dashboards unverändert bleiben.
+lokale Nutzerlogos abbilden. Neue Karten versuchen Logos standardmäßig;
+`show_brand_logos: false` bleibt der ausdrückliche Opt-out.
 
-Die Beta hält die Entities auch dann angelegt, wenn der GPS-Tracker beim
+Beta.2 hält die Entities auch dann angelegt, wenn der GPS-Tracker beim
 Home-Assistant-Start vorübergehend `unknown`, `unavailable` oder ohne gültige
 Koordinaten ist. Der erste gültige Tracker-Zustand löst genau einen
 ereignisgesteuerten Refresh aus. Vorübergehende Provider-/Netzwerkfehler werden
 über den normalen Polling-Zyklus erneut versucht; ein echter Neustarttest in
 der produktiven HA-Umgebung wurde nicht durchgeführt.
 
-Es werden **keine fremden Markenbilder mitgeliefert**. Die MIT-Lizenz von
-Referenz-Code überträgt nicht automatisch Markenrechte oder Bildlizenzen.
-Unterstützte Aliase sind Aral, Shell, Esso, JET, Total/TotalEnergies, HEM,
-AVIA/AVIA Express, ORLEN/ORLEN Express, OMV, Q1/Q 1 und Raiffeisen. Sie werden
+Beta.2 liefert sechs geprüfte SVGs für Aral, Shell, JET, TotalEnergies, ORLEN
+und OMV mit. Quellen, SHA256-Prüfsummen und verbleibende Markenrechtsrisiken
+stehen in [`BRAND_LOGOS.md`](BRAND_LOGOS.md). Es besteht keine Partnerschaft
+oder Unterstützung durch die dargestellten Marken. Unterstützte Aliase sind
+Aral, Shell, JET, Total/TotalEnergies, ORLEN/ORLEN Express und OMV. Sie werden
 aus `brand` mit normalisierter Groß-/Kleinschreibung, Unicode-Akzenten,
 Leerzeichen und Satzzeichen erkannt; der Stationsname wird nicht als Quelle
 für eine Zuordnung verwendet.
 
-Eigene PNG-Dateien kommen nach `/config/www/fuel-logos/` und sind in HA unter
-`/local/fuel-logos/` erreichbar. Das Dateischema ist `<alias>.png`, zum
-Beispiel `shell.png`. `logo_path` akzeptiert nur lokale `/local/...`- oder
+Mitgelieferte Logos werden automatisch über HACS installiert. Eigene SVG-Dateien
+kommen nach `/config/www/fuel-logos/` und sind in HA unter `/local/fuel-logos/`
+erreichbar. Das Dateischema ist `<alias>.svg`, zum Beispiel `shell.svg`.
+`logo_path` akzeptiert nur lokale `/local/...`- oder
 `/hacsfiles/...`-Pfade; externe URLs und `..` werden abgelehnt. Unbekannte
 Marken, fehlende Dateien und Bildladefehler zeigen das Zapfsäulen-Symbol.
 Logos erscheinen in Liste, **Nächste** und **Günstigste**, mit fester Fläche,
@@ -48,4 +50,4 @@ logo_path: /local/fuel-logos/
 
 Es gibt derzeit keinen Screenshot im Repository; Beispiel und automatisierte
 Render-Tests sind die geprüfte Darstellung. v0.5.1 Stable enthält diese Beta-
-Funktion nicht, und HACS lädt keine Logos automatisch nach.
+Funktion nicht; die sechs Beta.2-Logos werden mit der Integration installiert.

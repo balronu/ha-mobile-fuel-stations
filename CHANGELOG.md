@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.0-beta.2 — Startup recovery and safe logo defaults
+
+- Close the startup race by re-checking the tracker after the initial setup
+  refresh and scheduling exactly one deduplicated recovery refresh when GPS is
+  already valid.
+- Return unavailable data for missing GPS or a provider failure before the
+  first result; reserve state `0` for a successful provider search with no
+  matching stations.
+- Cancel outstanding movement/recovery tasks and unsubscribe the GPS listener
+  during unload.
+- Enable brand-logo lookup for new cards by default while preserving an
+  explicit `show_brand_logos: false` opt-out and all safe local-path checks.
+- Bundle six sanitized, locally served SVG logos (Aral, Shell, JET,
+  TotalEnergies, ORLEN, and OMV) with source URLs, SHA256 hashes, and explicit
+  residual trademark-risk notes in `BRAND_LOGOS.md`.
+- Keep unresolved provider brands on the gas-pump fallback; user-owned local
+  overrides and the explicit `show_brand_logos: false` opt-out remain supported.
+
 ## 0.6.0-beta.1 — User-owned station brand logos
 
 - Added provider-independent brand alias resolution from the existing `brand`

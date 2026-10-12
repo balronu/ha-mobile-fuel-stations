@@ -11,7 +11,7 @@ stations based on a vehicle or device entity exposing `latitude` and
 | Channel | Version | Purpose |
 | --- | --- | --- |
 | Stable | `v0.5.1` | Current recommended version for production installations |
-| Pre-release | `v0.6.0-beta.1` | Beta for local fuel-station brand logos |
+| Pre-release | `v0.6.0-beta.2` | Beta for startup recovery and safe local brand logos |
 | Previous stable | `v0.5.0` | Previous stable version |
 
 The sporadic loading issue on Microsoft Edge and iOS Companion has not yet
@@ -35,29 +35,25 @@ must not be claimed as fully fixed.
 - Local Home Assistant branding in `custom_components/mobile_fuel_stations/brand/`
 - General options can be saved independently of credential management
 
-## Brand logos (v0.6.0-beta.1)
+## Brand logos (v0.6.0-beta.2)
 
-The card can map the existing station `brand` attribute to a local, user-owned
-logo independently of the data provider. The feature defaults to
-`show_brand_logos: false`, so existing dashboards are unchanged.
+The card can map the existing station `brand` attribute to a local logo
+independently of the data provider. New cards try logos by default; an explicit
+`show_brand_logos: false` opt-out remains supported.
 
-No third-party brand images are bundled. An MIT license for reference code does
-not automatically grant trademark rights or a license for image assets. Users
-must provide only logo files for which they have the required rights.
+Beta.2 bundles six reviewed local SVGs for Aral, Shell, JET, TotalEnergies,
+ORLEN, and OMV. Sources, SHA256 hashes, and residual trademark risks are
+documented in [`BRAND_LOGOS.md`](BRAND_LOGOS.md). The integration is
+independent and does not claim endorsement or partnership.
 
 Supported brand aliases currently are:
 
-- Aral → `aral.png`
-- Shell → `shell.png`
-- Esso → `esso.png`
-- JET → `jet.png`
-- Total and TotalEnergies → `total.png`
-- HEM → `hem.png`
-- AVIA and AVIA Express → `avia.png`
-- ORLEN and ORLEN Express → `orlen.png`
-- OMV → `omv.png`
-- Q1 / Q 1 → `q1.png`
-- Raiffeisen → `raiffeisen.png`
+- Aral → `aral.svg`
+- Shell → `shell.svg`
+- JET → `jet.svg`
+- Total and TotalEnergies → `total.svg`
+- ORLEN and ORLEN Express → `orlen.svg`
+- OMV → `omv.svg`
 
 Detection normalizes case, Unicode accents, whitespace, and punctuation. It
 uses only `brand`; it never guesses a brand from the station name. Unknown or
@@ -65,12 +61,13 @@ empty values use the gas-pump fallback icon.
 
 ### User-owned logos
 
-1. Copy logo files to `/config/www/fuel-logos/`.
-2. Use the safe `<alias>.png` naming scheme, for example
-   `/config/www/fuel-logos/shell.png`.
+1. Bundled logos are installed automatically with HACS.
+2. Optional user-owned SVG files can be copied to `/config/www/fuel-logos/`.
+   Use the safe `<alias>.svg` naming scheme, for example
+   `/config/www/fuel-logos/shell.svg`.
 3. Home Assistant exposes that directory as `/local/fuel-logos/`.
 
-Local PNG files are supported. `logo_path` accepts `/local/...` or
+Local SVG files are supported. `logo_path` accepts `/local/...` or
 `/hacsfiles/...`; external URLs, query strings, backslashes, and `..` path
 segments are rejected. Image-load failures reliably fall back to the gas-pump
 icon. Logos appear in the station list and the **Nearest** and **Cheapest**
@@ -84,22 +81,23 @@ type: custom:mobile-fuel-stations-card
 entity: sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations
 navigation: true
 show_brand_logos: true
-logo_path: /local/fuel-logos/
+logo_path: /mobile_fuel_stations/logos/
 ```
 
-Stable `v0.5.1` does not contain this feature. `v0.6.0-beta.1` is a
-controlled beta; logos are not installed automatically or downloaded through
-HACS. No screenshot is currently stored in the repository; the YAML example
+Stable `v0.5.1` does not contain this feature. `v0.6.0-beta.2` is a
+controlled beta; the six bundled logos are installed with the integration and
+additional brands use the fallback. No screenshot is currently stored in the repository; the YAML example
 and automated rendering tests provide the verifiable example.
 
-### Startup recovery in this beta
+### Startup recovery in beta.2
 
 If the configured tracker is `unknown`, `unavailable`, or has no valid
-coordinates during HA startup, the entities are still created. When valid GPS
-coordinates arrive, exactly one event-driven refresh is scheduled. A transient
-provider/network failure also leaves the entities created and is retried by the
-normal polling cycle. A real restart test in the production HA environment was
-not performed.
+coordinates during HA startup, the entities are created but Nearby remains
+unavailable. After the initial refresh, the current tracker is checked again
+and exactly one deduplicated recovery refresh is scheduled when GPS is valid.
+Only a successful search with no matches produces `0`; existing data remains
+visible as stale during transient provider errors. A real restart test in the
+production HA environment was not performed.
 
 ## Providers and coverage
 
