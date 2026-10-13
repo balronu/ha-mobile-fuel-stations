@@ -16,9 +16,14 @@ Both repositories expose MIT code licenses, while the reviewed README/license
 material does not identify a separate license or redistribution permission for
 the brand image files. No image was copied from either repository.
 
-v0.6.0-beta.2 provides provider-independent brand resolution with local
+v0.6.0 provides provider-independent brand resolution with local
 bundled assets. The implementation maps the station's existing `brand`
 attribute to a canonical local filename.
+
+The complete 62-name rights matrix and the six concrete candidate reviews are
+in [`BRAND_LOGO_INVENTORY.md`](BRAND_LOGO_INVENTORY.md). Only the six existing
+SVGs are bundled; no additional brand logo is claimed as integrated by this
+audit.
 
 ## Rights boundary
 

@@ -49,3 +49,18 @@ fallback until a matching current asset and documented rights basis are found.
 Users may still configure their own local `logo_path`; explicit user logos
 take priority over bundled files. `show_brand_logos: false` always disables
 logo rendering.
+
+## 62-brand rights review
+
+The complete individual review of the 62 reference-brand names is maintained
+in [`docs/BRAND_LOGO_INVENTORY.md`](docs/BRAND_LOGO_INVENTORY.md). Its current
+result is A=8, B=29, C=18, D=7. The A total includes the six already bundled
+assets and the `total.svg` alias for Total/TotalEnergies; it does not mean that
+62 logos are available.
+
+The only new A candidate identified in the review is Globus from the pinned
+Simple Icons source. It is not bundled by this document-only review. Q1, star,
+Esso, OIL!, and Westfalen remain B candidates despite concrete source leads:
+their exact current variant and/or a defensible redistribution basis still
+needs to be recorded. No candidate PNG or SVG from the reference project was
+copied.
