@@ -135,6 +135,8 @@ def _coordinator(monkeypatch, country, fuel="diesel", *, tk_error=None, pm_error
         CONF_TANKERKOENIG_API_KEY: "TK_SECRET_ONLY",
         CONF_PETROMAP_API_KEY: "PM_SECRET_ONLY",
     }
+    coordinator.fuel_types = [fuel]
+    coordinator.provider_modes = frozenset({PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP})
     coordinator._session = session
     coordinator._providers = {}
     coordinator.client = None

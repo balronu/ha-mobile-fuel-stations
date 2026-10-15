@@ -69,7 +69,7 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | --- | --- | --- |
 | Stable | `v0.6.0` | Aktuelle stabile Version |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
-| Aktuelle Beta | `v0.6.1-beta.2` | Beta für kontrollierte Tests |
+| Aktuelle Beta | `v0.6.1-beta.3` | Beta für kontrollierte Tests |
 
 `v0.6.0` ist die aktuelle stabile Veröffentlichung. Sie enthält die aus Beta.6
 übernommene verbesserte lokale Erkennung der sechs gebündelten Markenlogos und
@@ -103,7 +103,7 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.6.0` ist die stabile HACS-Version. `v0.6.1-beta.2` ist als Beta für
+`v0.6.0` ist die stabile HACS-Version. `v0.6.1-beta.3` ist als Beta für
 kontrollierte Tests im GitHub-Archiv verfügbar. Für einen Rücksprung
 steht `v0.5.1` als vorherige Stable-Version zur Verfügung.
 

@@ -172,6 +172,8 @@ def test_coordinator_fail_open_keeps_exactly_one_existing_provider_request(monke
         CONF_FUEL_TYPE: "diesel",
         CONF_STATION_COUNT: 3,
     }
+    coordinator.fuel_types = ["diesel"]
+    coordinator.provider_modes = frozenset({PROVIDER_PETROMAP})
     coordinator.client = provider
     coordinator.stations = []
     coordinator.nearest_station = None

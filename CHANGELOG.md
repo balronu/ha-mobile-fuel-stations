@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1-beta.3 — Persisted startup cache and cooldown recovery
+
+- Persist the last validated station result in the existing Home Assistant Store.
+- Restore matching results as visibly stale data after reload/startup.
+- Schedule one provider refresh after the Tankerkönig cooldown instead of
+  exposing sensors as unavailable.
+- Reject malformed or differently scoped cached data and clean up cooldown
+  tasks during unload.
+
 ## 0.6.0 — Stable release
 
 - Promote the validated beta.6 functionality to the stable `v0.6.0` release.

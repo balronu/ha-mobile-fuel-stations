@@ -70,7 +70,7 @@ opening status, and destination navigation.
 | --- | --- | --- |
 | Stable | `v0.6.0` | Current stable release |
 | Previous stable | `v0.5.1` | Available rollback version |
-| Latest beta | `v0.6.1-beta.2` | Beta for controlled testing |
+| Latest beta | `v0.6.1-beta.3` | Beta for controlled testing |
 
 `v0.6.0` is the current stable release. It includes the improved local
 detection of the six bundled brand logos and the updated documentation from
@@ -93,7 +93,7 @@ polling, movement refreshes, navigation, and a responsive Lovelace card.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.6.0` is the stable HACS version. `v0.6.1-beta.2` is available in the GitHub
+`v0.6.0` is the stable HACS version. `v0.6.1-beta.3` is available in the GitHub
 archive for controlled testing; `v0.5.1` remains available as the
 previous stable rollback.
 

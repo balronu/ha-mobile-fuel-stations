@@ -100,6 +100,8 @@ _MAX_PLAUSIBLE_SPEED_KMH = 200.0
 _MIN_PROVIDER_INTERVALS = {
     PROVIDER_TANKERKOENIG: timedelta(minutes=5),
 }
+_STATION_CACHE_KEY = "stations"
+_CACHE_CONTEXT_KEY = "station_cache_context"
 
 
 @dataclass(slots=True, frozen=True)
@@ -332,6 +334,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._recovery_transient_failures = 0
         self._recovery_task: asyncio.Task | None = None
         self._recovery_request_scheduled = False
+        self._cooldown_timer_unsub = None
+        self._cooldown_refresh_task: asyncio.Task | None = None
         self._provider_lock: asyncio.Lock | None = None
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
         self._provider_status_store = Store(hass, 1, f"{DOMAIN}.provider_status.{entry.entry_id}")
@@ -500,6 +504,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 self.last_gps_sample = GpsSample(
                     (float(gps_lat), float(gps_lon)), gps_at, None, None
                 )
+            cached = self._load_cached_stations(stored)
+            if cached is not None:
+                self._set_station_data(cached)
+                self.data_stale = True
+                # Data loaded from disk is immediately useful, but must be
+                # visibly marked stale until a provider refresh succeeds.
+                self.data = self.stations
+                self._schedule_provider_cooldown_refresh()
         provider_status = await self._provider_status_store.async_load()
         self.provider_status = (
             provider_status if isinstance(provider_status, dict) else {}
@@ -516,6 +528,189 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 self._async_position_reported,
             )
             self.gps_listener_registered = True
+
+    def _cache_context(self) -> dict[str, object]:
+        """Return non-sensitive configuration needed to scope cached results."""
+
+        return {
+            "provider_modes": sorted(self.provider_modes),
+            "fuel_types": sorted(self.fuel_types),
+            "radius": float(self.options[CONF_RADIUS]),
+            "station_count": int(self.options[CONF_STATION_COUNT]),
+            "sort_mode": self.options.get(CONF_SORT_MODE, DEFAULT_SORT_MODE),
+            "sort_fuel": self.options.get(
+                CONF_SORT_FUEL,
+                self.fuel_types[0] if self.fuel_types else DEFAULT_SORT_FUEL,
+            ),
+        }
+
+    def _load_cached_stations(self, stored: dict[str, Any]) -> list[Station] | None:
+        """Load only a complete cache belonging to this entry and query."""
+
+        context = stored.get(_CACHE_CONTEXT_KEY)
+        if not isinstance(context, dict) or context != self._cache_context():
+            return None
+        raw_stations = stored.get(_STATION_CACHE_KEY)
+        if not isinstance(raw_stations, list):
+            return None
+        stations: list[Station] = []
+        try:
+            for raw in raw_stations:
+                station = self._station_from_store(raw)
+                if station is None:
+                    return None
+                stations.append(station)
+        except (TypeError, ValueError):
+            return None
+        reference = self.reference_position
+        current = None
+        if getattr(self.hass, "states", None) is not None:
+            current = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
+        if reference is not None and current is not None:
+            # Do not silently expose a cache from a different place after a
+            # location change. The persisted reference is already part of the
+            # existing state payload; no additional GPS data is stored.
+            if haversine_km(reference, current) > max(float(self.options[CONF_RADIUS]), 1.0):
+                return None
+        return stations
+
+    @staticmethod
+    def _station_to_store(station: Station) -> dict[str, object]:
+        """Serialize the provider-neutral station model without secrets."""
+
+        result = {
+            "station_id": station.station_id,
+            "name": station.name,
+            "brand": station.brand,
+            "price": station.price,
+            "distance": station.distance,
+            "is_open": station.is_open,
+            "street": station.street,
+            "house_number": station.house_number,
+            "postcode": station.postcode,
+            "place": station.place,
+            "latitude": station.latitude,
+            "longitude": station.longitude,
+            "currency": station.currency,
+            "price_updated_at": station.price_updated_at.isoformat()
+            if station.price_updated_at else None,
+            "country_code": station.country_code,
+            "provider": station.provider,
+            "price_confirmed_at": station.price_confirmed_at.isoformat()
+            if station.price_confirmed_at else None,
+            "price_age_hours": station.price_age_hours,
+            "price_stale": station.price_stale,
+            "fuel_type": station.fuel_type,
+            "requested_fuel": station.requested_fuel,
+            "fallback_used": station.fallback_used,
+            "fuel_prices": station.fuel_prices,
+            "fuel_fallbacks": station.fuel_fallbacks,
+        }
+        return result
+
+    @classmethod
+    def _station_from_store(cls, raw: object) -> Station | None:
+        if not isinstance(raw, dict):
+            return None
+        required = ("station_id", "name", "brand", "street", "house_number", "postcode", "place")
+        if any(not isinstance(raw.get(key), str) for key in required):
+            return None
+
+        def number(key: str, *, finite: bool = True) -> float | None:
+            value = raw.get(key)
+            if value is None:
+                return None
+            parsed = float(value)
+            if finite and not isfinite(parsed):
+                raise ValueError(key)
+            return parsed
+
+        def timestamp(key: str) -> datetime | None:
+            value = raw.get(key)
+            if value is None:
+                return None
+            parsed = cls._parse_time(value)
+            if parsed is None:
+                raise ValueError(key)
+            return parsed
+
+        latitude, longitude = number("latitude"), number("longitude")
+        if latitude is not None and not -90 <= latitude <= 90:
+            return None
+        if longitude is not None and not -180 <= longitude <= 180:
+            return None
+        is_open = raw.get("is_open")
+        if is_open is not None and not isinstance(is_open, bool):
+            return None
+        fuel_prices = raw.get("fuel_prices")
+        if fuel_prices is not None and not isinstance(fuel_prices, dict):
+            return None
+        fuel_fallbacks = raw.get("fuel_fallbacks")
+        if fuel_fallbacks is not None and not isinstance(fuel_fallbacks, dict):
+            return None
+        return Station(
+            station_id=raw["station_id"], name=raw["name"], brand=raw["brand"],
+            price=number("price"), distance=number("distance"), is_open=is_open,
+            street=raw["street"], house_number=raw["house_number"],
+            postcode=raw["postcode"], place=raw["place"], latitude=latitude,
+            longitude=longitude, currency=raw.get("currency"),
+            price_updated_at=timestamp("price_updated_at"),
+            country_code=raw.get("country_code"), provider=raw.get("provider"),
+            price_confirmed_at=timestamp("price_confirmed_at"),
+            price_age_hours=number("price_age_hours"),
+            price_stale=raw.get("price_stale"), fuel_type=raw.get("fuel_type"),
+            requested_fuel=raw.get("requested_fuel"),
+            fallback_used=bool(raw.get("fallback_used", False)),
+            fuel_prices=fuel_prices, fuel_fallbacks=fuel_fallbacks,
+        )
+
+    def _set_station_data(self, stations: list[Station]) -> None:
+        """Update all derived station fields from a validated station list."""
+
+        self.stations = stations
+        self.nearest_station = nearest_station(stations)
+        self.cheapest_stations = cheapest_by_fuel(stations)
+        self.cheapest_station = self.cheapest_stations.get(
+            self.fuel_types[0] if self.fuel_types else DEFAULT_SORT_FUEL
+        )
+
+    def _cancel_provider_cooldown_timer(self) -> None:
+        cancel = self._cooldown_timer_unsub
+        self._cooldown_timer_unsub = None
+        if cancel:
+            cancel()
+
+    def _schedule_provider_cooldown_refresh(self) -> None:
+        if self.last_request is None:
+            return
+        remaining = self._provider_minimum_interval(
+            self.options.get(CONF_PROVIDER_MODE)
+        ) - (datetime.now().astimezone() - self.last_request)
+        if remaining.total_seconds() <= 0:
+            return
+        if self._cooldown_timer_unsub is not None:
+            return
+
+        @callback
+        def _run(_now: datetime) -> None:
+            self._cooldown_timer_unsub = None
+            task = self._cooldown_refresh_task
+            if task is None or task.done():
+                self._cooldown_refresh_task = self.hass.async_create_task(
+                    self._async_cooldown_refresh()
+                )
+
+        self._cooldown_timer_unsub = async_call_later(
+            self.hass, remaining.total_seconds(), _run
+        )
+
+    async def _async_cooldown_refresh(self) -> None:
+        try:
+            await self.async_request_refresh()
+        except asyncio.CancelledError:
+            raise
+        finally:
+            self._cooldown_refresh_task = None
 
     async def _set_provider_status(self, provider: str, status: str) -> None:
         """Persist only non-sensitive result state from a real provider call."""
@@ -542,7 +737,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._unsub_position_report = None
         self.gps_listener_registered = False
         self._cancel_recovery_timer()
+        self._cancel_provider_cooldown_timer()
         self._recovery_active = False
+        cooldown_task = self._cooldown_refresh_task
+        self._cooldown_refresh_task = None
+        if cooldown_task and not cooldown_task.done():
+            cooldown_task.cancel()
         task = getattr(self, "_movement_refresh_task", None)
         self._movement_refresh_task = None
         if task and not task.done():
@@ -846,6 +1046,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             and now - self.last_request < provider_minimum
         ):
             self.last_update_result = "provider_cooldown"
+            self.data_stale = bool(self.stations)
+            self._schedule_provider_cooldown_refresh()
             return self.stations if self.stations else None
         provider_lock = getattr(self, "_provider_lock", None)
         if provider_lock is None:
@@ -939,14 +1141,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.recovery_provider_in_flight = False
             provider_lock.release()
         result = merge_stations(result)
-        self.nearest_station = nearest_station(result)
+        self._cancel_provider_cooldown_timer()
+        self._set_station_data(result)
         if provider_mode == PROVIDER_NAKORDONI:
             self._record_nakordoni_success(provider)
-        self.cheapest_stations = cheapest_by_fuel(result)
-        self.cheapest_station = self.cheapest_stations.get(
-            getattr(self, "fuel_types", configured_fuels)[0]
-        )
-        self.stations = sort_stations(
+        sorted_stations = sort_stations(
             result,
             int(self.options[CONF_STATION_COUNT]),
             mode=self.options.get(CONF_SORT_MODE, DEFAULT_SORT_MODE),
@@ -955,6 +1154,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 getattr(self, "fuel_types", configured_fuels)[0] if configured_fuels else DEFAULT_SORT_FUEL,
             ),
         )
+        self.stations = sorted_stations
         self.last_successful_update = now
         self.reference_position = position
         recovered = self.data_stale
@@ -988,6 +1188,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             if self.last_gps_sample else None,
             "last_gps_at": self.last_gps_sample.observed_at.isoformat()
             if self.last_gps_sample else None,
+            _CACHE_CONTEXT_KEY: self._cache_context(),
+            _STATION_CACHE_KEY: [self._station_to_store(station) for station in self.stations],
         })
         return self.stations
 
@@ -1037,6 +1239,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "consecutive_failures": self.consecutive_failures,
             "reference_latitude": position[0] if position else None,
             "reference_longitude": position[1] if position else None,
+            _CACHE_CONTEXT_KEY: self._cache_context(),
+            _STATION_CACHE_KEY: [self._station_to_store(station) for station in self.stations],
         })
         if self.data_stale:
             return self.stations

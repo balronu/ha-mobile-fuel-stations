@@ -77,6 +77,8 @@ def _coordinator(provider, fuel="diesel"):
         CONF_COOLDOWN: 5,
         CONF_ADAPTIVE_UPDATES: False,
     }
+    coordinator.fuel_types = [fuel]
+    coordinator.provider_modes = frozenset({PROVIDER_PETROMAP})
     coordinator.client = provider
     coordinator.stations = []
     coordinator.nearest_station = None
@@ -116,6 +118,8 @@ def _coordinator(provider, fuel="diesel"):
     coordinator.last_gps_sample = None
     coordinator._last_gps_event_key = None
     coordinator._provider_lock = None
+    coordinator._cooldown_timer_unsub = None
+    coordinator._cooldown_refresh_task = None
     coordinator._store = _Store()
     coordinator._provider_status_store = _Store()
     coordinator.provider_status = {}
@@ -642,6 +646,100 @@ def test_retry_after_blocks_provider_without_cached_data(monkeypatch):
 
     assert asyncio.run(coordinator._async_update_data()) is None
     assert len(provider.calls) == 1
+
+
+def test_station_cache_round_trip_is_secret_free_and_validated():
+    coordinator = _coordinator(_Provider())
+    stored = coordinator._station_to_store(_station())
+
+    assert "api_key" not in stored
+    assert coordinator._station_from_store(stored) == _station()
+    invalid = dict(stored, latitude=91)
+    assert coordinator._station_from_store(invalid) is None
+
+
+def test_reload_restores_matching_station_cache_as_stale_and_schedules_cooldown(
+    monkeypatch,
+):
+    coordinator = _coordinator(_Provider())
+    coordinator.options[CONF_MOVEMENT_UPDATES] = False
+    coordinator.reference_position = (49.2, 7.0)
+    coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=1)
+    cached = coordinator._station_to_store(_station())
+    coordinator._store.saved = {
+        "last_request": coordinator.last_request.isoformat(),
+        "last_successful_update": coordinator.last_request.isoformat(),
+        "reference_latitude": 49.2,
+        "reference_longitude": 7.0,
+        "station_cache_context": coordinator._cache_context(),
+        "stations": [cached],
+    }
+    coordinator.hass.states = SimpleNamespace(
+        get=lambda _entity: SimpleNamespace(
+            state="home", attributes={"latitude": 49.2, "longitude": 7.0}
+        )
+    )
+    scheduled = []
+    monkeypatch.setattr(
+        coordinator_module,
+        "async_call_later",
+        lambda _hass, delay, callback: scheduled.append((delay, callback)) or (lambda: None),
+    )
+
+    asyncio.run(coordinator.async_setup())
+
+    assert coordinator.stations == [_station()]
+    assert coordinator.data == [_station()]
+    assert coordinator.data_stale is True
+    assert scheduled and scheduled[0][0] > 0
+
+
+def test_reload_rejects_cache_for_different_query_context():
+    coordinator = _coordinator(_Provider())
+    stored = {
+        "station_cache_context": dict(coordinator._cache_context(), fuel_types=["e5"]),
+        "stations": [coordinator._station_to_store(_station())],
+    }
+
+    assert coordinator._load_cached_stations(stored) is None
+
+
+def test_cooldown_keeps_cached_data_visible_and_schedules_one_refresh(monkeypatch):
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+    coordinator.available_provider_modes = frozenset({PROVIDER_TANKERKOENIG})
+    coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=1)
+    coordinator.stations = [_station()]
+    coordinator.data = coordinator.stations
+    scheduled = []
+    monkeypatch.setattr(
+        coordinator_module,
+        "async_call_later",
+        lambda _hass, delay, callback: scheduled.append((delay, callback)) or (lambda: None),
+    )
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == [_station()]
+    assert coordinator.last_update_result == "provider_cooldown"
+    assert coordinator.data_stale is True
+    assert len(scheduled) == 1
+    assert provider.calls == []
+
+
+@pytest.mark.parametrize("adaptive", [False, True])
+def test_successful_refresh_persists_cache_in_both_update_modes(monkeypatch, adaptive):
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    coordinator.options[CONF_ADAPTIVE_UPDATES] = adaptive
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_PETROMAP
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    assert asyncio.run(coordinator._async_update_data()) == [_station()]
+    assert coordinator._store.saved["stations"]
+    assert coordinator._store.saved["station_cache_context"] == coordinator._cache_context()
     assert asyncio.run(coordinator._async_update_data()) is None
     assert len(provider.calls) == 1
 
