@@ -90,6 +90,8 @@ Die Integration bietet unter anderem:
 - Startup-Recovery bei verspätetem GPS oder vorübergehend nicht verfügbarem
   Provider
 - reguläres DataUpdateCoordinator-Polling und bewegungsabhängige Updates
+- optionale adaptive Aktualisierung anhand gültiger GPS-Geschwindigkeit
+- persistierter, kontextgeprüfter Stations-Cache mit sichtbarer Stale-Markierung
 - responsive Lovelace-Karte mit Navigation und Markenlogo-Fallback
 
 ## Installation über HACS
@@ -106,6 +108,10 @@ Die Integration bietet unter anderem:
 `v0.6.0` ist die stabile HACS-Version. `v0.6.1-beta.3` ist als Beta für
 kontrollierte Tests im GitHub-Archiv verfügbar. Für einen Rücksprung
 steht `v0.5.1` als vorherige Stable-Version zur Verfügung.
+
+Die adaptive Aktualisierung ist standardmäßig deaktiviert und wird nur über
+den Optionsdialog aktiviert. Sie verwendet ausschließlich gültige, aktuelle
+GPS-Daten; künstliche Positionen werden nicht erzeugt.
 
 Die Lovelace-Karte wird von der Integration bereitgestellt und registriert. Die
 versionierte Ressource lautet für Stable v0.6.0:
@@ -129,6 +135,7 @@ Im Konfigurationsdialog werden typischerweise gewählt:
 - einer oder mehrere Provider beziehungsweise **Automatisch**
 - Sortierung nach Entfernung oder Kraftstoffpreis
 - Polling-Intervall sowie Bewegungsschwelle und Cooldown
+- optional adaptive Aktualisierung (standardmäßig deaktiviert)
 - gewünschter Navigationsdienst der Karte
 
 Die allgemeinen Optionen werden separat von den Zugangsdaten gespeichert.
@@ -136,6 +143,12 @@ Unter **Zugangsdaten verwalten** können Provider-Schlüssel ersetzt oder
 ausdrücklich entfernt werden. Ein leeres Feld lässt einen vorhandenen Schlüssel
 unverändert. Die Oberfläche zeigt nur nicht-sensitive Zugangsstatus, niemals
 vollständige Schlüssel.
+
+Bei aktivierter adaptiver Aktualisierung gelten diese Zielintervalle anhand
+der zuletzt verifizierten Geschwindigkeit: Stillstand oder 0 km/h = 15 Minuten,
+Stadtverkehr bis 30 km/h = 5 Minuten, Landstraße über 30 bis 70 km/h =
+2 Minuten und Autobahn über 70 km/h = 1 Minute. Provider-Mindestabstände
+haben Vorrang; das adaptive Intervall darf keine Provider-Quote umgehen.
 
 ## Provider, Länder und Kraftstoffe
 
@@ -212,6 +225,13 @@ Jitter behandelt. `Retry-After` und erkannte Rate-Limits haben Vorrang. Dauerhaf
 Authentifizierungs- oder Konfigurationsfehler werden diagnostiziert und nicht
 in einer schnellen Endlosschleife wiederholt. Bei temporären Fehlern bleiben
 gültige Cachedaten erhalten und werden als veraltet kenntlich gemacht.
+
+Erfolgreiche Stationsdaten werden im HA-Store persistiert und beim passenden
+Reload sofort wieder angezeigt. Der Cache wird nur bei identischem Provider-,
+Kraftstoff-, Radius-, Sortier- und Stationskontext verwendet; ungültige oder
+orts-/abfragefremde Daten werden verworfen. Während eines Provider-Cooldowns
+bleiben passende Daten sichtbar und werden mit `data_stale=true` markiert.
+Nach Ablauf des Cooldowns wird höchstens ein deduplizierter Refresh gestartet.
 
 Nach erfolgreichem Abruf endet die Startup-Recovery. Das normale Polling bleibt
 unverändert aktiv (standardmäßig etwa alle 15 Minuten), ebenso der separate
@@ -341,6 +361,8 @@ Die CI prüft zusätzlich Home-Assistant-/Hassfest-Kompatibilität, Bundle- und
 Diff-Synchronität, Markdown-/Versionskonsistenz und Secret-Scanning. Live-
 Providerzugänge werden nicht als Tests vorausgesetzt; Provider- und
 Recovery-Tests verwenden Mocks und Fixtures.
+Die adaptive Logik wird mit Geschwindigkeitsgrenzen, GPS-Ausreißern,
+Provider-Mindestabständen, Cache-Reload, Cooldown und Unload-Abbruch geprüft.
 
 ## Release-Archiv
 
