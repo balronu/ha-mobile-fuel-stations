@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.6.0"><img src="https://img.shields.io/badge/Stable-v0.6.0-16a34a" alt="Stable v0.6.0"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.6.1"><img src="https://img.shields.io/badge/Stable-v0.6.1-16a34a" alt="Stable v0.6.1"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -68,19 +68,20 @@ opening status, and destination navigation.
 
 | Channel | Version | Meaning |
 | --- | --- | --- |
-| Stable | `v0.6.0` | Current stable release |
+| Stable | `v0.6.1` | Current stable release |
 | Previous stable | `v0.5.1` | Available rollback version |
-| Latest beta | `v0.6.1-beta.3` | Beta for controlled testing |
+| Frontend component | `v0.6.0` | Independently versioned Lovelace component |
 
-`v0.6.0` is the current stable release. It includes the improved local
-detection of the six bundled brand logos and the updated documentation from
-Beta.6. The provider backend, startup recovery, and regular polling retain the
-validated beta.5/beta.6 behavior.
+`v0.6.1` is the current stable release. It includes persisted cache recovery,
+cooldown recovery, and optional adaptive GPS updates. The Lovelace component
+remains independently versioned at `0.6.0`.
 
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
 sorting, automatic provider selection, startup recovery, regular coordinator
-polling, movement refreshes, navigation, and a responsive Lovelace card.
+polling, movement refreshes, navigation, a responsive Lovelace card, persisted
+context-checked station cache, cooldown recovery, and optional adaptive GPS
+refresh.
 
 ## Installation with HACS
 
@@ -93,12 +94,11 @@ polling, movement refreshes, navigation, and a responsive Lovelace card.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.6.0` is the stable HACS version. `v0.6.1-beta.3` is available in the GitHub
-archive for controlled testing; `v0.5.1` remains available as the
+`v0.6.1` is the stable HACS version; `v0.5.1` remains available as the
 previous stable rollback.
 
-The Lovelace card is supplied and registered by the integration. The Stable
-v0.6.0 resource is:
+The Lovelace card is supplied and registered by the integration. The
+independently versioned frontend resource remains:
 
 ```text
 /mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0
@@ -114,6 +114,12 @@ The configuration flow selects a position entity with `latitude` and
 mode, sorting, polling interval, movement threshold/cooldown, and navigation
 service. General options and credentials are stored separately. Empty
 credential fields keep existing keys; keys are never shown in full.
+
+Adaptive updates are disabled by default and can be enabled through the
+Options flow. With valid, current GPS speed, target intervals are 15 minutes
+while stationary, 5 minutes up to 30 km/h, 2 minutes above 30 to 70 km/h, and
+1 minute above 70 km/h. Provider cooldowns, rate limits, and `Retry-After`
+always take precedence; no artificial GPS positions are generated.
 
 ## Providers, countries, and fuels
 
@@ -169,6 +175,11 @@ failures. Successful recovery ends the recovery loop; normal polling and the
 movement refresh remain active. Timers, tasks, and listeners are cleaned up on
 unload/reload.
 
+The last validated station result is persisted in the existing Home Assistant
+Store. A matching reload restores it immediately as `data_stale=true`; cache
+entries with a different query context, location, or invalid data are rejected.
+After cooldown expiry, at most one deduplicated provider refresh is scheduled.
+
 ## Lovelace card and brand logos
 
 ```yaml
@@ -178,7 +189,7 @@ navigation: true
 show_brand_logos: true
 ```
 
-v0.6.0 recognizes the six bundled local SVGs: Aral (`aral.svg`), Shell
+v0.6.1 recognizes the six bundled local SVGs: Aral (`aral.svg`), Shell
 (`shell.svg`), JET (`jet.svg`), Total/TotalEnergies (`total.svg`),
 ORLEN/ORLEN Express (`orlen.svg`), and OMV (`omv.svg`). Matching normalizes
 case, Unicode accents, whitespace, and punctuation. If `brand` is missing or
@@ -222,7 +233,8 @@ Create a Home Assistant backup before updating. Update through HACS and fully
 restart Home Assistant. Existing config entries, credentials, station sensors,
 and compatible dashboard configurations are retained. Check the versioned card
 resource and browser cache after a major update. `v0.5.1` remains available as
-the previous stable rollback; beta releases remain in the GitHub archive.
+the previous stable rollback; historical beta releases remain in the GitHub
+archive.
 
 ## Privacy and limitations
 
@@ -267,7 +279,7 @@ recovery tests use mocks and fixtures rather than unverified live credentials.
 
 Historical release notes are preserved in the
 [GitHub release archive](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/), including the current
-[`v0.6.0 release notes`](docs/releases/RELEASE_NOTES_v0.6.0.md).
+[`v0.6.1 release notes`](docs/releases/RELEASE_NOTES_v0.6.1.md).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).
