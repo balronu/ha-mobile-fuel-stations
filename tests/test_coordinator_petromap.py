@@ -646,6 +646,8 @@ def test_retry_after_blocks_provider_without_cached_data(monkeypatch):
 
     assert asyncio.run(coordinator._async_update_data()) is None
     assert len(provider.calls) == 1
+    assert asyncio.run(coordinator._async_update_data()) is None
+    assert len(provider.calls) == 1
 
 
 def test_station_cache_round_trip_is_secret_free_and_validated():
@@ -663,6 +665,8 @@ def test_reload_restores_matching_station_cache_as_stale_and_schedules_cooldown(
 ):
     coordinator = _coordinator(_Provider())
     coordinator.options[CONF_MOVEMENT_UPDATES] = False
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+    coordinator.provider_modes = frozenset({PROVIDER_TANKERKOENIG})
     coordinator.reference_position = (49.2, 7.0)
     coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=1)
     cached = coordinator._station_to_store(_station())
@@ -740,8 +744,6 @@ def test_successful_refresh_persists_cache_in_both_update_modes(monkeypatch, ada
     assert asyncio.run(coordinator._async_update_data()) == [_station()]
     assert coordinator._store.saved["stations"]
     assert coordinator._store.saved["station_cache_context"] == coordinator._cache_context()
-    assert asyncio.run(coordinator._async_update_data()) is None
-    assert len(provider.calls) == 1
 
 
 def test_nakordoni_failure_metadata_is_published_before_recovery_retry(monkeypatch):

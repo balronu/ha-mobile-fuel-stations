@@ -675,7 +675,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         )
 
     def _cancel_provider_cooldown_timer(self) -> None:
-        cancel = self._cooldown_timer_unsub
+        cancel = getattr(self, "_cooldown_timer_unsub", None)
         self._cooldown_timer_unsub = None
         if cancel:
             cancel()
@@ -688,13 +688,13 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         ) - (datetime.now().astimezone() - self.last_request)
         if remaining.total_seconds() <= 0:
             return
-        if self._cooldown_timer_unsub is not None:
+        if getattr(self, "_cooldown_timer_unsub", None) is not None:
             return
 
         @callback
         def _run(_now: datetime) -> None:
             self._cooldown_timer_unsub = None
-            task = self._cooldown_refresh_task
+            task = getattr(self, "_cooldown_refresh_task", None)
             if task is None or task.done():
                 self._cooldown_refresh_task = self.hass.async_create_task(
                     self._async_cooldown_refresh()
@@ -739,7 +739,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._cancel_recovery_timer()
         self._cancel_provider_cooldown_timer()
         self._recovery_active = False
-        cooldown_task = self._cooldown_refresh_task
+        cooldown_task = getattr(self, "_cooldown_refresh_task", None)
         self._cooldown_refresh_task = None
         if cooldown_task and not cooldown_task.done():
             cooldown_task.cancel()
