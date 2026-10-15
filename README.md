@@ -69,7 +69,7 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | --- | --- | --- |
 | Stable | `v0.6.0` | Aktuelle stabile Version |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
-| Letzter Release Candidate | `v0.6.0-beta.6` | Vorangegangene Beta |
+| Aktuelle Beta | `v0.6.1-beta.2` | Beta für kontrollierte Tests |
 
 `v0.6.0` ist die aktuelle stabile Veröffentlichung. Sie enthält die aus Beta.6
 übernommene verbesserte lokale Erkennung der sechs gebündelten Markenlogos und
@@ -103,8 +103,8 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.6.0` ist die stabile HACS-Version. Beta.6 bleibt als letzter Release
-Candidate und Rollback-Referenz im GitHub-Archiv erhalten. Für einen Rücksprung
+`v0.6.0` ist die stabile HACS-Version. `v0.6.1-beta.2` ist als Beta für
+kontrollierte Tests im GitHub-Archiv verfügbar. Für einen Rücksprung
 steht `v0.5.1` als vorherige Stable-Version zur Verfügung.
 
 Die Lovelace-Karte wird von der Integration bereitgestellt und registriert. Die
@@ -290,8 +290,7 @@ erhalten. Prüfe nach einem größeren Versionssprung die versionierte Karten-
 Ressource und lösche bei Bedarf einen veralteten Browser-Cache.
 
 Für einen Rücksprung bleibt `v0.5.1` als vorherige Stable-Version verfügbar.
-Die Beta-Releases, einschließlich `v0.6.0-beta.6`, bleiben im GitHub-Archiv
-erhalten.
+Die Beta-Releases bleiben im GitHub-Archiv erhalten.
 
 ## Datenschutz und Einschränkungen
 
