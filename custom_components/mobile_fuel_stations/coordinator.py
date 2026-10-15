@@ -683,6 +683,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
     def _schedule_provider_cooldown_refresh(self) -> None:
         if self.last_request is None:
             return
+        # Home Assistant always exposes its event loop.  Keep lightweight
+        # coordinator doubles usable without fabricating a loop in tests.
+        if not hasattr(self.hass, "loop"):
+            return
         remaining = self._provider_minimum_interval(
             self.options.get(CONF_PROVIDER_MODE)
         ) - (datetime.now().astimezone() - self.last_request)

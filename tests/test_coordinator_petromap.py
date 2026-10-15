@@ -678,6 +678,7 @@ def test_reload_restores_matching_station_cache_as_stale_and_schedules_cooldown(
         "station_cache_context": coordinator._cache_context(),
         "stations": [cached],
     }
+    coordinator.hass.loop = object()
     coordinator.hass.states = SimpleNamespace(
         get=lambda _entity: SimpleNamespace(
             state="home", attributes={"latitude": 49.2, "longitude": 7.0}
