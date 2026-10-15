@@ -9,7 +9,7 @@ from math import isfinite
 from typing import Any
 
 from aiohttp import ClientConnectionError, ClientError, ClientSession, ClientTimeout
-from homeassistant.exceptions import OAuth2TokenRequestError, OAuth2TokenRequestReauthError
+from homeassistant import exceptions as ha_exceptions
 
 from ..const import DEFAULT_TIMEOUT, MAX_API_RADIUS_KM, PROVIDER_NAKORDONI
 from .base import (
@@ -57,6 +57,17 @@ _SAFE_ERROR_CODES = frozenset(
         "not_approved",
         "invalid_credential",
     }
+)
+
+_OAUTH_TOKEN_ERRORS = tuple(
+    exception_type
+    for exception_name in (
+        "OAuth2TokenRequestReauthError",
+        "OAuth2TokenRequestError",
+    )
+    if isinstance(
+        exception_type := getattr(ha_exceptions, exception_name, None), type
+    )
 )
 
 
@@ -280,7 +291,7 @@ class NakordoniProvider:
             exception.diagnostics = ProviderRequestDiagnostics(PROVIDER_NAKORDONI, None, "provider_error", None, None, None, False, None)
             self.last_request_diagnostics = exception.diagnostics
             raise exception from err
-        except (OAuth2TokenRequestReauthError, OAuth2TokenRequestError) as err:
+        except _OAUTH_TOKEN_ERRORS as err:
             exception = ProviderAuthError("invalid_credential")
             exception.diagnostics = ProviderRequestDiagnostics(
                 PROVIDER_NAKORDONI, None, "invalid_credential", None, None, None, False, None
