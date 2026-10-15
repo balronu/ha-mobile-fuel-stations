@@ -66,6 +66,13 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             # A deadline is therefore intentionally UNKNOWN rather than guessed.
             "next_refresh_deadline": None,
             "gps_available": getattr(coordinator, "gps_available", None),
+            "adaptive_updates_enabled": getattr(coordinator, "adaptive_updates_enabled", False),
+            "adaptive_update_interval_minutes": _update_interval_minutes(coordinator)
+            if getattr(coordinator, "adaptive_updates_enabled", False)
+            else None,
+            "last_gps_speed_kmh": getattr(
+                getattr(coordinator, "last_gps_sample", None), "speed_kmh", None
+            ),
             "gps_listener_registered": getattr(coordinator, "gps_listener_registered", None),
             "last_successful_update": _iso(coordinator.last_successful_update),
             "last_update_attempt": _iso(getattr(coordinator, "last_update_attempt", None)),

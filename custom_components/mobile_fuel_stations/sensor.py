@@ -115,6 +115,16 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "last_update_success": getattr(self.coordinator, "last_update_success", None),
             "data_stale": getattr(self.coordinator, "data_stale", False),
             "data_age_seconds": getattr(self.coordinator, "data_age_seconds", None),
+            "adaptive_updates": getattr(self.coordinator, "adaptive_updates_enabled", False),
+            "adaptive_interval_minutes": (
+                self.coordinator.update_interval.total_seconds() / 60
+                if getattr(self.coordinator, "adaptive_updates_enabled", False)
+                and getattr(self.coordinator, "update_interval", None)
+                else None
+            ),
+            "last_gps_speed_kmh": getattr(
+                getattr(self.coordinator, "last_gps_sample", None), "speed_kmh", None
+            ),
             "last_update_error_at": getattr(self.coordinator, "last_update_error_at", None).isoformat()
             if getattr(self.coordinator, "last_update_error_at", None)
             else None,

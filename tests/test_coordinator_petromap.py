@@ -1,5 +1,5 @@
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -9,11 +9,16 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from mobile_fuel_stations import coordinator as coordinator_module
 from mobile_fuel_stations.const import (
     CONF_FUEL_TYPE,
+    CONF_ADAPTIVE_UPDATES,
     CONF_LOCATION_ENTITY,
+    CONF_MOVEMENT_UPDATES,
+    CONF_MOVEMENT_THRESHOLD,
+    CONF_COOLDOWN,
     CONF_PROVIDER_MODE,
     CONF_RADIUS,
     CONF_STATION_COUNT,
     PROVIDER_PETROMAP,
+    PROVIDER_TANKERKOENIG,
 )
 from mobile_fuel_stations.coordinator import MobileFuelStationsCoordinator
 from mobile_fuel_stations.diagnostics import async_get_config_entry_diagnostics
@@ -67,6 +72,10 @@ def _coordinator(provider, fuel="diesel"):
         CONF_FUEL_TYPE: fuel,
         CONF_STATION_COUNT: 3,
         CONF_PROVIDER_MODE: PROVIDER_PETROMAP,
+        CONF_MOVEMENT_UPDATES: True,
+        CONF_MOVEMENT_THRESHOLD: 2.0,
+        CONF_COOLDOWN: 5,
+        CONF_ADAPTIVE_UPDATES: False,
     }
     coordinator.client = provider
     coordinator.stations = []
@@ -104,6 +113,9 @@ def _coordinator(provider, fuel="diesel"):
     coordinator._recovery_transient_failures = 0
     coordinator._recovery_task = None
     coordinator._recovery_request_scheduled = False
+    coordinator.last_gps_sample = None
+    coordinator._last_gps_event_key = None
+    coordinator._provider_lock = None
     coordinator._store = _Store()
     coordinator._provider_status_store = _Store()
     coordinator.provider_status = {}
@@ -239,6 +251,60 @@ def test_gps_attribute_report_triggers_recovery_immediately(monkeypatch):
     create_task.assert_called_once()
     assert coordinator.recovery_last_gps_event_type == "state_reported"
     assert coordinator.recovery_attempt_count == 1
+
+
+def test_gps_attribute_report_uses_normal_movement_path_without_state_change(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator.reference_position = (49.2, 7.0)
+    coordinator.last_request = datetime.now(timezone.utc) - timedelta(minutes=10)
+    create_task = Mock(side_effect=lambda coroutine: coroutine.close())
+    coordinator.hass.async_create_task = create_task
+    samples = iter([
+        coordinator_module.GpsSample((49.24, 7.0), datetime.now(timezone.utc), None, 42.0),
+        coordinator_module.GpsSample((49.24, 7.0), datetime.now(timezone.utc), None, 42.0),
+    ])
+    monkeypatch.setattr(coordinator, "_current_gps_sample", lambda: next(samples))
+
+    coordinator._async_position_reported(SimpleNamespace())
+    coordinator._async_position_changed(SimpleNamespace())
+
+    create_task.assert_called_once()
+
+
+def test_duplicate_state_and_attribute_report_do_not_schedule_twice(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator.reference_position = (49.2, 7.0)
+    coordinator.last_request = datetime.now(timezone.utc) - timedelta(minutes=10)
+    create_task = Mock(side_effect=lambda coroutine: coroutine.close())
+    coordinator.hass.async_create_task = create_task
+    sample = coordinator_module.GpsSample(
+        (49.24, 7.0), datetime.now(timezone.utc), None, 42.0
+    )
+    monkeypatch.setattr(coordinator, "_current_gps_sample", lambda: sample)
+
+    coordinator._async_position_changed(SimpleNamespace())
+    coordinator._async_position_reported(SimpleNamespace())
+
+    create_task.assert_called_once()
+
+
+def test_adaptive_mode_requires_three_km_and_keeps_tankerkoenig_floor(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator.options[CONF_ADAPTIVE_UPDATES] = True
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+    coordinator.reference_position = (49.2, 7.0)
+    coordinator.last_request = datetime.now(timezone.utc) - timedelta(minutes=6)
+    create_task = Mock(side_effect=lambda coroutine: coroutine.close())
+    coordinator.hass.async_create_task = create_task
+    sample = coordinator_module.GpsSample(
+        (49.228, 7.0), datetime.now(timezone.utc), None, 90.0
+    )
+    monkeypatch.setattr(coordinator, "_current_gps_sample", lambda: sample)
+
+    coordinator._async_position_reported(SimpleNamespace())
+
+    create_task.assert_called_once()
+    assert coordinator.update_interval == timedelta(minutes=5)
 
 
 def test_gps_after_slow_recovery_timer_triggers_provider_refresh(monkeypatch):

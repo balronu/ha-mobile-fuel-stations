@@ -20,6 +20,7 @@ from .const import (
     CONF_NAKORDONI_PRIVACY_ACCEPTED,
     CONF_TANKERKOENIG_API_KEY,
     CONF_COOLDOWN,
+    CONF_ADAPTIVE_UPDATES,
     CONF_FUEL_TYPE,
     CONF_FUEL_TYPES,
     CONF_LOCATION_ENTITY,
@@ -30,6 +31,7 @@ from .const import (
     CONF_STATION_COUNT,
     CONF_UPDATE_INTERVAL,
     DEFAULT_COOLDOWN,
+    DEFAULT_ADAPTIVE_UPDATES,
     DEFAULT_FUEL_TYPE,
     DEFAULT_MOVEMENT_THRESHOLD,
     DEFAULT_MOVEMENT_UPDATES,
@@ -170,6 +172,10 @@ def _schema(
             vol.Required(CONF_COOLDOWN, default=defaults.get(CONF_COOLDOWN, DEFAULT_COOLDOWN)): vol.All(
                 vol.Coerce(int), vol.Range(min=5, max=1440)
             ),
+            vol.Required(
+                CONF_ADAPTIVE_UPDATES,
+                default=defaults.get(CONF_ADAPTIVE_UPDATES, DEFAULT_ADAPTIVE_UPDATES),
+            ): bool,
             vol.Required(CONF_SORT_MODE, default=defaults.get(CONF_SORT_MODE, DEFAULT_SORT_MODE)): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=["distance", "price"], translation_key=CONF_SORT_MODE
@@ -456,7 +462,8 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_show_form(step_id="provider_credentials", data_schema=_credential_schema(provider_modes))
         defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_FUEL_TYPES: [DEFAULT_FUEL_TYPE], CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL, CONF_MOVEMENT_UPDATES: DEFAULT_MOVEMENT_UPDATES,
-                    CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN}
+                    CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN,
+                    CONF_ADAPTIVE_UPDATES: DEFAULT_ADAPTIVE_UPDATES}
         return self.async_show_form(
             step_id="user", data_schema=_schema(defaults, False, True), errors=errors
         )
