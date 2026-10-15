@@ -714,6 +714,7 @@ def test_cooldown_keeps_cached_data_visible_and_schedules_one_refresh(monkeypatc
     coordinator = _coordinator(provider)
     coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
     coordinator.available_provider_modes = frozenset({PROVIDER_TANKERKOENIG})
+    coordinator.hass.loop = object()
     coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=1)
     coordinator.stations = [_station()]
     coordinator.data = coordinator.stations
