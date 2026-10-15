@@ -45,8 +45,8 @@ opening status, and destination navigation.
 4. Continue with the complete [HACS installation guide](README.en.md#installation-with-hacs).
 
 > This README is the complete English guide. The full German primary guide is
-> available in [README.md](README.md); the byte-identical German language copy
-> is available in [README.de.md](README.de.md).
+> available in [README.md](README.md). The compatibility copy remains
+> available in [README.de.md](README.de.md).
 
 ## Contents
 
