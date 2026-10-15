@@ -1,6 +1,7 @@
 """Focused Auto runtime regression tests."""
 
 import asyncio
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -214,7 +215,9 @@ def test_auto_e10_border_preserves_last_valid_data_after_confirmed_at(monkeypatc
     previous = list(coordinator.stations)
 
     for _ in range(2):
+        coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=6)
         asyncio.run(coordinator._async_update_data())
+    coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=6)
     asyncio.run(coordinator._async_update_data())
 
     assert coordinator.stations != previous
@@ -245,6 +248,8 @@ def test_auto_hysteresis_de_to_at_switches_only_on_third_sample(monkeypatch):
     coordinator, tk, pm = _coordinator(monkeypatch, lambda: next(samples), "e5")
 
     for expected in [PROVIDER_TANKERKOENIG, PROVIDER_TANKERKOENIG, PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP]:
+        if coordinator.last_request is not None:
+            coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=6)
         asyncio.run(coordinator._async_update_data())
         assert coordinator.auto_runtime_state.effective_provider == expected
 
@@ -258,6 +263,8 @@ def test_auto_hysteresis_at_to_de_switches_only_on_third_sample(monkeypatch):
     coordinator, tk, pm = _coordinator(monkeypatch, lambda: next(samples), "e5")
 
     for expected in [PROVIDER_PETROMAP, PROVIDER_PETROMAP, PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG]:
+        if coordinator.last_request is not None:
+            coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=6)
         asyncio.run(coordinator._async_update_data())
         assert coordinator.auto_runtime_state.effective_provider == expected
 
@@ -289,11 +296,13 @@ def test_auto_pm_failure_preserves_last_valid_data_without_tk_fallback(monkeypat
     coordinator, tk, pm = _coordinator(
         monkeypatch, lambda: next(samples), "e5", pm_error=ProviderTimeoutError("timeout")
     )
-    asyncio.run(coordinator._async_update_data())
-    asyncio.run(coordinator._async_update_data())
-    asyncio.run(coordinator._async_update_data())
+    for _ in range(3):
+        if coordinator.last_request is not None:
+            coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=6)
+        asyncio.run(coordinator._async_update_data())
     previous = coordinator.stations
 
+    coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=6)
     stale = asyncio.run(coordinator._async_update_data())
 
     assert stale == previous

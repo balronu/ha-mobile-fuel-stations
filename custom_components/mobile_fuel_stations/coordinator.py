@@ -454,6 +454,16 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         effective_provider: str | None = None,
         reason: str | None = None,
     ) -> None:
+        previous = getattr(self, "auto_runtime_state", None)
+        if (
+            effective_provider is None
+            and decision.reason != "location_unavailable"
+            and previous is not None
+        ):
+            # A provider cooldown can defer the newly selected provider.  Keep
+            # reporting the provider that is actually effective until a new
+            # request succeeds; do not briefly expose ``None``.
+            effective_provider = previous.effective_provider
         self.auto_runtime_state = AutoRuntimeState(
             configured_provider_mode="auto",
             effective_provider=effective_provider,
@@ -770,7 +780,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             # stations, so the overview entity can distinguish unavailable
             # startup data from a real zero-result response.
             return None
-        gps_sample = self._current_gps_sample()
+        gps_sample = self._current_gps_sample(position)
         if self.adaptive_updates_enabled and gps_sample is None:
             if self.stations:
                 self.data_stale = True
@@ -1035,7 +1045,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         # with an empty result and the regular poll will retry automatically.
         return None
 
-    def _current_gps_sample(self) -> GpsSample | None:
+    def _current_gps_sample(
+        self, position: tuple[float, float] | None = None
+    ) -> GpsSample | None:
         sample = _gps_sample(
             self.hass,
             self.options[CONF_LOCATION_ENTITY],
@@ -1047,7 +1059,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         # not expose timestamps or for startup fixtures with only coordinates.
         if getattr(self.hass, "states", None) is not None:
             return None
-        position = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
+        if position is None:
+            position = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
         if position is None:
             return None
         return GpsSample(position, datetime.now().astimezone(), None, None)
