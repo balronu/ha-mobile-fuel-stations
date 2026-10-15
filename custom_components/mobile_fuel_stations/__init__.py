@@ -33,6 +33,7 @@ from .const import (
 )
 from .coordinator import MobileFuelStationsCoordinator
 from .country_resolver import load_countries
+from .oauth2 import async_register as async_register_oauth
 from .providers.base import FuelFallbackBlockedError, NoSuitableProviderError
 
 PLATFORMS = [Platform.SENSOR]
@@ -121,6 +122,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
         add_extra_js_url(hass, FRONTEND_URL)
         domain_data["frontend_registered"] = True
+    if not domain_data.get("oauth_registered"):
+        async_register_oauth(hass)
+        domain_data["oauth_registered"] = True
     return True
 
 
@@ -133,7 +137,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfig
     configured_provider = {**entry.data, **entry.options}.get(CONF_PROVIDER_MODE)
     if configured_provider != PROVIDER_NAKORDONI:
         domain_data.setdefault("last_request_diagnostics", {}).pop(entry.entry_id, None)
-    coordinator = MobileFuelStationsCoordinator(hass, entry)
+    oauth_session = None
+    if entry.data.get("nakordoni_auth_method") == "oauth2":
+        from homeassistant.helpers.config_entry_oauth2_flow import (
+            OAuth2Session,
+            async_get_config_entry_implementation,
+        )
+
+        implementation = await async_get_config_entry_implementation(hass, entry)
+        oauth_session = OAuth2Session(hass, entry, implementation)
+    if oauth_session is None:
+        coordinator = MobileFuelStationsCoordinator(hass, entry)
+    else:
+        coordinator = MobileFuelStationsCoordinator(
+            hass, entry, oauth_session=oauth_session
+        )
     await coordinator.async_setup()
     try:
         await coordinator.async_config_entry_first_refresh()

@@ -270,7 +270,7 @@ class CountryAutoContext:
 class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None]):
     """Fetch and retain nearby stations."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, *, oauth_session=None) -> None:
         self.entry = entry
         self.options = {**entry.data, **entry.options}
         interval = int(self.options[CONF_UPDATE_INTERVAL])
@@ -282,6 +282,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             config_entry=entry,
         )
         self._session = async_get_clientsession(hass)
+        self._oauth_session = oauth_session
         self._providers: dict[str, Any] = {}
         self.client = None
         if self.options.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG) != "auto":
@@ -291,8 +292,18 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 PROVIDER_PETROMAP: "petromap_api_key",
                 PROVIDER_NAKORDONI: "nakordoni_api_key",
             }.get(provider_mode)
-            if key_name and self.options.get(key_name):
-                self.client = create_provider(self._session, self.options)
+            if key_name and (
+                self.options.get(key_name)
+                or (provider_mode == PROVIDER_NAKORDONI and oauth_session is not None)
+            ):
+                if provider_mode == PROVIDER_NAKORDONI and oauth_session is not None:
+                    from .providers.nakordoni import NakordoniProvider
+
+                    self.client = NakordoniProvider(
+                        self._session, None, oauth_session=oauth_session
+                    )
+                else:
+                    self.client = create_provider(self._session, self.options)
         self.stations: list[Station] = []
         self.nearest_station: Station | None = None
         self.cheapest_station: Station | None = None
@@ -408,7 +419,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             PROVIDER_PETROMAP: "petromap_api_key",
             PROVIDER_NAKORDONI: "nakordoni_api_key",
         }[provider_mode]
-        provider = registration.factory(self._session, self.options[key_name])
+        if provider_mode == PROVIDER_NAKORDONI and self._oauth_session is not None:
+            from .providers.nakordoni import NakordoniProvider
+
+            provider = NakordoniProvider(
+                self._session, None, oauth_session=self._oauth_session
+            )
+        else:
+            provider = registration.factory(self._session, self.options[key_name])
         self._providers[provider_mode] = provider
         return provider
 

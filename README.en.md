@@ -153,6 +153,22 @@ Configure → Manage credentials**. A stored key is not proof of a successful
 live check. The options flow does not perform unnecessary network requests.
 Credentials are never written to Git, logs, or diagnostics.
 
+### Nakordoni OAuth2-PKCE (beta branch only)
+
+The `feature/nakordoni-oauth2-pkce` branch contains an experimental automatic
+Nakordoni sign-in using Home Assistant's OAuth2 Authorization Code flow with
+PKCE S256. It is not part of stable `v0.6.1` and must not be treated as
+available until the HA 2026.10.1 fixture tests and provider validation pass.
+The registered redirect is exactly
+`https://my.home-assistant.io/redirect/oauth`; no client secret is used.
+
+The manual API-key method remains the permanent fallback. Existing API-key
+entries are not migrated, deleted, or forced through OAuth. OAuth tokens are
+stored by Home Assistant's OAuth2 config-entry machinery and are excluded from
+diagnostics. OAuth is only complete when Nakordoni returns the token fields
+required by Home Assistant, including `expires_in`; undocumented scopes or
+refresh parameters are not assumed.
+
 ## GPS, polling, and startup recovery
 
 The configured entity must provide valid coordinates. After startup, the

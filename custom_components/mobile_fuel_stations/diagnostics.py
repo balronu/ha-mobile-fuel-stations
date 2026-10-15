@@ -111,6 +111,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
                 CONF_TANKERKOENIG_API_KEY,
                 CONF_PETROMAP_API_KEY,
                 CONF_NAKORDONI_API_KEY,
+                "token",
             }
             and "coordinate" not in key
             and key not in {"latitude", "longitude"}
