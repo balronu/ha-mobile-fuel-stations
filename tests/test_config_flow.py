@@ -10,6 +10,7 @@ from mobile_fuel_stations.config_flow import MobileFuelStationsConfigFlow, _cred
 from mobile_fuel_stations.const import (
     CONF_API_KEY,
     CONF_COOLDOWN,
+    CONF_ADAPTIVE_UPDATES,
     CONF_FUEL_TYPE,
     CONF_LOCATION_ENTITY,
     CONF_MANAGE_CREDENTIALS,
@@ -26,6 +27,7 @@ from mobile_fuel_stations.const import (
     CONF_SORT_FUEL,
     CONF_SORT_MODE,
     DEFAULT_COOLDOWN,
+    DEFAULT_ADAPTIVE_UPDATES,
     DEFAULT_MOVEMENT_THRESHOLD,
     DEFAULT_MOVEMENT_UPDATES,
     DEFAULT_RADIUS,
@@ -84,6 +86,7 @@ def _data():
         CONF_MOVEMENT_UPDATES: True,
         CONF_MOVEMENT_THRESHOLD: 2.0,
         CONF_COOLDOWN: 5,
+        CONF_ADAPTIVE_UPDATES: False,
     }
 
 
@@ -336,6 +339,7 @@ def test_options_override_data_and_missing_values_use_defaults():
     assert values[CONF_MOVEMENT_UPDATES] is DEFAULT_MOVEMENT_UPDATES
     assert values[CONF_MOVEMENT_THRESHOLD] == DEFAULT_MOVEMENT_THRESHOLD
     assert values[CONF_COOLDOWN] == DEFAULT_COOLDOWN
+    assert values[CONF_ADAPTIVE_UPDATES] is DEFAULT_ADAPTIVE_UPDATES
 
 
 def test_options_save_preserves_tankerkoenig_key_in_data_and_excludes_credentials_from_options():

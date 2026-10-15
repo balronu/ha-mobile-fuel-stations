@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.6.0"><img src="https://img.shields.io/badge/Stable-v0.6.0-16a34a" alt="Stable v0.6.0"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.6.1"><img src="https://img.shields.io/badge/Stable-v0.6.1-16a34a" alt="Stable v0.6.1"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -67,14 +67,14 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.6.0` | Aktuelle stabile Version |
+| Stable | `v0.6.1` | Aktuelle stabile Version |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
-| Letzter Release Candidate | `v0.6.0-beta.6` | Vorangegangene Beta |
+| Frontend-Komponente | `v0.6.0` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.6.0` ist die aktuelle stabile Veröffentlichung. Sie enthält die aus Beta.6
-übernommene verbesserte lokale Erkennung der sechs gebündelten Markenlogos und
-die überarbeitete Dokumentation. Provider-Backend, Startup-Recovery und das
-reguläre Polling entsprechen dem geprüften Beta.5/Beta.6-Stand.
+`v0.6.1` ist die aktuelle stabile Veröffentlichung. Sie enthält die
+persistierte Cache-Wiederherstellung, die Cooldown-Recovery und die optionale
+adaptive GPS-Aktualisierung. Die Lovelace-Komponente bleibt unabhängig auf
+Version `0.6.0` versioniert.
 
 Die Integration bietet unter anderem:
 
@@ -90,6 +90,8 @@ Die Integration bietet unter anderem:
 - Startup-Recovery bei verspätetem GPS oder vorübergehend nicht verfügbarem
   Provider
 - reguläres DataUpdateCoordinator-Polling und bewegungsabhängige Updates
+- optionale adaptive Aktualisierung anhand gültiger GPS-Geschwindigkeit
+- persistierter, kontextgeprüfter Stations-Cache mit sichtbarer Stale-Markierung
 - responsive Lovelace-Karte mit Navigation und Markenlogo-Fallback
 
 ## Installation über HACS
@@ -103,12 +105,15 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.6.0` ist die stabile HACS-Version. Beta.6 bleibt als letzter Release
-Candidate und Rollback-Referenz im GitHub-Archiv erhalten. Für einen Rücksprung
-steht `v0.5.1` als vorherige Stable-Version zur Verfügung.
+`v0.6.1` ist die stabile HACS-Version. Für einen Rücksprung steht `v0.5.1`
+als vorherige Stable-Version zur Verfügung.
+
+Die adaptive Aktualisierung ist standardmäßig deaktiviert und wird nur über
+den Optionsdialog aktiviert. Sie verwendet ausschließlich gültige, aktuelle
+GPS-Daten; künstliche Positionen werden nicht erzeugt.
 
 Die Lovelace-Karte wird von der Integration bereitgestellt und registriert. Die
-versionierte Ressource lautet für Stable v0.6.0:
+Die unabhängig versionierte Frontend-Ressource lautet weiterhin:
 
 ```text
 /mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0
@@ -129,6 +134,7 @@ Im Konfigurationsdialog werden typischerweise gewählt:
 - einer oder mehrere Provider beziehungsweise **Automatisch**
 - Sortierung nach Entfernung oder Kraftstoffpreis
 - Polling-Intervall sowie Bewegungsschwelle und Cooldown
+- optional adaptive Aktualisierung (standardmäßig deaktiviert)
 - gewünschter Navigationsdienst der Karte
 
 Die allgemeinen Optionen werden separat von den Zugangsdaten gespeichert.
@@ -136,6 +142,12 @@ Unter **Zugangsdaten verwalten** können Provider-Schlüssel ersetzt oder
 ausdrücklich entfernt werden. Ein leeres Feld lässt einen vorhandenen Schlüssel
 unverändert. Die Oberfläche zeigt nur nicht-sensitive Zugangsstatus, niemals
 vollständige Schlüssel.
+
+Bei aktivierter adaptiver Aktualisierung gelten diese Zielintervalle anhand
+der zuletzt verifizierten Geschwindigkeit: Stillstand oder 0 km/h = 15 Minuten,
+Stadtverkehr bis 30 km/h = 5 Minuten, Landstraße über 30 bis 70 km/h =
+2 Minuten und Autobahn über 70 km/h = 1 Minute. Provider-Mindestabstände
+haben Vorrang; das adaptive Intervall darf keine Provider-Quote umgehen.
 
 ## Provider, Länder und Kraftstoffe
 
@@ -213,6 +225,13 @@ Authentifizierungs- oder Konfigurationsfehler werden diagnostiziert und nicht
 in einer schnellen Endlosschleife wiederholt. Bei temporären Fehlern bleiben
 gültige Cachedaten erhalten und werden als veraltet kenntlich gemacht.
 
+Erfolgreiche Stationsdaten werden im HA-Store persistiert und beim passenden
+Reload sofort wieder angezeigt. Der Cache wird nur bei identischem Provider-,
+Kraftstoff-, Radius-, Sortier- und Stationskontext verwendet; ungültige oder
+orts-/abfragefremde Daten werden verworfen. Während eines Provider-Cooldowns
+bleiben passende Daten sichtbar und werden mit `data_stale=true` markiert.
+Nach Ablauf des Cooldowns wird höchstens ein deduplizierter Refresh gestartet.
+
 Nach erfolgreichem Abruf endet die Startup-Recovery. Das normale Polling bleibt
 unverändert aktiv (standardmäßig etwa alle 15 Minuten), ebenso der separate
 Movement-Refresh mit Schwelle und Cooldown. Timer, Tasks und GPS-Listener
@@ -229,7 +248,7 @@ navigation: true
 show_brand_logos: true
 ```
 
-v0.6.0 erkennt die sechs mitgelieferten lokalen SVGs:
+v0.6.1 erkennt die sechs mitgelieferten lokalen SVGs:
 
 | Marke | Datei |
 | --- | --- |
@@ -290,8 +309,7 @@ erhalten. Prüfe nach einem größeren Versionssprung die versionierte Karten-
 Ressource und lösche bei Bedarf einen veralteten Browser-Cache.
 
 Für einen Rücksprung bleibt `v0.5.1` als vorherige Stable-Version verfügbar.
-Die Beta-Releases, einschließlich `v0.6.0-beta.6`, bleiben im GitHub-Archiv
-erhalten.
+Historische Beta-Releases bleiben im GitHub-Archiv erhalten.
 
 ## Datenschutz und Einschränkungen
 
@@ -342,13 +360,15 @@ Die CI prüft zusätzlich Home-Assistant-/Hassfest-Kompatibilität, Bundle- und
 Diff-Synchronität, Markdown-/Versionskonsistenz und Secret-Scanning. Live-
 Providerzugänge werden nicht als Tests vorausgesetzt; Provider- und
 Recovery-Tests verwenden Mocks und Fixtures.
+Die adaptive Logik wird mit Geschwindigkeitsgrenzen, GPS-Ausreißern,
+Provider-Mindestabständen, Cache-Reload, Cooldown und Unload-Abbruch geprüft.
 
 ## Release-Archiv
 
 Historische Release Notes liegen unverändert im
 [Release-Archiv auf GitHub](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/).
 Die Stable-Release Notes stehen in
-[`docs/releases/RELEASE_NOTES_v0.6.0.md`](docs/releases/RELEASE_NOTES_v0.6.0.md)
+[`docs/releases/RELEASE_NOTES_v0.6.1.md`](docs/releases/RELEASE_NOTES_v0.6.1.md)
 beschrieben. Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
 der [Markendokumentation](docs/BRAND_LOGOS.md) und im
 [GitHub-Release-Archiv](https://github.com/balronu/ha-mobile-fuel-stations/releases).

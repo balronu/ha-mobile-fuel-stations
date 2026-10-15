@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.1 — Stable release
+
+- Promote the tested adaptive GPS refresh and persisted cooldown-cache recovery
+  to the stable `v0.6.1` release.
+- Keep adaptive updates disabled by default; when enabled, use validated GPS
+  speed bands of 15, 5, 2, and 1 minute, subject to provider cooldowns and
+  rate limits.
+- Restore matching station data immediately after reload as `data_stale=true`
+  and schedule one deduplicated provider refresh after cooldown expiry.
+- Preserve existing config entries, provider selection, options, entities, and
+  the independently versioned `0.6.0` frontend component.
+
+## 0.6.1-beta.3 — Persisted startup cache and cooldown recovery
+
+- Persist the last validated station result in the existing Home Assistant Store.
+- Restore matching results as visibly stale data after reload/startup.
+- Schedule one provider refresh after the Tankerkönig cooldown instead of
+  exposing sensors as unavailable.
+- Reject malformed or differently scoped cached data and clean up cooldown
+  tasks during unload.
+
 ## 0.6.0 — Stable release
 
 - Promote the validated beta.6 functionality to the stable `v0.6.0` release.

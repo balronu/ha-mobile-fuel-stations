@@ -14,6 +14,7 @@
           "movement_updates": "Enable movement updates",
           "movement_threshold": "Movement threshold (km)",
           "cooldown": "Movement cooldown (minutes)",
+          "adaptive_updates": "Enable adaptive GPS updates",
           "sort_mode": "Station sorting",
           "sort_fuel": "Price sorting fuel"
         },
@@ -25,6 +26,7 @@
           "movement_updates": "Automatically update stations when the location changes.",
           "movement_threshold": "Minimum distance since the last location update.",
           "cooldown": "Minimum wait between movement-triggered updates.",
+          "adaptive_updates": "Adjust regular refresh intervals using validated GPS speed.",
           "sort_mode": "Order of the displayed stations.",
           "sort_fuel": "Fuel type used for price sorting."
         }
@@ -102,6 +104,7 @@
           "movement_updates": "Enable movement updates",
           "movement_threshold": "Movement threshold (km)",
           "cooldown": "Movement cooldown (minutes)",
+          "adaptive_updates": "Enable adaptive GPS updates",
           "sort_mode": "Station sorting",
           "sort_fuel": "Price sorting fuel"
         },
@@ -113,6 +116,7 @@
           "movement_updates": "Automatically update stations when the location changes.",
           "movement_threshold": "Minimum distance since the last location update.",
           "cooldown": "Minimum wait between movement-triggered updates.",
+          "adaptive_updates": "Adjust regular refresh intervals using validated GPS speed.",
           "sort_mode": "Order of the displayed stations.",
           "sort_fuel": "Fuel type used for price sorting."
         }
