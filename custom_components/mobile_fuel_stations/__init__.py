@@ -30,6 +30,8 @@ from .const import (
     PROVIDER_NAKORDONI,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
+    CONF_NAKORDONI_AUTH_METHOD,
+    AUTH_METHOD_OAUTH2,
 )
 from .coordinator import MobileFuelStationsCoordinator
 from .country_resolver import load_countries
@@ -107,7 +109,10 @@ def _provider_modes_from_data(data: dict, mode: object) -> list[str]:
                 (PROVIDER_PETROMAP, CONF_PETROMAP_API_KEY),
                 (PROVIDER_NAKORDONI, "nakordoni_api_key"),
             )
-            if data.get(key)
+            if data.get(key) or (
+                provider == PROVIDER_NAKORDONI
+                and data.get(CONF_NAKORDONI_AUTH_METHOD) == AUTH_METHOD_OAUTH2
+            )
         ]
     return [mode] if mode in {
         PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI

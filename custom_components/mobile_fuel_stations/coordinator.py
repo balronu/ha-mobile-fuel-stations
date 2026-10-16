@@ -49,6 +49,7 @@ from .const import (
     ADAPTIVE_STATIONARY_INTERVAL,
     DOMAIN,
     MAX_API_RADIUS_KM,
+    NAKORDONI_MARKETS,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
     PROVIDER_NAKORDONI,
@@ -65,6 +66,7 @@ from .providers.base import (
     ProviderNetworkError,
     ProviderRateLimitError,
     ProviderRequestDiagnostics,
+    ProviderCapabilities,
     ProviderResponseError,
     ProviderReauthContext,
     ProviderUnsupportedFuelError,
@@ -81,6 +83,7 @@ from .providers.policy import (
     choose_auto_provider,
     validate_direct_fuel_runtime,
 )
+from .providers.nakordoni import NakordoniMarketAccess, extract_market_access
 from .country_resolver import resolve
 
 _LOGGER = logging.getLogger(__name__)
@@ -233,6 +236,8 @@ class CountryAutoContext:
         fuel_type: str,
         resolver: Callable[[float, float], str | None] = resolve,
         allowed_providers: set[str] | frozenset[str] | None = None,
+        nakordoni_enabled: bool = False,
+        nakordoni_capabilities: ProviderCapabilities | None = None,
     ) -> None:
         self.fuel_type = fuel_type
         self._resolver = resolver
@@ -245,6 +250,8 @@ class CountryAutoContext:
         self.raw_country: str | None = None
         self.confirmed_country: str | None = None
         self.auto_provider_decision: AutoProviderDecision | None = None
+        self.nakordoni_enabled = nakordoni_enabled
+        self.nakordoni_capabilities = nakordoni_capabilities
 
     def observe_position(self, position: tuple[float, float]) -> AutoProviderDecision:
         """Resolve one relevant GPS position and evaluate the offline policy."""
@@ -265,8 +272,12 @@ class CountryAutoContext:
             tankerkoenig_capabilities=tankerkoenig.capabilities,
             petromap_enabled=petromap.enabled and PROVIDER_PETROMAP in self.allowed_providers,
             petromap_capabilities=petromap.capabilities,
-            nakordoni_enabled=nakordoni.enabled and PROVIDER_NAKORDONI in self.allowed_providers,
-            nakordoni_capabilities=nakordoni.capabilities,
+            nakordoni_enabled=(
+                self.nakordoni_enabled
+                and nakordoni.enabled
+                and PROVIDER_NAKORDONI in self.allowed_providers
+            ),
+            nakordoni_capabilities=self.nakordoni_capabilities or nakordoni.capabilities,
         )
         return self.auto_provider_decision
 
@@ -366,6 +377,13 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         # reading the runtime copy avoids a transient "untested" display when
         # the persisted result has already been loaded for this coordinator.
         self.provider_status: dict[str, dict[str, str]] = {}
+        self.nakordoni_market_access = extract_market_access(
+            self.options.get("token")
+        )
+        self.nakordoni_coverage_countries: tuple[str, ...] = ()
+        self.nakordoni_coverage_fuels: tuple[str, ...] = ()
+        self.nakordoni_coverage_status = "unknown"
+        self.nakordoni_upgrade_url = self.nakordoni_market_access.upgrade_url
         self.fuel_types = self._configured_fuels(self.options)
         self.provider_modes = self._configured_provider_modes(self.options)
         self.available_provider_modes = frozenset(
@@ -374,7 +392,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             if self._provider_configured(provider)
         )
         self.country_auto_context = CountryAutoContext(
-            self.fuel_types[0], allowed_providers=self.available_provider_modes
+            self.fuel_types[0], allowed_providers=self.available_provider_modes,
+            nakordoni_enabled=self._nakordoni_auto_eligible(),
+            nakordoni_capabilities=self._nakordoni_auto_capabilities(),
         )
         self.auto_runtime_state: AutoRuntimeState | None = None
 
@@ -392,6 +412,43 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             PROVIDER_NAKORDONI: "nakordoni_api_key",
         }.get(provider)
         return bool(key_name and self.options.get(key_name))
+
+    def _nakordoni_auto_eligible(self) -> bool:
+        """Auto mode requires explicit market metadata, never just a token/key."""
+
+        access = getattr(self, "nakordoni_market_access", None)
+        return access is not None and access.permitted_markets is not None
+
+    def _nakordoni_auto_capabilities(self) -> ProviderCapabilities:
+        access = getattr(self, "nakordoni_market_access", None)
+        markets = access.permitted_markets if access is not None else frozenset()
+        markets = (markets or frozenset()) & NAKORDONI_MARKETS
+        return ProviderCapabilities(
+            supported_countries=frozenset(markets),
+            supported_fuel_types=frozenset({"diesel", "e5", "e10", "lpg"}),
+            max_radius_km=MAX_API_RADIUS_KM,
+            country_price_coverage={country: CountryPriceCoverage.PER_STATION for country in markets},
+        )
+
+    def _update_nakordoni_metadata(self, provider: Any) -> None:
+        metadata = getattr(provider, "last_response_metadata", None)
+        if metadata is None:
+            return
+        from .providers.nakordoni import NakordoniMarketAccess
+
+        response_access = NakordoniMarketAccess(
+            metadata.markets_approved,
+            metadata.markets_granted,
+            metadata.markets_allowed,
+            metadata.markets_available,
+            metadata.upgrade_url,
+        )
+        if response_access != NakordoniMarketAccess():
+            self.nakordoni_market_access = response_access
+            self.nakordoni_upgrade_url = response_access.upgrade_url
+        self.nakordoni_coverage_countries = metadata.coverage_countries
+        self.nakordoni_coverage_fuels = metadata.coverage_fuels
+        self.nakordoni_coverage_status = metadata.coverage_status
 
     @property
     def _is_auto(self) -> bool:
@@ -489,6 +546,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "quota_exceeded": "Nakordoni quota exceeded",
             "market_not_allowed": "Nakordoni market not allowed",
             "not_approved": "Nakordoni account/product not approved",
+            "invalid_grant": "Nakordoni OAuth authorization expired; reauthentication required",
         }.get(code, "nakordoni request failed")
 
     def _set_auto_runtime_state(
@@ -574,6 +632,22 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.provider_status = (
             provider_status if isinstance(provider_status, dict) else {}
         )
+        nakordoni_status = self.provider_status.get(PROVIDER_NAKORDONI, {})
+        if isinstance(nakordoni_status, dict):
+            restored_access = extract_market_access(nakordoni_status)
+            if restored_access != NakordoniMarketAccess():
+                self.nakordoni_market_access = restored_access
+                self.nakordoni_upgrade_url = restored_access.upgrade_url
+            self.nakordoni_coverage_countries = tuple(
+                value for value in nakordoni_status.get("coverage_countries", ())
+                if isinstance(value, str)
+            )
+            self.nakordoni_coverage_fuels = tuple(
+                value for value in nakordoni_status.get("coverage_fuels", ())
+                if isinstance(value, str)
+            )
+            if isinstance(nakordoni_status.get("coverage_status"), str):
+                self.nakordoni_coverage_status = nakordoni_status["coverage_status"]
         domain_data = self.hass.data.setdefault(DOMAIN, {})
         domain_data.setdefault("provider_status", {})[self.entry.entry_id] = self.provider_status
         if self.options.get(CONF_MOVEMENT_UPDATES, True):
@@ -815,6 +889,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "status": status,
             "checked_at": datetime.now().astimezone().isoformat(),
         }
+        if provider == PROVIDER_NAKORDONI:
+            access = getattr(self, "nakordoni_market_access", NakordoniMarketAccess())
+            status_record.update(access.as_diagnostics())
+            status_record.update({
+                "coverage_countries": list(getattr(self, "nakordoni_coverage_countries", ())),
+                "coverage_fuels": list(getattr(self, "nakordoni_coverage_fuels", ())),
+                "coverage_status": getattr(self, "nakordoni_coverage_status", "unknown"),
+            })
         all_status[provider] = status_record
         self.provider_status = all_status
         await self._provider_status_store.async_save(all_status)
@@ -904,6 +986,37 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 CONF_NAKORDONI_AUTH_METHOD
             ) == AUTH_METHOD_OAUTH2 else "api_key"
         return "api_key" if provider else None
+
+    @property
+    def diagnostic_market_status(self) -> str | None:
+        if self._diagnostic_provider() != PROVIDER_NAKORDONI:
+            return None
+        country = self.country_auto_context.confirmed_country
+        return self.nakordoni_market_access.status_for(country)
+
+    @property
+    def diagnostic_markets_approved(self) -> list[str]:
+        return list(self.nakordoni_market_access.markets_approved)
+
+    @property
+    def diagnostic_markets_granted(self) -> list[str]:
+        return list(self.nakordoni_market_access.markets_granted)
+
+    @property
+    def diagnostic_markets_allowed(self) -> list[str]:
+        return list(self.nakordoni_market_access.markets_allowed)
+
+    @property
+    def diagnostic_markets_available(self) -> list[str]:
+        return list(self.nakordoni_market_access.markets_available)
+
+    @property
+    def diagnostic_quota(self) -> dict[str, int | None]:
+        record = self.hass.data.get(DOMAIN, {}).get("last_request_diagnostics", {}).get(self.entry.entry_id, {})
+        return {
+            "limit": record.get("quota_limit") if isinstance(record, dict) else None,
+            "remaining": record.get("quota_remaining") if isinstance(record, dict) else None,
+        }
 
     def _set_adaptive_interval(self, speed_kmh: float | None) -> None:
         """Set Core's next regular interval, preserving the legacy mode."""
@@ -1230,16 +1343,60 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.recovery_provider_in_flight = True
         try:
             for request_mode, request_provider, requested_fuel, effective_fuel in requests:
-                active_provider_mode = request_mode
-                found = await request_provider.async_search(
-                    StationSearchQuery(
-                        latitude=position[0],
-                        longitude=position[1],
-                        radius_km=min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
-                        fuel_type=effective_fuel,
-                        station_count=int(self.options[CONF_STATION_COUNT]),
-                    )
-                )
+                attempted_modes = {request_mode}
+                while True:
+                    active_provider_mode = request_mode
+                    try:
+                        found = await request_provider.async_search(
+                            StationSearchQuery(
+                                latitude=position[0],
+                                longitude=position[1],
+                                radius_km=min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
+                                fuel_type=effective_fuel,
+                                station_count=int(self.options[CONF_STATION_COUNT]),
+                            )
+                        )
+                        break
+                    except ProviderError:
+                        if not self._is_auto or len(attempted_modes) >= 3:
+                            raise
+                        candidate = choose_auto_provider(
+                            self.country_auto_context.confirmed_country,
+                            requested_fuel,
+                            tankerkoenig_enabled=(
+                                PROVIDER_TANKERKOENIG not in attempted_modes
+                                and PROVIDER_TANKERKOENIG in getattr(self, "available_provider_modes", self.provider_modes)
+                            ),
+                            tankerkoenig_capabilities=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].capabilities,
+                            petromap_enabled=(
+                                PROVIDER_PETROMAP not in attempted_modes
+                                and PROVIDER_PETROMAP in getattr(self, "available_provider_modes", self.provider_modes)
+                            ),
+                            petromap_capabilities=PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities,
+                            nakordoni_enabled=(
+                                PROVIDER_NAKORDONI not in attempted_modes
+                                and self._nakordoni_auto_eligible()
+                            ),
+                            nakordoni_capabilities=self._nakordoni_auto_capabilities(),
+                        )
+                        if (
+                            candidate.provider_mode is None
+                            or candidate.provider_mode in attempted_modes
+                            or candidate.fuel_resolution is None
+                            or candidate.fuel_resolution.effective_fuel is None
+                        ):
+                            raise
+                        request_mode = candidate.provider_mode
+                        effective_fuel = candidate.fuel_resolution.effective_fuel
+                        request_provider = self._get_provider(request_mode)
+                        attempted_modes.add(request_mode)
+                        self._set_auto_runtime_state(
+                            candidate,
+                            effective_provider=request_mode,
+                            reason=f"fallback_after_{active_provider_mode}_failure",
+                        )
+                if request_mode == PROVIDER_NAKORDONI:
+                    self._update_nakordoni_metadata(request_provider)
                 self.last_provider_success = datetime.now().astimezone()
                 await self._set_provider_status(request_mode, "success")
                 if len(requests) > 1 or requested_fuel != effective_fuel:
@@ -1278,9 +1435,16 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 else "API rate limit reached",
             )
         except ProviderError as err:
-            self.last_update_result = "provider_failed"
             diagnostics = getattr(err, "diagnostics", None)
-            status = "approval_pending" if getattr(diagnostics, "error_code", None) == "not_approved" else "uncheckable"
+            error_code = getattr(diagnostics, "error_code", None)
+            self.last_update_result = (
+                "market_not_allowed" if error_code == "market_not_allowed" else "provider_failed"
+            )
+            status = (
+                "market_not_allowed" if error_code == "market_not_allowed"
+                else "approval_pending" if error_code == "not_approved"
+                else "uncheckable"
+            )
             if isinstance(err, ProviderAuthError):
                 status = "auth_failed"
             await self._set_provider_status(active_provider_mode, status)

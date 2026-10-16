@@ -69,15 +69,15 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Current stable release |
-| Pre-release | `v0.7.0-beta.5` | Beta with provider cooldown and Auto/OAuth fixes |
+| Pre-release | `v0.7.0-beta.6` | Beta with OAuth, market permissions, and Auto fallback |
 | Previous stable | `v0.5.1` | Available rollback version |
 | Frontend component | `v0.6.0` | Independently versioned Lovelace component |
 
-`v0.6.1` remains the current stable release. The `v0.7.0-beta.5` beta includes
+`v0.6.1` remains the current stable release. The `v0.7.0-beta.6` beta includes
 the protected `mobile_fuel_stations.probe_nakordoni` administrator service for
 single, redacted Nakordoni diagnostic requests using existing HA credentials.
 The experimental Nakordoni OAuth sign-in remains unverified against the live
-service. Beta 5 stores request cooldowns per provider, prevents a previous
+service. Beta 6 stores request cooldowns per provider, prevents a previous
 provider from blocking an Auto-mode provider switch, rejects cross-provider
 cache data, recognizes OAuth-only Nakordoni configuration, and adds secret-free
 selection, cache, cooldown, and retry diagnostics. Confirmed country/price
@@ -140,13 +140,18 @@ External contracts, quotas, and account permissions can reduce availability.
 | --- | --- | --- |
 | [Tankerkönig](https://onboarding.tankerkoenig.de/) | API key | Germany; diesel, E5, E10; maximum API radius 25 km |
 | [Petromap](https://developer.petromap.eu/) | API key and possibly approval | Station prices in Germany and Austria for diesel, E5, and LPG; further countries/data depend on Petromap |
-| [Nakordoni](https://nakordoni.eu/en/developers) | API key and market/access approval | Diesel, E5, E10, and LPG in the implemented API model; country and live coverage are account- and market-dependent |
+| [Nakordoni](https://nakordoni.eu/en/developers) | OAuth2-PKCE or API key, market/access approval | Diesel, E5, E10, and LPG; DE, AT, PL, CZ, SK, HU, SI, HR, IT, FR, BE, NL, and LU require confirmed market permission |
 
 Selectable fuel keys are `e5`, `e10`, `diesel`, `lpg`, and `hvo100`. A provider
 is used only when its capability and response support the requested fuel.
 HVO100 is not silently converted to diesel. Prices are shown only where a
-provider/country capability is verified. In automatic mode only enabled and
-configured providers are considered. E10 may use an explicitly supported E5
+provider/country capability is verified. In automatic mode only enabled,
+configured, and market-authorized providers are considered. Germany prefers
+Tankerkönig then Nakordoni; Austria prefers Petromap then Nakordoni; other
+supported countries prefer Nakordoni then a suitable Petromap fallback. The
+`markets_approved`, `markets_granted`, `markets_allowed`, and
+`markets_available` fields remain distinct; missing market metadata never
+grants Nakordoni Auto eligibility. E10 may use an explicitly supported E5
 substitution; this does not apply to diesel, LPG, or HVO100.
 
 ## API keys
@@ -163,17 +168,17 @@ Configure → Manage credentials**. A stored key is not proof of a successful
 live check. The options flow does not perform unnecessary network requests.
 Credentials are never written to Git, logs, or diagnostics.
 
-### Nakordoni OAuth2-PKCE (beta branch only)
+### Nakordoni OAuth2-PKCE (Beta 6)
 
-The `feature/nakordoni-oauth2-pkce` branch contains an experimental automatic
-Nakordoni sign-in using Home Assistant's OAuth2 Authorization Code flow with
-PKCE S256. It is not part of stable `v0.6.1` and must not be treated as
-available until the HA 2026.10.1 fixture tests and provider validation pass.
-The registered redirect is exactly
+Beta 6 provides the preferred automatic Nakordoni sign-in using Home
+Assistant's OAuth2 Authorization Code flow with PKCE S256. The registered
+redirect is exactly
 `https://my.home-assistant.io/redirect/oauth`; no client secret is used.
 
-The manual API-key method remains the permanent fallback. Existing API-key
-entries are not migrated, deleted, or forced through OAuth. OAuth tokens are
+The manual API-key method remains available. Existing API-key entries are not
+migrated, deleted, or forced through OAuth. HVO100 remains disabled for
+Nakordoni until the documented `hvo` field is confirmed to mean HVO100.
+OAuth tokens are
 stored by Home Assistant's OAuth2 config-entry machinery and are excluded from
 diagnostics. OAuth is only complete when Nakordoni returns the token fields
 required by Home Assistant, including `expires_in`; undocumented scopes or
