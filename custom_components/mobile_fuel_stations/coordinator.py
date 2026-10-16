@@ -36,6 +36,8 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_PROVIDER_MODE,
     CONF_PROVIDER_MODES,
+    CONF_NAKORDONI_AUTH_METHOD,
+    AUTH_METHOD_OAUTH2,
     CONF_SORT_FUEL,
     CONF_SORT_MODE,
     DEFAULT_SORT_FUEL,
@@ -102,6 +104,8 @@ _MIN_PROVIDER_INTERVALS = {
 }
 _STATION_CACHE_KEY = "stations"
 _CACHE_CONTEXT_KEY = "station_cache_context"
+_CACHE_PROVIDER_KEY = "station_cache_provider"
+_PROVIDER_REQUESTS_KEY = "provider_last_requests"
 
 
 @dataclass(slots=True, frozen=True)
@@ -317,10 +321,13 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.last_gps_sample: GpsSample | None = None
         self._last_gps_event_key: tuple[float, float, datetime] | None = None
         self.last_request: datetime | None = None
+        self.provider_last_requests: dict[str, datetime] = {}
+        self._legacy_last_request: datetime | None = None
         self.last_update_attempt: datetime | None = None
         self.last_update_result: str | None = None
         self.last_provider_attempt: datetime | None = None
         self.last_provider_success: datetime | None = None
+        self._cache_provider: str | None = None
         self.last_update_error_at: datetime | None = None
         self.last_update_error_class: str | None = None
         self.last_update_error_provider: str | None = None
@@ -364,16 +371,27 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.available_provider_modes = frozenset(
             provider
             for provider in self.provider_modes
-            if self.options.get({
-                PROVIDER_TANKERKOENIG: "tankerkoenig_api_key",
-                PROVIDER_PETROMAP: "petromap_api_key",
-                PROVIDER_NAKORDONI: "nakordoni_api_key",
-            }[provider])
+            if self._provider_configured(provider)
         )
         self.country_auto_context = CountryAutoContext(
             self.fuel_types[0], allowed_providers=self.available_provider_modes
         )
         self.auto_runtime_state: AutoRuntimeState | None = None
+
+    def _provider_configured(self, provider: str) -> bool:
+        """Return whether a provider has a usable configured credential."""
+
+        if provider == PROVIDER_NAKORDONI and (
+            self._oauth_session is not None
+            or self.options.get(CONF_NAKORDONI_AUTH_METHOD) == AUTH_METHOD_OAUTH2
+        ):
+            return True
+        key_name = {
+            PROVIDER_TANKERKOENIG: "tankerkoenig_api_key",
+            PROVIDER_PETROMAP: "petromap_api_key",
+            PROVIDER_NAKORDONI: "nakordoni_api_key",
+        }.get(provider)
+        return bool(key_name and self.options.get(key_name))
 
     @property
     def _is_auto(self) -> bool:
@@ -505,6 +523,23 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if isinstance(stored, dict):
             self.last_successful_update = self._parse_time(stored.get("last_successful_update"))
             self.last_request = self._parse_time(stored.get("last_request"))
+            raw_provider_requests = stored.get(_PROVIDER_REQUESTS_KEY)
+            if isinstance(raw_provider_requests, dict):
+                self.provider_last_requests = {
+                    provider: timestamp
+                    for provider, raw_timestamp in raw_provider_requests.items()
+                    if isinstance(provider, str)
+                    and (timestamp := self._parse_time(raw_timestamp)) is not None
+                }
+            elif self.last_request is not None:
+                # Beta-4 stored one global timestamp.  It remains a valid
+                # legacy cooldown only for a direct provider entry; applying
+                # it to Auto would let an old provider block a new one.
+                self._legacy_last_request = self.last_request
+                direct_provider = self.options.get(CONF_PROVIDER_MODE)
+                if direct_provider in self.provider_modes and not self._is_auto:
+                    self.provider_last_requests = getattr(self, "provider_last_requests", {})
+                    self.provider_last_requests[direct_provider] = self.last_request
             self.last_update_attempt = self._parse_time(stored.get("last_update_attempt"))
             self.last_update_error_at = self._parse_time(stored.get("last_update_error_at"))
             self.last_update_error_class = stored.get("last_update_error_class")
@@ -573,6 +608,18 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         context = stored.get(_CACHE_CONTEXT_KEY)
         if not isinstance(context, dict) or context != self._cache_context():
             return None
+        cache_provider = stored.get(_CACHE_PROVIDER_KEY)
+        if not isinstance(cache_provider, str):
+            providers = {
+                station.get("provider")
+                for station in stored.get(_STATION_CACHE_KEY, [])
+                if isinstance(station, dict) and isinstance(station.get("provider"), str)
+            }
+            cache_provider = next(iter(providers)) if len(providers) == 1 else None
+            if cache_provider is None and not self._is_auto:
+                cache_provider = self.options.get(CONF_PROVIDER_MODE)
+        if cache_provider not in self.provider_modes:
+            return None
         raw_stations = stored.get(_STATION_CACHE_KEY)
         if not isinstance(raw_stations, list):
             return None
@@ -595,6 +642,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             # existing state payload; no additional GPS data is stored.
             if haversine_km(reference, current) > max(float(self.options[CONF_RADIUS]), 1.0):
                 return None
+        self._cache_provider = cache_provider
         return stations
 
     @staticmethod
@@ -716,16 +764,20 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if cancel:
             cancel()
 
-    def _schedule_provider_cooldown_refresh(self) -> None:
-        if self.last_request is None:
+    def _schedule_provider_cooldown_refresh(self, provider: str | None = None) -> None:
+        provider = provider or self._cache_provider or self.options.get(CONF_PROVIDER_MODE)
+        request_at = getattr(self, "provider_last_requests", {}).get(provider or "")
+        if request_at is None and not hasattr(self, "provider_last_requests"):
+            request_at = self.last_request
+        if request_at is None:
             return
         # Home Assistant always exposes its event loop.  Keep lightweight
         # coordinator doubles usable without fabricating a loop in tests.
         if not hasattr(self.hass, "loop"):
             return
-        remaining = self._provider_minimum_interval(
-            self.options.get(CONF_PROVIDER_MODE)
-        ) - (datetime.now().astimezone() - self.last_request)
+        remaining = self._provider_minimum_interval(provider) - (
+            datetime.now().astimezone() - request_at
+        )
         if remaining.total_seconds() <= 0:
             return
         if getattr(self, "_cooldown_timer_unsub", None) is not None:
@@ -812,11 +864,46 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         return ADAPTIVE_MOTORWAY_INTERVAL
 
     def _provider_minimum_interval(self, provider: str | None) -> timedelta:
-        if provider == "auto":
-            # Auto mode may select Tankerkönig after a country transition;
-            # never use a provider switch to bypass its five-minute floor.
-            return _MIN_PROVIDER_INTERVALS[PROVIDER_TANKERKOENIG]
         return _MIN_PROVIDER_INTERVALS.get(provider or "", timedelta(0))
+
+    def _diagnostic_provider(self) -> str | None:
+        if self._is_auto:
+            return self.auto_runtime_state.effective_provider if self.auto_runtime_state else self._cache_provider
+        return self.options.get(CONF_PROVIDER_MODE)
+
+    @property
+    def diagnostic_effective_provider(self) -> str | None:
+        """Provider currently represented by the runtime/cache state."""
+
+        return self._diagnostic_provider()
+
+    @property
+    def diagnostic_provider_selection_reason(self) -> str | None:
+        return self.auto_runtime_state.reason if self.auto_runtime_state else None
+
+    @property
+    def diagnostic_provider_cooldown_remaining(self) -> int:
+        provider = self._diagnostic_provider()
+        requested_at = self.provider_last_requests.get(provider or "")
+        if provider is None or requested_at is None:
+            return 0
+        return max(0, int((self._provider_minimum_interval(provider) - (
+            datetime.now().astimezone() - requested_at
+        )).total_seconds()))
+
+    @property
+    def diagnostic_next_provider_retry(self) -> datetime | None:
+        remaining = self.diagnostic_provider_cooldown_remaining
+        return datetime.now().astimezone() + timedelta(seconds=remaining) if remaining else None
+
+    @property
+    def diagnostic_credential_mode(self) -> str | None:
+        provider = self._diagnostic_provider()
+        if provider == PROVIDER_NAKORDONI:
+            return "oauth2" if self._oauth_session is not None or self.options.get(
+                CONF_NAKORDONI_AUTH_METHOD
+            ) == AUTH_METHOD_OAUTH2 else "api_key"
+        return "api_key" if provider else None
 
     def _set_adaptive_interval(self, speed_kmh: float | None) -> None:
         """Set Core's next regular interval, preserving the legacy mode."""
@@ -1080,14 +1167,45 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                         f"{provider_mode} does not support configured fuels"
                     ))
                 )
+        cache_provider = getattr(self, "_cache_provider", None)
+        if cache_provider is not None and cache_provider != provider_mode:
+            # A provider-bound cache must never be presented as the new
+            # provider's result.  Drop it before the first request after a
+            # country/provider transition, including when that request is
+            # later deferred by the new provider's own cooldown.
+            self._set_station_data([])
+            self._has_valid_provider_result = False
+            self.data_stale = False
+            self._cache_provider = None
         provider_minimum = self._provider_minimum_interval(provider_mode)
+        provider_requests = getattr(self, "provider_last_requests", {})
+        provider_last_request = provider_requests.get(provider_mode)
+        # Keep lightweight pre-beta5 coordinator doubles and direct legacy
+        # callers compatible when they only mutate ``last_request``.  A
+        # provider switch never takes this path because the cache provider no
+        # longer matches the selected provider.
         if (
-            self.last_request is not None
-            and now - self.last_request < provider_minimum
+            getattr(self, "_cache_provider", None) == provider_mode
+            and self.last_request is not None
+            and self.last_request != provider_last_request
+        ):
+            provider_last_request = self.last_request
+        elif not hasattr(self, "provider_last_requests"):
+            # Compatibility for lightweight pre-beta5 coordinator doubles.
+            provider_last_request = self.last_request
+        if (
+            provider_last_request is not None
+            and now - provider_last_request < provider_minimum
         ):
             self.last_update_result = "provider_cooldown"
             self.data_stale = bool(self.stations)
-            self._schedule_provider_cooldown_refresh()
+            if self._is_auto:
+                self._set_auto_runtime_state(
+                    decision,
+                    effective_provider=provider_mode,
+                    reason="provider_cooldown",
+                )
+            self._schedule_provider_cooldown_refresh(provider_mode)
             return self._previous_result()
         provider_lock = getattr(self, "_provider_lock", None)
         if provider_lock is None:
@@ -1102,6 +1220,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.last_update_result = "provider_in_flight"
             return self._previous_result()
         self.last_request = now
+        provider_requests[provider_mode] = now
+        self.provider_last_requests = provider_requests
         self.last_provider_attempt = now
         if self._is_auto:
             self._set_auto_runtime_state(decision, effective_provider=provider_mode)
@@ -1183,6 +1303,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         result = merge_stations(result)
         self._cancel_provider_cooldown_timer()
         self._set_station_data(result)
+        self._cache_provider = provider_mode
         if provider_mode == PROVIDER_NAKORDONI:
             self._record_nakordoni_success(provider)
         sorted_stations = sort_stations(
@@ -1213,6 +1334,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         await self._store.async_save({
             "last_successful_update": now.isoformat(),
             "last_request": now.isoformat(),
+            _PROVIDER_REQUESTS_KEY: {
+                key: value.isoformat() for key, value in self.provider_last_requests.items()
+            },
             "last_update_attempt": now.isoformat(),
             "last_update_error_at": None,
             "last_update_error_class": None,
@@ -1230,6 +1354,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "last_gps_at": self.last_gps_sample.observed_at.isoformat()
             if self.last_gps_sample else None,
             _CACHE_CONTEXT_KEY: self._cache_context(),
+            _CACHE_PROVIDER_KEY: provider_mode,
             _STATION_CACHE_KEY: [self._station_to_store(station) for station in self.stations],
         })
         return self.stations
@@ -1270,6 +1395,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "last_successful_update": self.last_successful_update.isoformat()
             if self.last_successful_update else None,
             "last_request": self.last_request.isoformat() if self.last_request else None,
+            _PROVIDER_REQUESTS_KEY: {
+                key: value.isoformat() for key, value in self.provider_last_requests.items()
+            },
             "last_update_attempt": self.last_update_attempt.isoformat()
             if self.last_update_attempt else None,
             "last_update_error_at": now.isoformat(),
@@ -1282,6 +1410,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "reference_latitude": position[0] if position else None,
             "reference_longitude": position[1] if position else None,
             _CACHE_CONTEXT_KEY: self._cache_context(),
+            _CACHE_PROVIDER_KEY: getattr(self, "_cache_provider", None),
             _STATION_CACHE_KEY: [self._station_to_store(station) for station in self.stations],
         })
         if has_previous_result:

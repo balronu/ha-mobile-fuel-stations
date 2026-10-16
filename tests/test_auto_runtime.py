@@ -12,6 +12,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 import mobile_fuel_stations as integration
 from mobile_fuel_stations import coordinator as coordinator_module
 from mobile_fuel_stations.const import (
+    AUTH_METHOD_OAUTH2,
     CONF_FUEL_TYPE,
     CONF_LOCATION_ENTITY,
     CONF_PETROMAP_API_KEY,
@@ -22,6 +23,7 @@ from mobile_fuel_stations.const import (
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
+    PROVIDER_NAKORDONI,
 )
 from mobile_fuel_stations.coordinator import CountryAutoContext, MobileFuelStationsCoordinator
 from mobile_fuel_stations.providers import ProviderRegistration, PROVIDER_REGISTRY
@@ -146,6 +148,9 @@ def _coordinator(monkeypatch, country, fuel="diesel", *, tk_error=None, pm_error
     coordinator.last_successful_update = None
     coordinator.reference_position = None
     coordinator.last_request = None
+    coordinator.provider_last_requests = {}
+    coordinator._cache_provider = None
+    coordinator._oauth_session = None
     coordinator.last_update_attempt = None
     coordinator.last_update_error_at = None
     coordinator.last_update_error_class = None
@@ -208,6 +213,59 @@ def test_auto_at_e10_uses_capability_declared_e5_fallback(monkeypatch):
     assert coordinator.auto_runtime_state.effective_provider == PROVIDER_PETROMAP
     assert coordinator.auto_runtime_state.fuel_resolution.fallback_used is True
     _assert_runtime_usage_zero(pm)
+
+
+def test_auto_provider_switch_ignores_previous_provider_cooldown_and_cache(monkeypatch):
+    samples = iter(["DE", "AT", "AT", "AT"])
+    coordinator, tk, pm = _coordinator(monkeypatch, lambda: next(samples), "diesel")
+
+    assert asyncio.run(coordinator._async_update_data()) == [_station("tk")]
+    assert coordinator.provider_last_requests == {PROVIDER_TANKERKOENIG: coordinator.last_request}
+
+    # Confirm the border transition without aging the Tankerkönig timestamp.
+    asyncio.run(coordinator._async_update_data())
+    asyncio.run(coordinator._async_update_data())
+    # The old global Auto cooldown blocked this Petromap request for five
+    # minutes.  Beta-5 uses the selected provider's own timestamp instead.
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == [_station("pm")]
+    assert len(tk.calls) == 1
+    assert len(pm.calls) == 1
+    assert coordinator._cache_provider == PROVIDER_PETROMAP
+    assert coordinator.data_stale is False
+
+
+def test_oauth_only_nakordoni_is_a_configured_auto_provider():
+    coordinator = object.__new__(MobileFuelStationsCoordinator)
+    coordinator._oauth_session = object()
+    coordinator.options = {}
+
+    assert coordinator._provider_configured(PROVIDER_NAKORDONI) is True
+
+    coordinator._oauth_session = None
+    coordinator.options = {"nakordoni_auth_method": AUTH_METHOD_OAUTH2}
+    assert coordinator._provider_configured(PROVIDER_NAKORDONI) is True
+
+
+def test_auto_diagnostics_report_effective_provider_and_cooldown_without_secrets():
+    coordinator = object.__new__(MobileFuelStationsCoordinator)
+    coordinator.options = {CONF_PROVIDER_MODE: PROVIDER_AUTO}
+    coordinator.auto_runtime_state = SimpleNamespace(
+        effective_provider=PROVIDER_TANKERKOENIG,
+        reason="preferred_provider",
+    )
+    coordinator.provider_last_requests = {
+        PROVIDER_TANKERKOENIG: datetime.now().astimezone()
+    }
+    coordinator._cache_provider = PROVIDER_TANKERKOENIG
+    coordinator._oauth_session = None
+
+    assert coordinator.diagnostic_effective_provider == PROVIDER_TANKERKOENIG
+    assert coordinator.diagnostic_provider_selection_reason == "preferred_provider"
+    assert 0 < coordinator.diagnostic_provider_cooldown_remaining <= 300
+    assert coordinator.diagnostic_next_provider_retry is not None
+    assert coordinator.diagnostic_credential_mode == "api_key"
 
 
 def test_auto_e10_border_preserves_last_valid_data_after_confirmed_at(monkeypatch):
@@ -307,9 +365,12 @@ def test_auto_pm_failure_preserves_last_valid_data_without_tk_fallback(monkeypat
     coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=6)
     stale = asyncio.run(coordinator._async_update_data())
 
-    assert stale == previous
-    assert coordinator.stations == previous
-    assert coordinator.data_stale is True
+    # A provider switch invalidates the old Tankerkönig cache.  Keeping it
+    # visible after a Petromap failure would expose another provider's prices
+    # as current data.
+    assert stale is None
+    assert coordinator.stations == []
+    assert coordinator.data_stale is False
     assert coordinator.last_update_error_class == "ProviderTimeoutError"
     assert len(tk.calls) == 3
     assert len(pm.calls) == 1

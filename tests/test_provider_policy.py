@@ -1,6 +1,6 @@
 import pytest
 
-from mobile_fuel_stations.const import PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
+from mobile_fuel_stations.const import PROVIDER_NAKORDONI, PROVIDER_PETROMAP, PROVIDER_TANKERKOENIG
 from mobile_fuel_stations.providers import PROVIDER_REGISTRY, create_provider
 from mobile_fuel_stations.providers.base import (
     CountryPriceCoverage,
@@ -148,6 +148,22 @@ def test_auto_unknown_country_is_unsupported():
     decision = choose_auto_provider("FR", "diesel", petromap_enabled=True, petromap_capabilities=PETROMAP_HYPOTHETICAL)
     assert decision.provider_mode is None
     assert decision.reason == "unsupported_country"
+
+
+def test_auto_selects_nakordoni_only_with_explicit_confirmed_price_coverage():
+    capabilities = ProviderCapabilities(
+        supported_countries=frozenset({"GE"}),
+        supported_fuel_types=frozenset({"diesel"}),
+        country_price_coverage={"GE": CountryPriceCoverage.PER_STATION},
+    )
+
+    decision = choose_auto_provider(
+        "GE", "diesel", nakordoni_enabled=True, nakordoni_capabilities=capabilities
+    )
+
+    assert decision.provider_mode == PROVIDER_NAKORDONI
+    assert decision.coverage == CountryPriceCoverage.PER_STATION
+    assert choose_auto_provider("GE", "diesel", nakordoni_enabled=True).provider_mode is None
 
 
 def test_country_hysteresis_requires_three_consecutive_new_results():
