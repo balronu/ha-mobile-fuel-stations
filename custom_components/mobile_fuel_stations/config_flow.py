@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from typing import Any
 
 import voluptuous as vol
@@ -10,6 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import selector
 from homeassistant.helpers.storage import Store
+from homeassistant.helpers import config_entry_oauth2_flow
 
 from .const import (
     CONFIG_ENTRY_VERSION,
@@ -18,6 +21,9 @@ from .const import (
     CONF_PETROMAP_PRIVACY_ACCEPTED,
     CONF_NAKORDONI_API_KEY,
     CONF_NAKORDONI_PRIVACY_ACCEPTED,
+    CONF_NAKORDONI_AUTH_METHOD,
+    AUTH_METHOD_API_KEY,
+    AUTH_METHOD_OAUTH2,
     CONF_TANKERKOENIG_API_KEY,
     CONF_COOLDOWN,
     CONF_ADAPTIVE_UPDATES,
@@ -241,6 +247,50 @@ def _credential_schema(provider_modes: list[str]) -> vol.Schema:
     return vol.Schema(fields)
 
 
+def _nakordoni_credential_schema() -> vol.Schema:
+    """Offer OAuth first while keeping the old password field available."""
+
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_NAKORDONI_AUTH_METHOD, default=AUTH_METHOD_OAUTH2
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[AUTH_METHOD_OAUTH2, AUTH_METHOD_API_KEY],
+                    translation_key=CONF_NAKORDONI_AUTH_METHOD,
+                )
+            ),
+            vol.Optional(CONF_NAKORDONI_API_KEY, default=""): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
+        }
+    )
+
+
+def _provider_credentials_schema(provider_modes: list[str]) -> vol.Schema:
+    """Credential schema for a new entry that may use Nakordoni OAuth."""
+
+    if PROVIDER_NAKORDONI not in provider_modes:
+        return _credential_schema(provider_modes)
+    fields: dict[Any, Any] = {}
+    for provider in provider_modes:
+        if provider == PROVIDER_NAKORDONI:
+            fields[vol.Optional(CONF_NAKORDONI_AUTH_METHOD, default=AUTH_METHOD_OAUTH2)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[AUTH_METHOD_OAUTH2, AUTH_METHOD_API_KEY],
+                    translation_key=CONF_NAKORDONI_AUTH_METHOD,
+                )
+            )
+            fields[vol.Optional(CONF_NAKORDONI_API_KEY, default="")] = selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            )
+        else:
+            fields[vol.Required(_provider_key(provider))] = selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            )
+    return vol.Schema(fields)
+
+
 def _options_credential_schema(provider_modes: list[str], current_data: dict[str, Any]) -> vol.Schema:
     """Return safe replacement/removal controls for selected providers."""
 
@@ -251,6 +301,15 @@ def _options_credential_schema(provider_modes: list[str], current_data: dict[str
             selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
         )
         fields[vol.Optional(f"remove_{key}", default=False)] = bool
+        if provider == PROVIDER_NAKORDONI:
+            fields[vol.Optional(CONF_NAKORDONI_AUTH_METHOD, default=current_data.get(
+                CONF_NAKORDONI_AUTH_METHOD, AUTH_METHOD_API_KEY
+            ))] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[AUTH_METHOD_OAUTH2, AUTH_METHOD_API_KEY],
+                    translation_key=CONF_NAKORDONI_AUTH_METHOD,
+                )
+            )
     return vol.Schema(fields)
 
 
@@ -350,10 +409,73 @@ def _validate_location(hass: HomeAssistant, entity_id: str) -> bool:
     return -90 <= lat <= 90 and -180 <= lon <= 180
 
 
-class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class MobileFuelStationsConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMAIN):
     """Handle a config flow."""
 
+    DOMAIN = "mobile_fuel_stations"
     VERSION = CONFIG_ENTRY_VERSION
+
+    @property
+    def logger(self):
+        """Return the integration logger required by the OAuth helper."""
+
+        return _LOGGER
+
+    async def _async_start_nakordoni_oauth(self, pending_data: dict[str, Any]):
+        """Start HA's external OAuth flow without altering an existing entry."""
+
+        implementations = await config_entry_oauth2_flow.async_get_implementations(
+            self.hass, DOMAIN
+        )
+        implementation = implementations.get("nakordoni")
+        if implementation is None:
+            return self.async_abort(reason="oauth_implementation_unavailable")
+        self.flow_impl = implementation
+        self._oauth_pending_data = dict(pending_data)
+        return await self.async_step_auth()
+
+    async def async_oauth_create_entry(self, data: dict):
+        """Merge OAuth data while preserving legacy provider credentials."""
+
+        if self.context.get("source") == config_entries.SOURCE_REAUTH:
+            entry = self._get_reauth_entry()
+            if entry is None:
+                return self.async_abort(reason="unknown")
+            return self.async_update_reload_and_abort(entry, data_updates=data)
+        pending = dict(getattr(self, "_oauth_pending_data", {}))
+        pending[CONF_NAKORDONI_AUTH_METHOD] = AUTH_METHOD_OAUTH2
+        pending.update(data)
+        return self.async_create_entry(
+            title=f"Mobile Fuel Stations ({pending[CONF_LOCATION_ENTITY]})",
+            data=pending,
+        )
+
+    async def async_step_creation(self, user_input=None):
+        """Resolve OAuth without allowing token contents into logs."""
+
+        try:
+            async with asyncio.timeout(30):
+                token = await self.flow_impl.async_resolve_external_data(
+                    self.external_data
+                )
+        except TimeoutError:
+            return self.async_abort(reason="oauth_timeout")
+        except Exception:
+            _LOGGER.error("Nakordoni OAuth token exchange failed")
+            return self.async_abort(reason="oauth_failed")
+        if not isinstance(token, dict) or "expires_in" not in token:
+            return self.async_abort(reason="oauth_error")
+        try:
+            token["expires_in"] = int(token["expires_in"])
+        except (TypeError, ValueError):
+            return self.async_abort(reason="oauth_error")
+        except Exception:
+            _LOGGER.error("Nakordoni OAuth token exchange failed")
+            return self.async_abort(reason="oauth_failed")
+        token["expires_at"] = time.time() + token["expires_in"]
+        return await self.async_oauth_create_entry(
+            {"auth_implementation": self.flow_impl.domain, "token": token}
+        )
 
     @staticmethod
     def _validation_error(error: ProviderError) -> str:
@@ -390,6 +512,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         provider_mode = _effective_provider_mode(provider_modes)
         errors = {}
         credentials = {}
+        auth_method = user_input.get(CONF_NAKORDONI_AUTH_METHOD, AUTH_METHOD_API_KEY)
         for provider in provider_modes:
             key_name = _provider_key(provider)
             key = str(
@@ -397,6 +520,8 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 or (user_input.get(CONF_API_KEY, "") if len(provider_modes) == 1 else "")
             ).strip()
             credentials[key_name] = key
+            if provider == PROVIDER_NAKORDONI and auth_method == AUTH_METHOD_OAUTH2:
+                continue
             if not key:
                 errors[key_name] = "api_key_required"
             registration = PROVIDER_REGISTRY.get(provider)
@@ -423,11 +548,17 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         data[CONF_PROVIDER_MODES] = provider_modes
         data.pop(CONF_API_KEY, None)
         for key_name, key in credentials.items():
-            data[key_name] = key
+            if key:
+                data[key_name] = key
+        if PROVIDER_NAKORDONI in provider_modes:
+            data[CONF_NAKORDONI_AUTH_METHOD] = auth_method
         if PROVIDER_PETROMAP in provider_modes:
             data[CONF_PETROMAP_PRIVACY_ACCEPTED] = True
         if PROVIDER_NAKORDONI in provider_modes:
             data[CONF_NAKORDONI_PRIVACY_ACCEPTED] = True
+        if PROVIDER_NAKORDONI in provider_modes and auth_method == AUTH_METHOD_OAUTH2:
+            self._abort_if_unique_id_configured()
+            return await self._async_start_nakordoni_oauth(data)
         return self.async_create_entry(
             title=f"Mobile Fuel Stations ({user_input[CONF_LOCATION_ENTITY]})",
             data=data,
@@ -459,7 +590,10 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
                 if PROVIDER_PETROMAP in provider_modes or PROVIDER_NAKORDONI in provider_modes:
                     return self.async_show_form(step_id="provider_privacy", data_schema=vol.Schema({}))
-                return self.async_show_form(step_id="provider_credentials", data_schema=_credential_schema(provider_modes))
+                return self.async_show_form(
+                    step_id="provider_credentials",
+                    data_schema=_provider_credentials_schema(provider_modes),
+                )
         defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_FUEL_TYPES: [DEFAULT_FUEL_TYPE], CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL, CONF_MOVEMENT_UPDATES: DEFAULT_MOVEMENT_UPDATES,
                     CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN,
@@ -473,14 +607,20 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(step_id="provider_privacy", data_schema=vol.Schema({}))
         modes = _normalize_provider_modes(self._pending_user_input.get(CONF_PROVIDER_MODES))
         return self.async_show_form(
-            step_id="provider_credentials", data_schema=_credential_schema(modes)
+            step_id="provider_credentials",
+            data_schema=_provider_credentials_schema(modes),
         )
 
     async def async_step_provider_credentials(self, user_input=None):
         if user_input is None:
             modes = _normalize_provider_modes(self._pending_user_input.get(CONF_PROVIDER_MODES))
             return self.async_show_form(
-                step_id="provider_credentials", data_schema=_credential_schema(modes)
+                step_id="provider_credentials",
+                data_schema=(
+                    _provider_credentials_schema(modes)
+                    if PROVIDER_NAKORDONI in modes
+                    else _credential_schema(modes)
+                ),
             )
         return await self._async_create_user_entry({**self._pending_user_input, **user_input})
 
@@ -513,7 +653,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(step_id="nakordoni_privacy", data_schema=vol.Schema({}))
         return self.async_show_form(
             step_id="nakordoni_credentials",
-            data_schema=_credential_schema([PROVIDER_NAKORDONI]),
+            data_schema=_nakordoni_credential_schema(),
         )
 
     async def async_step_tankerkoenig_credentials(self, user_input=None):
@@ -558,7 +698,7 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="nakordoni_credentials",
-                data_schema=_credential_schema([PROVIDER_NAKORDONI]),
+                data_schema=_nakordoni_credential_schema(),
             )
         return await self._async_create_user_entry(
             {**self._pending_user_input, **user_input}
@@ -567,6 +707,11 @@ class MobileFuelStationsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(self, entry_data):
         """Start reauthentication for an explicit or Auto Petromap entry."""
 
+        if self.context.get("provider_mode") == PROVIDER_NAKORDONI and entry_data.get(
+            CONF_NAKORDONI_AUTH_METHOD
+        ) == AUTH_METHOD_OAUTH2:
+            self._oauth_pending_data = dict(entry_data)
+            return await self._async_start_nakordoni_oauth(dict(entry_data))
         if self.context.get("provider_mode") == PROVIDER_NAKORDONI:
             return await self.async_step_reauth_nakordoni_confirm()
         if self.context.get("provider_mode") == PROVIDER_PETROMAP and entry_data.get(
@@ -788,15 +933,63 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_provider_credentials(self, user_input=None):
         """Replace or explicitly remove credentials without exposing them."""
-
+        if (
+            user_input
+            and user_input.get(CONF_NAKORDONI_AUTH_METHOD) == AUTH_METHOD_OAUTH2
+            and not getattr(self, "_oauth_result", None)
+        ):
+            self._oauth_pending_options = dict(user_input)
+            implementations = await config_entry_oauth2_flow.async_get_implementations(
+                self.hass, DOMAIN
+            )
+            implementation = implementations.get("nakordoni")
+            if implementation is None:
+                return self.async_abort(reason="oauth_implementation_unavailable")
+            self._oauth_impl = implementation
+            url = await implementation.async_generate_authorize_url(self.flow_id)
+            return self.async_external_step(step_id="oauth_auth", url=url)
         return await self._async_options_credentials(user_input or {})
+
+    async def async_step_oauth_auth(self, user_input=None):
+        """Resume the options flow from the signed HA OAuth callback."""
+
+        if user_input is not None:
+            self._oauth_external_data = user_input
+            return self.async_external_step_done(next_step_id="oauth_creation")
+        return self.async_abort(reason="oauth_failed")
+
+    async def async_step_oauth_creation(self, user_input=None):
+        """Exchange the one-time code and continue the normal options save."""
+
+        try:
+            token = await self._oauth_impl.async_resolve_external_data(
+                self._oauth_external_data
+            )
+            if "expires_in" not in token:
+                return self.async_abort(reason="oauth_error")
+            token["expires_in"] = int(token["expires_in"])
+            token["expires_at"] = time.time() + token["expires_in"]
+        except (TypeError, ValueError):
+            return self.async_abort(reason="oauth_error")
+        self._oauth_result = {
+            "auth_implementation": self._oauth_impl.domain,
+            "token": token,
+            CONF_NAKORDONI_AUTH_METHOD: AUTH_METHOD_OAUTH2,
+        }
+        return await self._async_options_credentials({})
 
     async def _async_options_credentials(self, credentials: dict[str, Any]):
         pending = getattr(self, "_pending_options", {})
         current_data = dict(self.config_entry.data)
+        if getattr(self, "_oauth_result", None):
+            current_data.update(self._oauth_result)
         current_mode = current_data.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
         target_modes = _normalize_provider_modes(pending.get(CONF_PROVIDER_MODES), current_mode)
         target_mode = _effective_provider_mode(target_modes)
+        nakordoni_auth_method = credentials.get(
+            CONF_NAKORDONI_AUTH_METHOD,
+            current_data.get(CONF_NAKORDONI_AUTH_METHOD, AUTH_METHOD_API_KEY),
+        )
 
         source_tankerkoenig_key = current_data.get(CONF_TANKERKOENIG_API_KEY, "")
         source_petromap_key = current_data.get(CONF_PETROMAP_API_KEY, "")
@@ -843,7 +1036,14 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
             if replacement:
                 changed_providers.add(provider)
             updated_keys[key] = replacement or source_keys[key]
-            if provider in target_modes and not updated_keys[key]:
+            if (
+                provider in target_modes
+                and not updated_keys[key]
+                and not (
+                    provider == PROVIDER_NAKORDONI
+                    and nakordoni_auth_method == AUTH_METHOD_OAUTH2
+                )
+            ):
                 missing.add(key)
 
         if missing:
@@ -868,6 +1068,8 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
         }
         new_data[CONF_PROVIDER_MODE] = target_mode
         new_data[CONF_PROVIDER_MODES] = target_modes
+        if PROVIDER_NAKORDONI in target_modes:
+            new_data[CONF_NAKORDONI_AUTH_METHOD] = nakordoni_auth_method
         new_data.update({key: value for key, value in updated_keys.items() if value})
         if legacy_api_key and not legacy_key_is_unambiguous:
             # Preserve an unexpected generic key until its provider can be

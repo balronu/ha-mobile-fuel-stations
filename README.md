@@ -204,6 +204,24 @@ erfolgreich geprüft wurde. Der Optionsdialog startet keine unnötigen
 Provider-Anfragen. Zugangsdaten werden nicht in Git, Logs oder Diagnostics
 ausgegeben.
 
+### Nakordoni OAuth2-PKCE (nur Beta-Branch)
+
+Der Branch `feature/nakordoni-oauth2-pkce` enthält eine experimentelle
+automatische Nakordoni-Anmeldung über den Home-Assistant-Authorization-Code-
+Flow mit PKCE S256. Sie gehört nicht zu Stable `v0.6.1` und darf erst als
+verfügbar gelten, wenn die HA-2026.10.1-Fixture-Tests und die Provider-Prüfung
+erfolgreich sind. Die registrierte Redirect-URI ist exakt
+`https://my.home-assistant.io/redirect/oauth`; ein Client Secret wird nicht
+verwendet.
+
+Die manuelle API-Key-Methode bleibt dauerhaft als Fallback erhalten.
+Bestehende API-Key-Einträge werden weder migriert noch gelöscht und müssen
+nicht auf OAuth umgestellt werden. OAuth-Tokens werden von der
+Home-Assistant-OAuth2-Config-Entry-Infrastruktur gespeichert und aus
+Diagnostics ausgeschlossen. OAuth ist erst vollständig, wenn Nakordoni die
+benötigten Tokenfelder einschließlich `expires_in` liefert; nicht
+dokumentierte Scopes oder Refresh-Parameter werden nicht angenommen.
+
 ## GPS, Polling und Startup-Recovery
 
 Die Integration benötigt gültige Koordinaten der konfigurierten Entity. Nach

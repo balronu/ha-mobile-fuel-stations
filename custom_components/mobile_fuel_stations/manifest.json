@@ -3,11 +3,11 @@
   "name": "Mobile Fuel Stations",
   "codeowners": ["@balronu"],
   "config_flow": true,
-  "dependencies": ["http"],
+  "dependencies": ["application_credentials", "http"],
   "documentation": "https://github.com/balronu/ha-mobile-fuel-stations",
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/balronu/ha-mobile-fuel-stations/issues",
   "requirements": [],
-  "version": "0.6.1"
+  "version": "0.7.0-beta.1"
 }

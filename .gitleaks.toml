@@ -1,0 +1,8 @@
+# Nakordoni's public OAuth client identifier is required by the authorization
+# request. It is not a client secret and is intentionally safe to distribute.
+
+[[allowlists]]
+description = "Nakordoni public OAuth client ID, not a secret"
+paths = ['custom_components/mobile_fuel_stations/const\.py']
+regexTarget = "line"
+regexes = ['nkd_30ad5daeb089abfc3c1ea20b']

@@ -33,7 +33,7 @@
       },
       "tankerkoenig_credentials": {"title": "Tankerkönig credentials", "description": "Enter the Tankerkönig API key."},
       "petromap_credentials": {"title": "Petromap credentials", "description": "Enter the Petromap API key."},
-      "nakordoni_credentials": {"title": "Nakordoni credentials", "description": "Enter the Nakordoni API key."},
+      "nakordoni_credentials": {"title": "Nakordoni credentials", "description": "Connect automatically with OAuth2 or enter a Nakordoni API key.", "data": {"nakordoni_auth_method": "Nakordoni sign-in method", "nakordoni_api_key": "Nakordoni API key"}},
       "auto_credentials": {"title": "Automatic mode credentials", "description": "Enter both provider credentials."},
       "provider_privacy": {"title": "Provider privacy", "description": "Selected providers may receive the vehicle location, radius, and fuel types."},
       "petromap_privacy": {"title": "Petromap privacy", "description": "Location coordinates, radius, and fuel types may be sent to Petromap."},
@@ -93,12 +93,13 @@
       "options_petromap_privacy": {"title": "Petromap privacy", "description": "Location coordinates, radius, and fuel types may be sent to Petromap."},
       "options_nakordoni_privacy": {"title": "Nakordoni privacy", "description": "Location coordinates, radius, and fuel types may be sent to Nakordoni."},
       "options_provider_privacy": {"title": "Provider privacy", "description": "Selected providers may receive the vehicle location, radius, and fuel types."},
-      "provider_credentials": {"title": "Provider credentials", "description": "Tankerkönig: {tankerkoenig_status}. Petromap: {petromap_status}. Nakordoni: {nakordoni_status}.", "data": {"tankerkoenig_api_key": "Tankerkönig API key (leave empty to keep it)", "petromap_api_key": "Petromap API key (leave empty to keep it)", "nakordoni_api_key": "Nakordoni API key (leave empty to keep it)", "remove_tankerkoenig_api_key": "Remove Tankerkönig API key", "remove_petromap_api_key": "Remove Petromap API key", "remove_nakordoni_api_key": "Remove Nakordoni API key"}}
+      "provider_credentials": {"title": "Provider credentials", "description": "Tankerkönig: {tankerkoenig_status}. Petromap: {petromap_status}. Nakordoni: {nakordoni_status}.", "data": {"tankerkoenig_api_key": "Tankerkönig API key (leave empty to keep it)", "petromap_api_key": "Petromap API key (leave empty to keep it)", "nakordoni_api_key": "Nakordoni API key (leave empty to keep it)", "nakordoni_auth_method": "Nakordoni sign-in method", "remove_tankerkoenig_api_key": "Remove Tankerkönig API key", "remove_petromap_api_key": "Remove Petromap API key", "remove_nakordoni_api_key": "Remove Nakordoni API key"}}
     }
   },
   "selector": {
     "provider_modes": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni"}},
     "provider_mode": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni", "auto": "Automatic (recommended)"}},
+    "nakordoni_auth_method": {"options": {"oauth2": "OAuth2 automatic sign-in", "api_key": "Manual API key"}},
     "sort_mode": {"options": {"distance": "Distance — nearest first", "price": "Fuel price — cheapest first"}},
     "sort_fuel": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100"}}
   }

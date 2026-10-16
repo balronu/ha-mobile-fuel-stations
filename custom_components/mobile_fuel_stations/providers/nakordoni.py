@@ -9,6 +9,7 @@ from math import isfinite
 from typing import Any
 
 from aiohttp import ClientConnectionError, ClientError, ClientSession, ClientTimeout
+from homeassistant import exceptions as ha_exceptions
 
 from ..const import DEFAULT_TIMEOUT, MAX_API_RADIUS_KM, PROVIDER_NAKORDONI
 from .base import (
@@ -56,6 +57,17 @@ _SAFE_ERROR_CODES = frozenset(
         "not_approved",
         "invalid_credential",
     }
+)
+
+_OAUTH_TOKEN_ERRORS = tuple(
+    exception_type
+    for exception_name in (
+        "OAuth2TokenRequestReauthError",
+        "OAuth2TokenRequestError",
+    )
+    if isinstance(
+        exception_type := getattr(ha_exceptions, exception_name, None), type
+    )
 )
 
 
@@ -172,12 +184,14 @@ class NakordoniProvider:
     def __init__(
         self,
         session: ClientSession,
-        api_key: str,
+        api_key: str | None,
         *,
         timeout: ClientTimeout | None = None,
+        oauth_session=None,
     ) -> None:
         self._session = session
         self._api_key = api_key
+        self._oauth_session = oauth_session
         self._timeout = timeout or ClientTimeout(total=DEFAULT_TIMEOUT.total_seconds())
         self.last_response_metadata: NakordoniResponseMetadata | None = None
         self.last_request_diagnostics: ProviderRequestDiagnostics | None = None
@@ -200,12 +214,18 @@ class NakordoniProvider:
             "lang": "de",
         }
         try:
-            async with self._session.get(
-                NAKORDONI_API_URL,
-                params=params,
-                headers={"Authorization": f"Bearer {self._api_key}"},
-                timeout=self._timeout,
-            ) as response:
+            if self._oauth_session is not None:
+                response = await self._oauth_session.async_request(
+                    "GET", NAKORDONI_API_URL, params=params, timeout=self._timeout
+                )
+            else:
+                response = self._session.get(
+                    NAKORDONI_API_URL,
+                    params=params,
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    timeout=self._timeout,
+                )
+            async with response:
                 quota_limit = _header_nonnegative_int(response.headers, "X-Devapi-Limit")
                 quota_remaining = _header_nonnegative_int(response.headers, "X-Devapi-Remaining")
                 retry_after = _header_nonnegative_int(response.headers, "Retry-After")
@@ -269,6 +289,13 @@ class NakordoniProvider:
         except ClientConnectionError as err:
             exception = ProviderNetworkError("provider_error")
             exception.diagnostics = ProviderRequestDiagnostics(PROVIDER_NAKORDONI, None, "provider_error", None, None, None, False, None)
+            self.last_request_diagnostics = exception.diagnostics
+            raise exception from err
+        except _OAUTH_TOKEN_ERRORS as err:
+            exception = ProviderAuthError("invalid_credential")
+            exception.diagnostics = ProviderRequestDiagnostics(
+                PROVIDER_NAKORDONI, None, "invalid_credential", None, None, None, False, None
+            )
             self.last_request_diagnostics = exception.diagnostics
             raise exception from err
         except ClientError as err:

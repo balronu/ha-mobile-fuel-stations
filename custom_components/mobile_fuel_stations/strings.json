@@ -43,8 +43,8 @@
       },
       "nakordoni_credentials": {
         "title": "Nakordoni credentials",
-        "description": "Enter the Nakordoni API key.",
-        "data": {"nakordoni_api_key": "Nakordoni API key"}
+        "description": "Connect automatically with OAuth2 or enter a Nakordoni API key.",
+        "data": {"nakordoni_auth_method": "Nakordoni sign-in method", "nakordoni_api_key": "Nakordoni API key"}
       },
       "provider_privacy": {
         "title": "Provider privacy",
@@ -57,6 +57,7 @@
           "tankerkoenig_api_key": "Tankerkönig API key (leave empty to keep it)",
           "petromap_api_key": "Petromap API key (leave empty to keep it)",
           "nakordoni_api_key": "Nakordoni API key (leave empty to keep it)",
+          "nakordoni_auth_method": "Nakordoni sign-in method",
           "remove_tankerkoenig_api_key": "Remove Tankerkönig API key",
           "remove_petromap_api_key": "Remove Petromap API key",
           "remove_nakordoni_api_key": "Remove Nakordoni API key"
@@ -141,6 +142,7 @@
           "tankerkoenig_api_key": "Tankerkönig API key",
           "petromap_api_key": "Petromap API key",
           "nakordoni_api_key": "Nakordoni API key",
+          "nakordoni_auth_method": "Nakordoni sign-in method",
           "remove_tankerkoenig_api_key": "Remove Tankerkönig API key",
           "remove_petromap_api_key": "Remove Petromap API key",
           "remove_nakordoni_api_key": "Remove Nakordoni API key"
@@ -163,6 +165,9 @@
         "nakordoni": "Nakordoni",
         "auto": "Automatic (recommended)"
       }
+    },
+    "nakordoni_auth_method": {
+      "options": {"oauth2": "OAuth2 automatic sign-in", "api_key": "Manual API key"}
     },
     "sort_mode": {
       "options": {
