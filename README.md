@@ -68,18 +68,19 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Aktuelle stabile Version |
-| Pre-release | `v0.7.0-beta.3` | Beta mit Nakordoni- und Verfügbarkeits-Hotfixes |
+| Pre-release | `v0.7.0-beta.4` | Beta mit Cache-/Cooldown-Fix |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
 | Frontend-Komponente | `v0.6.0` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Die Beta `v0.7.0-beta.3`
+`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Die Beta `v0.7.0-beta.4`
 ergänzt den geschützten Admin-Service `mobile_fuel_stations.probe_nakordoni`
 für einzelne, bereinigte Nakordoni-Diagnoseabfragen mit bestehenden HA-
 Credentials. Die experimentelle Nakordoni-OAuth-Anmeldung ist weiterhin nicht
-live verifiziert. `v0.7.0-beta.3` behebt die korrekte Verarbeitung des
-asynchronen Nakordoni-Response-Context-Managers und erhält erfolgreiche leere
-Provider-Ergebnisse während Cooldown oder temporären Fehlern als stale-
-markierten, verfügbaren Zustand. `v0.6.1` enthält die
+live verifiziert. `v0.7.0-beta.4` behebt die korrekte Verarbeitung des
+asynchronen Nakordoni-Response-Context-Managers. Sie unterscheidet echte
+Provider-Ergebnisse strikt von historischen Request-Zeitstempeln, verwirft
+ungültige Cache-Zustände während des Cooldowns und erhält echte leere Antworten
+als verfügbaren Zustand. `v0.6.1` enthält die
 persistierte Cache-Wiederherstellung, die Cooldown-Recovery und die optionale
 adaptive GPS-Aktualisierung. Die Lovelace-Komponente bleibt unabhängig auf
 Version `0.6.0` versioniert.

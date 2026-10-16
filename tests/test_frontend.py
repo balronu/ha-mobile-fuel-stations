@@ -104,9 +104,9 @@ def test_versions_are_synchronized():
         (root / "custom_components" / DOMAIN / "manifest.json").read_text()
     )
     package = json.loads((root / "frontend" / "package.json").read_text())
-    assert manifest["version"] == "0.7.0-beta.3"
+    assert manifest["version"] == "0.7.0-beta.4"
     assert FRONTEND_VERSION == package["version"] == "0.6.0"
     package_lock = json.loads((root / "frontend" / "package-lock.json").read_text())
     assert package_lock["version"] == "0.6.0"
     assert package_lock["packages"][""]["version"] == "0.6.0"
-    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.7.0-beta.3"
+    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.7.0-beta.4"

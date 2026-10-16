@@ -309,6 +309,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.cheapest_station: Station | None = None
         self.cheapest_stations: dict[str, Station] = {}
         self.last_successful_update: datetime | None = None
+        # A timestamp alone is not proof that the current provider/query has
+        # valid data.  Cache invalidation can intentionally discard the
+        # station payload while retaining the historical request timestamps.
+        self._has_valid_provider_result = False
         self.reference_position: tuple[float, float] | None = None
         self.last_gps_sample: GpsSample | None = None
         self._last_gps_event_key: tuple[float, float, datetime] | None = None
@@ -525,6 +529,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             cached = self._load_cached_stations(stored)
             if cached is not None:
                 self._set_station_data(cached)
+                self._has_valid_provider_result = True
                 self.data_stale = True
                 # Data loaded from disk is immediately useful, but must be
                 # visibly marked stale until a provider refresh succeeds.
@@ -693,9 +698,15 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         )
 
     def _previous_result(self) -> list[Station] | None:
-        """Return the last provider result, including a valid empty result."""
+        """Return only a result proven valid for the current query context.
 
-        if self.last_successful_update is not None or getattr(self, "data", None) is not None:
+        ``last_successful_update`` and ``last_request`` are historical
+        timestamps.  They can survive a provider/config change that rejects
+        the station cache, so neither may manufacture an empty result during
+        the resulting cooldown window.
+        """
+
+        if getattr(self, "_has_valid_provider_result", False):
             return self.stations
         return None
 
@@ -1184,6 +1195,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             ),
         )
         self.stations = sorted_stations
+        self._has_valid_provider_result = True
         self.last_successful_update = now
         self.reference_position = position
         recovered = self.data_stale
