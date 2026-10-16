@@ -84,6 +84,7 @@ def _coordinator(provider, fuel="diesel"):
     coordinator.nearest_station = None
     coordinator.cheapest_station = None
     coordinator.last_successful_update = None
+    coordinator._has_valid_provider_result = False
     coordinator.reference_position = None
     coordinator.last_request = None
     coordinator.last_update_attempt = None
@@ -219,6 +220,59 @@ def test_empty_success_remains_available_during_transient_failure(monkeypatch):
     assert coordinator.recovery_status == "retry_scheduled"
     assert coordinator.last_update_error_class == "ProviderTimeoutError"
     assert len(provider.calls) == 2
+
+
+def test_cooldown_timestamp_without_valid_result_does_not_create_zero(monkeypatch):
+    provider = _Provider([_station()])
+    coordinator = _coordinator(provider)
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+    coordinator.available_provider_modes = frozenset({PROVIDER_TANKERKOENIG})
+    coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=1)
+    coordinator.last_successful_update = coordinator.last_request
+    coordinator.data = None
+    coordinator.stations = []
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result is None
+    assert coordinator.last_update_result == "provider_cooldown"
+    assert coordinator._has_valid_provider_result is False
+    assert provider.calls == []
+
+
+def test_provider_success_marks_empty_result_as_valid(monkeypatch):
+    provider = _Provider([])
+    coordinator = _coordinator(provider)
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    assert asyncio.run(coordinator._async_update_data()) == []
+    assert coordinator._has_valid_provider_result is True
+
+
+def test_reload_rejects_timestamp_without_matching_cache(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    coordinator.options[CONF_MOVEMENT_UPDATES] = False
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+    coordinator.provider_modes = frozenset({PROVIDER_TANKERKOENIG})
+    coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=1)
+    coordinator._store.saved = {
+        "last_request": coordinator.last_request.isoformat(),
+        "last_successful_update": coordinator.last_request.isoformat(),
+        "station_cache_context": dict(coordinator._cache_context(), fuel_types=["e5"]),
+        "stations": [],
+    }
+    coordinator.hass.loop = object()
+    coordinator.hass.states = SimpleNamespace(
+        get=lambda _entity: SimpleNamespace(
+            state="home", attributes={"latitude": 49.2, "longitude": 7.0}
+        )
+    )
+
+    asyncio.run(coordinator.async_setup())
+
+    assert coordinator._has_valid_provider_result is False
+    assert getattr(coordinator, "data", None) is None
 
 
 def test_first_valid_gps_after_startup_schedules_one_refresh(monkeypatch):
@@ -757,6 +811,7 @@ def test_cooldown_keeps_cached_data_visible_and_schedules_one_refresh(monkeypatc
     coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=1)
     coordinator.stations = [_station()]
     coordinator.data = coordinator.stations
+    coordinator._has_valid_provider_result = True
     scheduled = []
     monkeypatch.setattr(
         coordinator_module,

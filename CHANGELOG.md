@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0-beta.4 — Cache and cooldown correctness
+
+- Distinguish valid provider results, including genuine empty responses, from
+  historical request timestamps.
+- Do not expose `[]` during cooldown when provider-scoped cache invalidation has
+  discarded the current result.
+- Preserve stale valid station data during transient provider failures and keep
+  provider adapters unchanged.
+- Add regression coverage for invalidated-cache reloads, empty results,
+  cooldown behavior, and result validity tracking.
+
 ## 0.7.0-beta.3 — Nakordoni and availability hotfixes
 
 - Fix Nakordoni API-key requests by binding the aiohttp response returned from
