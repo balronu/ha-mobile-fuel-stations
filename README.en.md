@@ -69,10 +69,15 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Current stable release |
+| Pre-release | `v0.7.0-beta.2` | Beta with protected Nakordoni diagnostics |
 | Previous stable | `v0.5.1` | Available rollback version |
 | Frontend component | `v0.6.0` | Independently versioned Lovelace component |
 
-`v0.6.1` is the current stable release. It includes persisted cache recovery,
+`v0.6.1` remains the current stable release. The `v0.7.0-beta.2` beta adds
+the protected `mobile_fuel_stations.probe_nakordoni` administrator service for
+single, redacted Nakordoni diagnostic requests using existing HA credentials.
+The experimental Nakordoni OAuth sign-in remains unverified against the live
+service. `v0.6.1` includes persisted cache recovery,
 cooldown recovery, and optional adaptive GPS updates. The Lovelace component
 remains independently versioned at `0.6.0`.
 
@@ -262,6 +267,26 @@ the visible **Data by nakordoni.eu** attribution when using Nakordoni.
 
 Provider coverage, prices, opening hours, quotas, and permissions can change.
 Nakordoni market coverage and HVO100 prices are not universally guaranteed.
+
+## Administrator Nakordoni diagnostics
+
+For a targeted, non-production test, the integration registers the protected
+Home Assistant service `mobile_fuel_stations.probe_nakordoni`. Only an
+authenticated administrator may call it, and it uses the Nakordoni credential
+already stored for the selected config entry. One call performs exactly one
+request and never retries automatically; concurrent probes for the same entry
+are rejected.
+
+The request requires `entry_id`, `latitude`, `longitude`, `radius_km` (0 to
+25), and one verified fuel key: `diesel`, `e5`, `e10`, or `lpg`. The response
+contains only status, quota, latency, station/price counts, price age, and safe
+coverage hints. It never returns API keys, tokens, station names, raw payloads,
+or complete coordinates.
+
+The probe bypasses the coordinator and automatic provider mode, leaving the
+station cache, sensor state, and config entry unchanged. OAuth2 entries use
+Home Assistant's existing OAuth2 session. This function is for diagnostics only
+and must not be used as a public data feed.
 
 ## Troubleshooting and diagnostics
 

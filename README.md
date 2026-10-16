@@ -68,10 +68,15 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Aktuelle stabile Version |
+| Pre-release | `v0.7.0-beta.2` | Beta mit geschützter Nakordoni-Diagnose |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
 | Frontend-Komponente | `v0.6.0` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.6.1` ist die aktuelle stabile Veröffentlichung. Sie enthält die
+`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Die Beta `v0.7.0-beta.2`
+ergänzt den geschützten Admin-Service `mobile_fuel_stations.probe_nakordoni`
+für einzelne, bereinigte Nakordoni-Diagnoseabfragen mit bestehenden HA-
+Credentials. Die experimentelle Nakordoni-OAuth-Anmeldung ist weiterhin nicht
+live verifiziert. `v0.6.1` enthält die
 persistierte Cache-Wiederherstellung, die Cooldown-Recovery und die optionale
 adaptive GPS-Aktualisierung. Die Lovelace-Komponente bleibt unabhängig auf
 Version `0.6.0` versioniert.
@@ -343,6 +348,27 @@ Providerabdeckung, Preise, Öffnungszeiten, Quoten und Berechtigungen sind
 externe Daten und können sich ändern. Nakordoni-Märkte und HVO100-Preise sind
 nicht pauschal garantiert. Die Integration ersetzt keine verbindliche
 Preis- oder Verfügbarkeitsauskunft.
+
+## Administrator-Diagnose für Nakordoni
+
+Für einen gezielten, nicht produktiven Test steht der geschützte HA-Service
+`mobile_fuel_stations.probe_nakordoni` zur Verfügung. Er ist nur für
+authentifizierte Administratoren registriert und verwendet den bereits
+gespeicherten Nakordoni-Zugang. Der Service führt genau eine Anfrage aus;
+automatische Wiederholungen gibt es nicht. Mehrere parallele Diagnoseaufrufe
+für denselben Config Entry werden abgewiesen.
+
+Erforderlich sind `entry_id`, `latitude`, `longitude`, `radius_km` (0 bis 25)
+und einer der verifizierten Kraftstoffschlüssel `diesel`, `e5`, `e10` oder
+`lpg`. Die Response enthält nur Status, Quota, Latenz, Stations-/Preisanzahl,
+Preisalter und sichere Coverage-Hinweise. Sie enthält weder API-Keys oder
+Tokens noch Stationsnamen, Rohantworten oder vollständige Koordinaten.
+
+Der Aufruf umgeht den Coordinator und den Automatikmodus; Stationscache,
+Sensorzustände und Config Entry bleiben unverändert. OAuth2-Einträge nutzen
+die bestehende Home-Assistant-OAuth2-Session. Die Funktion ist ausschließlich
+für Diagnosezwecke vorgesehen und darf nicht als öffentlicher Feed verwendet
+werden.
 
 ## Fehlerbehebung und Diagnostics
 

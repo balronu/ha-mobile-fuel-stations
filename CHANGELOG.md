@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0-beta.2 — Protected Nakordoni diagnostics
+
+- Add the administrator-only `mobile_fuel_stations.probe_nakordoni` service
+  for one targeted Nakordoni request using the existing Home Assistant API-key
+  or OAuth2 credential path.
+- Keep the probe outside the coordinator, station cache, sensor state, and
+  automatic provider selection; reject concurrent probes for one entry and do
+  not retry automatically.
+- Return only redacted status, quota, latency, station/price counts, price age,
+  and coverage hints. API keys, tokens, raw payloads, station identities, and
+  complete coordinates are excluded.
+- Nakordoni OAuth remains experimental and has not been verified against a
+  real live login.
+
 ## 0.6.1 — Stable release
 
 - Promote the tested adaptive GPS refresh and persisted cooldown-cache recovery

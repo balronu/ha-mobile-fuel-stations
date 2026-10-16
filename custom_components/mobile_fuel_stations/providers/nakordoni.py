@@ -47,6 +47,8 @@ class NakordoniResponseMetadata:
     attribution_url: str = NAKORDONI_ATTRIBUTION_URL
     notices: tuple[str, ...] = ()
     total_found: int | None = None
+    empty_reason: str | None = None
+    nearest_station_km: float | None = None
 
 
 _SAFE_ERROR_CODES = frozenset(
@@ -266,6 +268,11 @@ class NakordoniProvider:
                         for item in notices
                     ) if isinstance(notices, list) else (),
                     total_found=data.get("total_found") if isinstance(data.get("total_found"), int) else None,
+                    empty_reason=data.get("empty_reason") if isinstance(data.get("empty_reason"), str) else None,
+                    nearest_station_km=(
+                        _number(data.get("nearest_station_km"), "nearest_station_km", optional=True)
+                        if data.get("nearest_station_km") is not None else None
+                    ),
                 )
                 try:
                     stations = [_parse_station(item, query.fuel_type) for item in data["stations"]]
