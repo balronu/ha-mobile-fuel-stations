@@ -34,6 +34,7 @@ from .const import (
 from .coordinator import MobileFuelStationsCoordinator
 from .country_resolver import load_countries
 from .oauth2 import async_register as async_register_oauth
+from .probe import async_register_probe_service
 from .providers.base import FuelFallbackBlockedError, NoSuitableProviderError
 
 PLATFORMS = [Platform.SENSOR]
@@ -125,6 +126,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     if not domain_data.get("oauth_registered"):
         async_register_oauth(hass)
         domain_data["oauth_registered"] = True
+    if not domain_data.get("probe_registered") and hasattr(hass, "services"):
+        await async_register_probe_service(hass)
+        domain_data["probe_registered"] = True
     return True
 
 

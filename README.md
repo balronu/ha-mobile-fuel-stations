@@ -344,6 +344,27 @@ externe Daten und können sich ändern. Nakordoni-Märkte und HVO100-Preise sind
 nicht pauschal garantiert. Die Integration ersetzt keine verbindliche
 Preis- oder Verfügbarkeitsauskunft.
 
+## Administrator-Diagnose für Nakordoni
+
+Für einen gezielten, nicht produktiven Test steht der geschützte HA-Service
+`mobile_fuel_stations.probe_nakordoni` zur Verfügung. Er ist nur für
+authentifizierte Administratoren registriert und verwendet den bereits
+gespeicherten Nakordoni-Zugang. Der Service führt genau eine Anfrage aus;
+automatische Wiederholungen gibt es nicht. Mehrere parallele Diagnoseaufrufe
+für denselben Config Entry werden abgewiesen.
+
+Erforderlich sind `entry_id`, `latitude`, `longitude`, `radius_km` (0 bis 25)
+und einer der verifizierten Kraftstoffschlüssel `diesel`, `e5`, `e10` oder
+`lpg`. Die Response enthält nur Status, Quota, Latenz, Stations-/Preisanzahl,
+Preisalter und sichere Coverage-Hinweise. Sie enthält weder API-Keys oder
+Tokens noch Stationsnamen, Rohantworten oder vollständige Koordinaten.
+
+Der Aufruf umgeht den Coordinator und den Automatikmodus; Stationscache,
+Sensorzustände und Config Entry bleiben unverändert. OAuth2-Einträge nutzen
+die bestehende Home-Assistant-OAuth2-Session. Die Funktion ist ausschließlich
+für Diagnosezwecke vorgesehen und darf nicht als öffentlicher Feed verwendet
+werden.
+
 ## Fehlerbehebung und Diagnostics
 
 - **Keine Tankstellen:** Entity, gültige Koordinaten, Radius, Providerwahl und

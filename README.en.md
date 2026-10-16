@@ -263,6 +263,26 @@ the visible **Data by nakordoni.eu** attribution when using Nakordoni.
 Provider coverage, prices, opening hours, quotas, and permissions can change.
 Nakordoni market coverage and HVO100 prices are not universally guaranteed.
 
+## Administrator Nakordoni diagnostics
+
+For a targeted, non-production test, the integration registers the protected
+Home Assistant service `mobile_fuel_stations.probe_nakordoni`. Only an
+authenticated administrator may call it, and it uses the Nakordoni credential
+already stored for the selected config entry. One call performs exactly one
+request and never retries automatically; concurrent probes for the same entry
+are rejected.
+
+The request requires `entry_id`, `latitude`, `longitude`, `radius_km` (0 to
+25), and one verified fuel key: `diesel`, `e5`, `e10`, or `lpg`. The response
+contains only status, quota, latency, station/price counts, price age, and safe
+coverage hints. It never returns API keys, tokens, station names, raw payloads,
+or complete coordinates.
+
+The probe bypasses the coordinator and automatic provider mode, leaving the
+station cache, sensor state, and config entry unchanged. OAuth2 entries use
+Home Assistant's existing OAuth2 session. This function is for diagnostics only
+and must not be used as a public data feed.
+
 ## Troubleshooting and diagnostics
 
 - **No stations:** check the entity, valid coordinates, radius, provider mode,
