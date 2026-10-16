@@ -34,6 +34,19 @@ class Response:
         return self.payload
 
 
+class RequestContextManager:
+    """Model aiohttp's ``ClientSession.get`` return value."""
+
+    def __init__(self, response):
+        self._response = response
+
+    async def __aenter__(self):
+        return await self._response.__aenter__()
+
+    async def __aexit__(self, *args):
+        return await self._response.__aexit__(*args)
+
+
 class Session:
     def __init__(self, response):
         self.response = response
@@ -41,6 +54,14 @@ class Session:
 
     def get(self, url, *, params, headers, timeout):
         self.calls.append((url, params, headers, timeout))
+        return RequestContextManager(self.response)
+
+
+class OAuthSession:
+    def __init__(self, response):
+        self.response = response
+
+    async def async_request(self, method, url, *, params, timeout):
         return self.response
 
 
@@ -111,6 +132,28 @@ def test_nakordoni_request_uses_bearer_header_and_one_page():
     assert provider.last_response_metadata.quota_remaining == 999
     assert station_attributes(stations[0])["currency"] == "EUR"
     assert station_attributes(stations[0])["price_age_hours"] == 0.5
+
+
+def test_nakordoni_binds_aiohttp_request_context_to_response():
+    """Regression: aiohttp exposes headers/status only after ``__aenter__``."""
+
+    provider = NakordoniProvider(Session(Response(payload())), "dummy")
+
+    stations = asyncio.run(provider.async_search(query()))
+
+    assert len(stations) == 1
+
+
+def test_nakordoni_oauth_response_remains_supported():
+    provider = NakordoniProvider(
+        Session(Response(payload())),
+        None,
+        oauth_session=OAuthSession(Response(payload())),
+    )
+
+    stations = asyncio.run(provider.async_search(query()))
+
+    assert len(stations) == 1
 
 
 @pytest.mark.parametrize("status, error_type", [(401, ProviderAuthError), (403, ProviderPermissionError), (429, ProviderRateLimitError)])

@@ -227,7 +227,10 @@ class NakordoniProvider:
                     headers={"Authorization": f"Bearer {self._api_key}"},
                     timeout=self._timeout,
                 )
-            async with response:
+            # ``ClientSession.get`` returns aiohttp's request context manager,
+            # not the response itself.  Binding the result of ``__aenter__``
+            # is required before accessing response headers/status/body.
+            async with response as response:
                 quota_limit = _header_nonnegative_int(response.headers, "X-Devapi-Limit")
                 quota_remaining = _header_nonnegative_int(response.headers, "X-Devapi-Remaining")
                 retry_after = _header_nonnegative_int(response.headers, "Retry-After")
