@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0-beta.6 — Nakordoni OAuth, markets, and fallback policy
+
+- Keep OAuth2/PKCE as the preferred Nakordoni setup while retaining manual API-key entries and OAuth-only detection.
+- Track approved, granted, allowed, and available Nakordoni markets separately and expose only secret-free market diagnostics.
+- Treat `market_not_allowed` as a permission result, not a generic service outage; missing market metadata never grants Auto eligibility.
+- Apply DE, AT, and other-country provider priorities with controlled fallback after an eligible provider failure.
+- Preserve provider cooldowns, cache invalidation, adaptive polling, strict multi-fuel handling, and the disabled HVO100 mapping until Nakordoni confirms it.
+
 ## 0.7.0-beta.5 — Provider cooldowns and Auto-mode correctness
 
 - Track persisted request timestamps per provider; migrate legacy global

@@ -68,15 +68,15 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Aktuelle stabile Version |
-| Pre-release | `v0.7.0-beta.5` | Beta mit Provider-Cooldowns und Auto-/OAuth-Fix |
+| Pre-release | `v0.7.0-beta.6` | Beta mit OAuth-/Marktberechtigungen und Auto-Fallback |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
 | Frontend-Komponente | `v0.6.0` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Die Beta `v0.7.0-beta.5`
+`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Die Beta `v0.7.0-beta.6`
 ergänzt den geschützten Admin-Service `mobile_fuel_stations.probe_nakordoni`
 für einzelne, bereinigte Nakordoni-Diagnoseabfragen mit bestehenden HA-
 Credentials. Die experimentelle Nakordoni-OAuth-Anmeldung ist weiterhin nicht
-live verifiziert. `v0.7.0-beta.5` führt providergebundene Request-Cooldowns
+live verifiziert. `v0.7.0-beta.6` führt providergebundene Request-Cooldowns
 und Cache-Zustände ein, verhindert, dass ein Providerwechsel durch den
 vorherigen Provider blockiert wird, erkennt OAuth-only Nakordoni in Auto und
 erweitert die geheimnisfreien Diagnosen um Auswahl-, Cache- und Retry-Status.
@@ -169,7 +169,7 @@ tatsächliche Verfügbarkeit einschränken.
 | --- | --- | --- |
 | [Tankerkönig](https://onboarding.tankerkoenig.de/) | API-Key | Deutschland; Diesel, E5 und E10; API-Radius maximal 25 km |
 | [Petromap](https://developer.petromap.eu/) | API-Key und gegebenenfalls Freigabe | Stationspreise in Deutschland und Österreich für Diesel, E5 und LPG; weitere Länder beziehungsweise nationale Daten hängen von Petromap ab |
-| [Nakordoni](https://nakordoni.eu/en/developers) | API-Key, Markt-/Zugangsfreigabe | Diesel, E5, E10 und LPG im implementierten API-Modell; Länder- und Live-Abdeckung ist konto- und marktabhängig |
+| [Nakordoni](https://nakordoni.eu/en/developers) | OAuth2-PKCE oder API-Key, Markt-/Zugangsfreigabe | Diesel, E5, E10 und LPG; DE, AT, PL, CZ, SK, HU, SI, HR, IT, FR, BE, NL und LU werden nur bei bestätigter Marktfreigabe berücksichtigt |
 
 Die auswählbaren Kraftstoffschlüssel sind `e5`, `e10`, `diesel`, `lpg` und
 `hvo100`. Ein Provider wird nur dann für einen Kraftstoff verwendet, wenn seine
@@ -177,7 +177,7 @@ Capability und die konkrete Antwort dies erlauben. HVO100 ist auswählbar, wird
 aber nicht pauschal als Diesel ausgegeben; Preise erscheinen nur bei verifizierter
 Provider-/Länder-Capability.
 
-Im Automatikmodus werden nur aktivierte und konfigurierte Provider betrachtet.
+Im Automatikmodus werden nur aktivierte, konfigurierte und marktberechtigte Provider betrachtet. Deutschland nutzt Tankerkönig vor Nakordoni, Österreich Petromap vor Nakordoni; in anderen unterstützten Ländern wird Nakordoni vor einer geeigneten Petromap-Alternative versucht. Die Felder `markets_approved`, `markets_granted`, `markets_allowed` und `markets_available` werden getrennt bewertet; fehlende Marktmetadaten geben Nakordoni keine automatische Freigabe.
 Die Auswahl berücksichtigt Land, Kraftstoff-Capability, Stationspreisabdeckung,
 Zugang und Providerfehler. Ein deaktivierter oder nicht authentifizierter
 Provider wird nicht stillschweigend als funktionierender Fallback verwendet.
@@ -214,17 +214,17 @@ erfolgreich geprüft wurde. Der Optionsdialog startet keine unnötigen
 Provider-Anfragen. Zugangsdaten werden nicht in Git, Logs oder Diagnostics
 ausgegeben.
 
-### Nakordoni OAuth2-PKCE (nur Beta-Branch)
+### Nakordoni OAuth2-PKCE (Beta.6)
 
-Der Branch `feature/nakordoni-oauth2-pkce` enthält eine experimentelle
-automatische Nakordoni-Anmeldung über den Home-Assistant-Authorization-Code-
-Flow mit PKCE S256. Sie gehört nicht zu Stable `v0.6.1` und darf erst als
-verfügbar gelten, wenn die HA-2026.10.1-Fixture-Tests und die Provider-Prüfung
-erfolgreich sind. Die registrierte Redirect-URI ist exakt
+Beta.6 bietet die bevorzugte automatische Nakordoni-Anmeldung über den
+Home-Assistant-Authorization-Code-Flow mit PKCE S256. Die registrierte
+Redirect-URI ist exakt
 `https://my.home-assistant.io/redirect/oauth`; ein Client Secret wird nicht
 verwendet.
 
-Die manuelle API-Key-Methode bleibt dauerhaft als Fallback erhalten.
+Die manuelle API-Key-Methode bleibt dauerhaft erhalten und bestehende Einträge
+werden nicht erzwungen migriert. HVO100 bleibt für Nakordoni deaktiviert, bis
+die Zuordnung des dokumentierten API-Felds `hvo` fachlich bestätigt ist.
 Bestehende API-Key-Einträge werden weder migriert noch gelöscht und müssen
 nicht auf OAuth umgestellt werden. OAuth-Tokens werden von der
 Home-Assistant-OAuth2-Config-Entry-Infrastruktur gespeichert und aus

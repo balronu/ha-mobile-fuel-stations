@@ -22,6 +22,9 @@ NAKORDONI_OAUTH_CLIENT_ID = "nkd_30ad5daeb089abfc3c1ea20b"
 NAKORDONI_OAUTH_AUTHORIZE_URL = "https://api.nakordoni.dev/oauth/authorize"
 NAKORDONI_OAUTH_TOKEN_URL = "https://api.nakordoni.dev/oauth/token"
 NAKORDONI_OAUTH_IMPLEMENTATION = "nakordoni"
+NAKORDONI_MARKETS = frozenset(
+    {"DE", "AT", "PL", "CZ", "SK", "HU", "SI", "HR", "IT", "FR", "BE", "NL", "LU"}
+)
 CONF_PROVIDER_MODE = "provider_mode"
 CONF_PROVIDER_MODES = "provider_modes"
 CONF_LOCATION_ENTITY = "location_entity"

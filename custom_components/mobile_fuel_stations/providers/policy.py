@@ -136,36 +136,40 @@ def choose_auto_provider(
 
     petromap_capabilities = petromap_capabilities or PETROMAP_CAPABILITIES
     petromap_coverage = _coverage_for(petromap_capabilities, normalized)
-    if petromap_coverage == CountryPriceCoverage.PER_STATION and petromap_enabled:
-        supported_fuels = petromap_capabilities.supported_fuel_types or frozenset()
-        petromap_fuel = resolve_fuel(
-            fuel_type,
-            ProviderCapabilities(supported_fuel_types=supported_fuels),
-        )
-        if petromap_fuel.effective_fuel is not None:
-            return AutoProviderDecision(
-                PROVIDER_PETROMAP,
-                normalized,
-                petromap_coverage,
-                "provider_available",
-                petromap_fuel,
-            )
-
     nakordoni_coverage = _coverage_for(nakordoni_capabilities, normalized)
-    if nakordoni_enabled and nakordoni_coverage == CountryPriceCoverage.PER_STATION:
-        supported_fuels = nakordoni_capabilities.supported_fuel_types or frozenset()
-        nakordoni_fuel = resolve_fuel(
-            fuel_type,
-            ProviderCapabilities(supported_fuel_types=supported_fuels),
-        )
-        if nakordoni_fuel.effective_fuel is not None:
-            return AutoProviderDecision(
-                PROVIDER_NAKORDONI,
-                normalized,
-                nakordoni_coverage,
-                "provider_available",
-                nakordoni_fuel,
+
+    # The documented market order is country-specific.  A provider with
+    # unknown coverage is never promoted merely because it has credentials.
+    ordered = (
+        ((PROVIDER_PETROMAP, petromap_coverage, petromap_enabled),
+         (PROVIDER_NAKORDONI, nakordoni_coverage, nakordoni_enabled))
+        if normalized == "AT" else
+        ((PROVIDER_NAKORDONI, nakordoni_coverage, nakordoni_enabled),
+         (PROVIDER_PETROMAP, petromap_coverage, petromap_enabled))
+    )
+    for provider_mode, coverage, enabled in ordered:
+        if provider_mode == PROVIDER_PETROMAP and coverage == CountryPriceCoverage.PER_STATION and enabled:
+            supported_fuels = petromap_capabilities.supported_fuel_types or frozenset()
+            petromap_fuel = resolve_fuel(
+                fuel_type,
+                ProviderCapabilities(supported_fuel_types=supported_fuels),
             )
+            if petromap_fuel.effective_fuel is not None:
+                return AutoProviderDecision(
+                    PROVIDER_PETROMAP, normalized, coverage,
+                    "provider_available", petromap_fuel,
+                )
+        if provider_mode == PROVIDER_NAKORDONI and coverage == CountryPriceCoverage.PER_STATION and enabled:
+            supported_fuels = (nakordoni_capabilities.supported_fuel_types if nakordoni_capabilities else frozenset()) or frozenset()
+            nakordoni_fuel = resolve_fuel(
+                fuel_type,
+                ProviderCapabilities(supported_fuel_types=supported_fuels),
+            )
+            if nakordoni_fuel.effective_fuel is not None:
+                return AutoProviderDecision(
+                    PROVIDER_NAKORDONI, normalized, coverage,
+                    "provider_available", nakordoni_fuel,
+                )
 
     if (
         petromap_coverage == CountryPriceCoverage.PER_STATION

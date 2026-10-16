@@ -49,6 +49,86 @@ class NakordoniResponseMetadata:
     total_found: int | None = None
     empty_reason: str | None = None
     nearest_station_km: float | None = None
+    markets_approved: tuple[str, ...] = ()
+    markets_granted: tuple[str, ...] = ()
+    markets_allowed: tuple[str, ...] = ()
+    markets_available: tuple[str, ...] = ()
+    upgrade_url: str | None = None
+    coverage_countries: tuple[str, ...] = ()
+    coverage_fuels: tuple[str, ...] = ()
+    coverage_status: str = "unknown"
+
+
+@dataclass(slots=True, frozen=True)
+class NakordoniMarketAccess:
+    """Secret-free market metadata from OAuth or a documented API response."""
+
+    markets_approved: tuple[str, ...] = ()
+    markets_granted: tuple[str, ...] = ()
+    markets_allowed: tuple[str, ...] = ()
+    markets_available: tuple[str, ...] = ()
+    upgrade_url: str | None = None
+
+    @property
+    def permitted_markets(self) -> frozenset[str] | None:
+        """Return an explicit permission set, or None when metadata is absent."""
+
+        for values in (self.markets_allowed, self.markets_granted, self.markets_approved):
+            if values:
+                return frozenset(values)
+        return None
+
+    def status_for(self, country: str | None) -> str:
+        normalized = _market_codes((country,))
+        if not normalized:
+            return "unknown"
+        country_code = normalized[0]
+        permitted = self.permitted_markets
+        if permitted is None:
+            return "unknown"
+        return "allowed" if country_code in permitted else "not_allowed"
+
+    def as_diagnostics(self) -> dict[str, object]:
+        return {
+            "markets_approved": list(self.markets_approved),
+            "markets_granted": list(self.markets_granted),
+            "markets_allowed": list(self.markets_allowed),
+            "markets_available": list(self.markets_available),
+            "upgrade_url": self.upgrade_url,
+        }
+
+
+def _market_codes(value: Any) -> tuple[str, ...]:
+    """Normalize only country-code lists; never serialize token contents."""
+
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return ()
+    return tuple(sorted({item.strip().upper() for item in value if isinstance(item, str) and len(item.strip()) == 2 and item.strip().isalpha()}))
+
+
+def extract_market_access(value: object) -> NakordoniMarketAccess:
+    """Extract documented market fields from a token or response object."""
+
+    if not isinstance(value, dict):
+        return NakordoniMarketAccess()
+    source = value.get("data") if isinstance(value.get("data"), dict) else value
+    return NakordoniMarketAccess(
+        markets_approved=_market_codes(source.get("markets_approved")),
+        markets_granted=_market_codes(source.get("markets_granted")),
+        markets_allowed=_market_codes(source.get("markets_allowed")),
+        markets_available=_market_codes(source.get("markets_available")),
+        upgrade_url=source.get("upgrade_url") if isinstance(source.get("upgrade_url"), str) else None,
+    )
+
+
+def _coverage_fields(data: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...], str]:
+    coverage = data.get("coverage")
+    if not isinstance(coverage, dict):
+        return (), (), "unknown"
+    countries = _market_codes(coverage.get("countries", coverage.get("markets")))
+    fuels = tuple(sorted({item.strip().lower() for item in coverage.get("fuels", ()) if isinstance(item, str) and item.strip()})) if isinstance(coverage.get("fuels", ()), (list, tuple, set)) else ()
+    status = coverage.get("status") if isinstance(coverage.get("status"), str) else "confirmed"
+    return countries, fuels, status
 
 
 _SAFE_ERROR_CODES = frozenset(
@@ -58,6 +138,7 @@ _SAFE_ERROR_CODES = frozenset(
         "market_not_allowed",
         "not_approved",
         "invalid_credential",
+        "invalid_grant",
     }
 )
 
@@ -67,6 +148,13 @@ _OAUTH_TOKEN_ERRORS = tuple(
         "OAuth2TokenRequestReauthError",
         "OAuth2TokenRequestError",
     )
+    if isinstance(
+        exception_type := getattr(ha_exceptions, exception_name, None), type
+    )
+)
+_OAUTH_REAUTH_ERRORS = tuple(
+    exception_type
+    for exception_name in ("OAuth2TokenRequestReauthError",)
     if isinstance(
         exception_type := getattr(ha_exceptions, exception_name, None), type
     )
@@ -263,6 +351,15 @@ class NakordoniProvider:
                     self.last_request_diagnostics = exception.diagnostics
                     raise exception
                 notices = data.get("notices")
+                market_access = extract_market_access(payload)
+                coverage_countries, coverage_fuels, coverage_status = _coverage_fields(data)
+                if not coverage_countries and data["stations"]:
+                    coverage_countries = tuple(
+                        sorted({station.country_code for station in (
+                            _parse_station(item, query.fuel_type) for item in data["stations"]
+                        ) if station.country_code})
+                    )
+                    coverage_status = "observed" if coverage_countries else coverage_status
                 self.last_response_metadata = NakordoniResponseMetadata(
                     quota_limit=quota_limit,
                     quota_remaining=quota_remaining,
@@ -276,6 +373,14 @@ class NakordoniProvider:
                         _number(data.get("nearest_station_km"), "nearest_station_km", optional=True)
                         if data.get("nearest_station_km") is not None else None
                     ),
+                    markets_approved=market_access.markets_approved,
+                    markets_granted=market_access.markets_granted,
+                    markets_allowed=market_access.markets_allowed,
+                    markets_available=market_access.markets_available,
+                    upgrade_url=market_access.upgrade_url,
+                    coverage_countries=coverage_countries,
+                    coverage_fuels=coverage_fuels,
+                    coverage_status=coverage_status,
                 )
                 try:
                     stations = [_parse_station(item, query.fuel_type) for item in data["stations"]]
@@ -302,9 +407,10 @@ class NakordoniProvider:
             self.last_request_diagnostics = exception.diagnostics
             raise exception from err
         except _OAUTH_TOKEN_ERRORS as err:
-            exception = ProviderAuthError("invalid_credential")
+            error_code = "invalid_grant" if _OAUTH_REAUTH_ERRORS and isinstance(err, _OAUTH_REAUTH_ERRORS) else "invalid_credential"
+            exception = ProviderAuthError(error_code)
             exception.diagnostics = ProviderRequestDiagnostics(
-                PROVIDER_NAKORDONI, None, "invalid_credential", None, None, None, False, None
+                PROVIDER_NAKORDONI, None, error_code, None, None, None, False, None
             )
             self.last_request_diagnostics = exception.diagnostics
             raise exception from err
@@ -322,3 +428,15 @@ def _header_nonnegative_int(headers: Any, name: str) -> int | None:
         return parsed if parsed is not None and parsed >= 0 else None
     except (AttributeError, TypeError, ValueError):
         return None
+
+
+__all__ = [
+    "NAKORDONI_API_URL",
+    "NAKORDONI_ATTRIBUTION_URL",
+    "NAKORDONI_CAPABILITIES",
+    "NAKORDONI_FUELS",
+    "NakordoniMarketAccess",
+    "NakordoniProvider",
+    "NakordoniResponseMetadata",
+    "extract_market_access",
+]
