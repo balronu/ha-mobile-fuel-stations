@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0-beta.5 — Provider cooldowns and Auto-mode correctness
+
+- Track persisted request timestamps per provider; migrate legacy global
+  timestamps without allowing an old Auto-mode provider to block a new one.
+- Allow an immediate request after an Auto provider switch when the selected
+  provider has no active cooldown, while retaining provider limits and retry
+  deduplication.
+- Bind the station cache to its effective provider so prices from a previous
+  provider are never exposed as current data after a switch.
+- Recognize Nakordoni OAuth-only entries as configured without exposing tokens
+  or API keys, and keep confirmed country/price capability checks strict.
+- Extend diagnostics with effective provider, selection reason, cooldown/retry,
+  cache, and credential-mode fields.
+
 ## 0.7.0-beta.4 — Cache and cooldown correctness
 
 - Distinguish valid provider results, including genuine empty responses, from

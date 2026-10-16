@@ -69,19 +69,20 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Current stable release |
-| Pre-release | `v0.7.0-beta.4` | Beta with cache/cooldown fix |
+| Pre-release | `v0.7.0-beta.5` | Beta with provider cooldown and Auto/OAuth fixes |
 | Previous stable | `v0.5.1` | Available rollback version |
 | Frontend component | `v0.6.0` | Independently versioned Lovelace component |
 
-`v0.6.1` remains the current stable release. The `v0.7.0-beta.4` beta includes
+`v0.6.1` remains the current stable release. The `v0.7.0-beta.5` beta includes
 the protected `mobile_fuel_stations.probe_nakordoni` administrator service for
 single, redacted Nakordoni diagnostic requests using existing HA credentials.
 The experimental Nakordoni OAuth sign-in remains unverified against the live
-service. Beta 4 fixes asynchronous Nakordoni response-context handling and
-distinguishes real provider results from historical request timestamps, so an
-invalidated cache cannot appear as a successful zero-result during cooldown.
-Successful empty provider responses remain available, including during
-transient failures. `v0.6.1` includes persisted cache recovery,
+service. Beta 5 stores request cooldowns per provider, prevents a previous
+provider from blocking an Auto-mode provider switch, rejects cross-provider
+cache data, recognizes OAuth-only Nakordoni configuration, and adds secret-free
+selection, cache, cooldown, and retry diagnostics. Confirmed country/price
+coverage remains required for Auto; unknown Nakordoni coverage is never
+inferred. `v0.6.1` includes persisted cache recovery,
 cooldown recovery, and optional adaptive GPS updates. The Lovelace component
 remains independently versioned at `0.6.0`.
 

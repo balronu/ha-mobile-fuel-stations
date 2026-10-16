@@ -79,6 +79,19 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "last_update_result": getattr(coordinator, "last_update_result", None),
             "last_provider_attempt": _iso(getattr(coordinator, "last_provider_attempt", None)),
             "last_provider_success": _iso(getattr(coordinator, "last_provider_success", None)),
+            "effective_provider": getattr(coordinator, "diagnostic_effective_provider", None),
+            "provider_selection_reason": getattr(
+                coordinator, "diagnostic_provider_selection_reason", None
+            ),
+            "provider_cooldown_remaining": getattr(
+                coordinator, "diagnostic_provider_cooldown_remaining", None
+            ),
+            "next_provider_retry": _iso(
+                getattr(coordinator, "diagnostic_next_provider_retry", None)
+            ),
+            "cache_valid": getattr(coordinator, "_has_valid_provider_result", False),
+            "cache_provider": getattr(coordinator, "_cache_provider", None),
+            "credential_mode": getattr(coordinator, "diagnostic_credential_mode", None),
             "startup_recovery_status": getattr(coordinator, "recovery_status", None),
             "recovery_task_status": getattr(coordinator, "recovery_task_status", None),
             "recovery_attempt_count": getattr(coordinator, "recovery_attempt_count", 0),

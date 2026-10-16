@@ -241,6 +241,34 @@ def test_cooldown_timestamp_without_valid_result_does_not_create_zero(monkeypatc
     assert provider.calls == []
 
 
+def test_legacy_global_timestamp_migrates_only_for_direct_provider():
+    coordinator = _coordinator(_Provider())
+    coordinator.options[CONF_MOVEMENT_UPDATES] = False
+    timestamp = datetime.now().astimezone() - timedelta(minutes=1)
+    coordinator._store.saved = {
+        "last_request": timestamp.isoformat(),
+        "station_cache_context": coordinator._cache_context(),
+        "stations": [],
+    }
+
+    asyncio.run(coordinator.async_setup())
+
+    assert coordinator.provider_last_requests == {PROVIDER_PETROMAP: timestamp}
+
+
+def test_legacy_global_timestamp_does_not_block_auto_provider_switch():
+    coordinator = _coordinator(_Provider())
+    coordinator.options[CONF_MOVEMENT_UPDATES] = False
+    coordinator.options[CONF_PROVIDER_MODE] = "auto"
+    coordinator.provider_modes = frozenset({PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP})
+    timestamp = datetime.now().astimezone() - timedelta(minutes=1)
+    coordinator._store.saved = {"last_request": timestamp.isoformat()}
+
+    asyncio.run(coordinator.async_setup())
+
+    assert getattr(coordinator, "provider_last_requests", {}) == {}
+
+
 def test_provider_success_marks_empty_result_as_valid(monkeypatch):
     provider = _Provider([])
     coordinator = _coordinator(provider)
