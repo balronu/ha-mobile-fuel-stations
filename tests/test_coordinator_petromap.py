@@ -182,6 +182,45 @@ def test_successful_empty_provider_response_is_real_zero(monkeypatch):
     assert coordinator.recovery_status == "success"
 
 
+def test_empty_success_remains_available_during_provider_cooldown(monkeypatch):
+    provider = _Provider([])
+    coordinator = _coordinator(provider)
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+    coordinator.available_provider_modes = frozenset({PROVIDER_TANKERKOENIG})
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    assert asyncio.run(coordinator._async_update_data()) == []
+    coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=1)
+    coordinator.data = []
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == []
+    assert coordinator.last_update_result == "provider_cooldown"
+    assert coordinator.data_stale is False
+    assert len(provider.calls) == 1
+
+
+def test_empty_success_remains_available_during_transient_failure(monkeypatch):
+    provider = _Provider([])
+    coordinator = _coordinator(provider)
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+    coordinator.available_provider_modes = frozenset({PROVIDER_TANKERKOENIG})
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    assert asyncio.run(coordinator._async_update_data()) == []
+    coordinator.last_request = datetime.now().astimezone() - timedelta(minutes=6)
+    provider.error = ProviderTimeoutError("timeout")
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == []
+    assert coordinator.data_stale is True
+    assert coordinator.recovery_status == "retry_scheduled"
+    assert coordinator.last_update_error_class == "ProviderTimeoutError"
+    assert len(provider.calls) == 2
+
+
 def test_first_valid_gps_after_startup_schedules_one_refresh(monkeypatch):
     provider = _Provider([_station()])
     coordinator = _coordinator(provider)
