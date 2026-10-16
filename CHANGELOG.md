@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0-beta.3 — Nakordoni and availability hotfixes
+
+- Fix Nakordoni API-key requests by binding the aiohttp response returned from
+  the request context manager before reading headers, status, or JSON.
+- Preserve a successful empty provider response as `[]` during cooldown and
+  transient provider failures instead of turning it into `None` and making
+  all sensors unavailable.
+- Mark retained results stale during temporary failures so old prices are not
+  presented as current.
+- Preserve provider-scoped cache invalidation, API-key installations,
+  OAuth2 support, automatic provider selection, and the protected
+  `mobile_fuel_stations.probe_nakordoni` service.
+
 ## 0.7.0-beta.2 — Protected Nakordoni diagnostics
 
 - Add the administrator-only `mobile_fuel_stations.probe_nakordoni` service

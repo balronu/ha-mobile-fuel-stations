@@ -69,15 +69,17 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Current stable release |
-| Pre-release | `v0.7.0-beta.2` | Beta with protected Nakordoni diagnostics |
+| Pre-release | `v0.7.0-beta.3` | Beta with Nakordoni and availability hotfixes |
 | Previous stable | `v0.5.1` | Available rollback version |
 | Frontend component | `v0.6.0` | Independently versioned Lovelace component |
 
-`v0.6.1` remains the current stable release. The `v0.7.0-beta.2` beta adds
+`v0.6.1` remains the current stable release. The `v0.7.0-beta.3` beta includes
 the protected `mobile_fuel_stations.probe_nakordoni` administrator service for
 single, redacted Nakordoni diagnostic requests using existing HA credentials.
 The experimental Nakordoni OAuth sign-in remains unverified against the live
-service. `v0.6.1` includes persisted cache recovery,
+service. Beta 3 fixes asynchronous Nakordoni response-context handling and
+keeps successful empty provider results available, but visibly stale, during
+cooldown or transient failures. `v0.6.1` includes persisted cache recovery,
 cooldown recovery, and optional adaptive GPS updates. The Lovelace component
 remains independently versioned at `0.6.0`.
 
@@ -296,7 +298,9 @@ and must not be used as a public data feed.
   next retry; a valid GPS event accelerates recovery.
 - **Missing price:** no valid price was returned for that station and fuel.
 - **Provider error:** fix authentication/configuration errors; transient
-  errors retain cached data and mark it stale.
+  errors retain cached data and mark it stale. A successful empty response
+  means zero stations, while `None` is reserved for missing GPS or a failure
+  before the first usable result.
 - **Missing logo:** check `brand`, station name, `show_brand_logos`, resource
   version, and browser cache.
 
