@@ -69,10 +69,15 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Current stable release |
+| Pre-release | `v0.7.0-beta.2` | Beta with protected Nakordoni diagnostics |
 | Previous stable | `v0.5.1` | Available rollback version |
 | Frontend component | `v0.6.0` | Independently versioned Lovelace component |
 
-`v0.6.1` is the current stable release. It includes persisted cache recovery,
+`v0.6.1` remains the current stable release. The `v0.7.0-beta.2` beta adds
+the protected `mobile_fuel_stations.probe_nakordoni` administrator service for
+single, redacted Nakordoni diagnostic requests using existing HA credentials.
+The experimental Nakordoni OAuth sign-in remains unverified against the live
+service. `v0.6.1` includes persisted cache recovery,
 cooldown recovery, and optional adaptive GPS updates. The Lovelace component
 remains independently versioned at `0.6.0`.
 
