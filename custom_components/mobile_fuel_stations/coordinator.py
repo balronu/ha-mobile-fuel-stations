@@ -692,6 +692,13 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.fuel_types[0] if self.fuel_types else DEFAULT_SORT_FUEL
         )
 
+    def _previous_result(self) -> list[Station] | None:
+        """Return the last provider result, including a valid empty result."""
+
+        if self.last_successful_update is not None or getattr(self, "data", None) is not None:
+            return self.stations
+        return None
+
     def _cancel_provider_cooldown_timer(self) -> None:
         cancel = getattr(self, "_cooldown_timer_unsub", None)
         self._cooldown_timer_unsub = None
@@ -977,7 +984,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                     self.last_update_error_provider or "unknown",
                 )
                 self.last_update_result = "provider_transient_failure"
-                return self.stations if self.stations else None
+                return self._previous_result()
 
         configured_fuels = getattr(self, "fuel_types", self._configured_fuels(self.options))
         position = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
@@ -1070,19 +1077,19 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.last_update_result = "provider_cooldown"
             self.data_stale = bool(self.stations)
             self._schedule_provider_cooldown_refresh()
-            return self.stations if self.stations else None
+            return self._previous_result()
         provider_lock = getattr(self, "_provider_lock", None)
         if provider_lock is None:
             provider_lock = asyncio.Lock()
             self._provider_lock = provider_lock
         if getattr(self, "recovery_provider_in_flight", False):
             self.last_update_result = "provider_in_flight"
-            return self.stations if self.stations else None
+            return self._previous_result()
         await provider_lock.acquire()
         if getattr(self, "recovery_provider_in_flight", False):
             provider_lock.release()
             self.last_update_result = "provider_in_flight"
-            return self.stations if self.stations else None
+            return self._previous_result()
         self.last_request = now
         self.last_provider_attempt = now
         if self._is_auto:
@@ -1232,8 +1239,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.last_update_result = "provider_transient_failure"
         self.last_retry_after = retry_after
         self.consecutive_failures += 1
-        self.recovery_status = "retry_scheduled" if self.stations and position else "failed"
-        self.data_stale = bool(self.stations and position)
+        has_previous_result = self._previous_result() is not None
+        self.recovery_status = "retry_scheduled" if has_previous_result and position else "failed"
+        self.data_stale = bool(has_previous_result and position)
         self._retry_not_before = (
             now + timedelta(seconds=retry_after) if retry_after is not None else None
         )
@@ -1264,7 +1272,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             _CACHE_CONTEXT_KEY: self._cache_context(),
             _STATION_CACHE_KEY: [self._station_to_store(station) for station in self.stations],
         })
-        if self.data_stale:
+        if has_previous_result:
             return self.stations
         # A transient provider failure before the first successful result must
         # not abort config-entry setup.  The coordinator remains available
