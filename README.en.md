@@ -215,6 +215,10 @@ navigation: true
 show_brand_logos: true
 ```
 
+With multiple vehicles, each config entry has its own overview sensor. The
+visual editor also lists temporarily unavailable Mobile Fuel Stations sensors;
+manually configured entity IDs remain supported.
+
 Stable v0.7.0 recognizes all 60 bundled local PNG assets, including:
 Aral (`aral.png`), Shell (`shell.png`), JET (`jet.png`),
 Total/TotalEnergies (`total.png`), ORLEN/ORLEN Express (`orlen.png`),

@@ -278,6 +278,10 @@ navigation: true
 show_brand_logos: true
 ```
 
+Bei mehreren Fahrzeugen gibt es pro Config Entry einen eigenen Overview-Sensor;
+der visuelle Editor listet auch vorübergehend nicht verfügbare Mobile-Fuel-
+Stations-Sensoren. Eine manuell eingetragene Entity-ID bleibt ebenfalls gültig.
+
 Stable v0.7.0 erkennt die 60 lokal gebündelten PNG-Markenlogos aus dem
 geprüften Archiv, darunter:
 

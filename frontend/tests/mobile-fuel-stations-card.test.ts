@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { buildBrandLogoUrl, buildNavigationUrl, detectNavigationProvider, discoverStationEntities, formatDistance, formatPrice, fuelLabel, MobileFuelStationsCard, normalizeLogoPath, resolveBrandLogoKey, shouldShowBrand } from "../src/mobile-fuel-stations-card";
+import { buildBrandLogoUrl, buildNavigationUrl, detectNavigationProvider, discoverStationEntities, findOverviewEntity, formatDistance, formatPrice, fuelLabel, isOverviewEntity, MobileFuelStationsCard, normalizeLogoPath, resolveBrandLogoKey, shouldShowBrand } from "../src/mobile-fuel-stations-card";
 
 const overviewId = "sensor.vehicle_nearby_stations";
 const state = (value: string, attributes: Record<string, unknown> = {}) => ({ state: value, attributes });
@@ -163,6 +163,17 @@ describe("card", () => {
     expect(MobileFuelStationsCard.getStubConfig(hass).entity).toBe("sensor.mobile_fuel_stations_device_tracker_auto_nearby_stations");
     expect(MobileFuelStationsCard.getStubConfig(hass, ["sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations"]).entity).toBe("sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations");
     expect(MobileFuelStationsCard.getStubConfig({ states: {} })).toEqual({ navigation: true });
+  });
+  it("discovers multiple integration entries even when one is unavailable", () => {
+    const grandland = "sensor.mobile_fuel_stations_device_tracker_auto_grandland_fahrzeug_nearby_stations";
+    const wohnmobil = "sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations";
+    const hass = { states: {
+      [grandland]: state("unavailable", { friendly_name: "Opel Grandland" }),
+      [wohnmobil]: state("5", { station_count: 5, station_entities: [] }),
+    } };
+    expect(isOverviewEntity(grandland, hass.states[grandland])).toBe(true);
+    expect(findOverviewEntity(hass)).toBe(grandland);
+    expect(MobileFuelStationsCard.getStubConfig(hass).entity).toBe(grandland);
   });
   it("renders overview, one, five and ten stations in order", async () => {
     for (const count of [1, 5, 10]) { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ type: "custom:mobile-fuel-stations-card", entity: overviewId }); card.hass = hassFor(count); await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(count); expect(card.shadowRoot?.textContent).toContain("Station 1"); }
@@ -339,6 +350,30 @@ describe("card", () => {
     const select = editor.shadowRoot?.querySelector("select") as HTMLSelectElement; select.value = overviewId; select.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.entity).toBe(overviewId);
     const checkbox = editor.shadowRoot?.querySelector("input[type=checkbox]") as HTMLInputElement; checkbox.checked = false; checkbox.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation).toBe(false);
     const provider = editor.shadowRoot?.querySelectorAll("select")[1] as HTMLSelectElement; expect(Array.from(provider.options).map((option) => option.value)).toEqual(["auto", "apple", "google", "waze"]); provider.value = "waze"; provider.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation_provider).toBe("waze"); expect(changed?.detail.config.entity).toBe(overviewId); expect(changed?.detail.config.navigation).toBe(false);
+  });
+  it("lists unavailable overview entities from separate vehicle entries", async () => {
+    const editor = MobileFuelStationsCard.getConfigElement() as HTMLElement & { hass: unknown; setConfig: (config: unknown) => void; updateComplete: Promise<unknown> };
+    document.body.append(editor);
+    editor.hass = { states: {
+      "sensor.mobile_fuel_stations_device_tracker_auto_grandland_fahrzeug_nearby_stations": state("unavailable", { friendly_name: "Opel Grandland" }),
+      "sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations": state("5", { station_count: 5, station_entities: [] }),
+    } };
+    editor.setConfig({ entity: "sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations" });
+    await editor.updateComplete;
+    const select = editor.shadowRoot?.querySelector("select") as HTMLSelectElement;
+    expect(Array.from(select.options).map((option) => option.value)).toEqual([
+      "",
+      "sensor.mobile_fuel_stations_device_tracker_auto_grandland_fahrzeug_nearby_stations",
+      "sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations",
+    ]);
+  });
+  it("keeps direct YAML entity configuration compatible while unavailable", async () => {
+    const card = new MobileFuelStationsCard();
+    document.body.append(card);
+    card.setConfig({ entity: "sensor.mobile_fuel_stations_device_tracker_auto_grandland_fahrzeug_nearby_stations" });
+    card.hass = { states: { "sensor.mobile_fuel_stations_device_tracker_auto_grandland_fahrzeug_nearby_stations": state("unavailable") } };
+    await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Tankstellen derzeit nicht verfügbar");
   });
   it("registers exactly one matching custom card suggestion", () => {
     const entry = window.customCards?.filter((card) => card.type === "mobile-fuel-stations-card");
