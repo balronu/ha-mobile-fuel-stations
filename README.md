@@ -68,12 +68,12 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Aktuelle stabile Version |
-| Pre-release | `v0.7.1-beta.1` | Hotfix für Logo-Cache und gemeldete Markennamen; statisches OAuth-QA |
+| Pre-release | `v0.7.0-beta.8` | Hotfix für Logo-Cache und gemeldete Markennamen; statisches OAuth-QA |
 | Vorherige Beta | `v0.7.0-beta.7` | Nakordoni Account Usage und Logo-Rechteaudit |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
-| Frontend-Komponente | `v0.7.1-beta.1` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.7.0-beta.8` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Der Hotfix `v0.7.1-beta.1`
+`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Der Hotfix `v0.7.0-beta.8`
 behebt die Cache-Versionierung der Lovelace-Ressource und ordnet die gemeldeten
 Namen `Eni (Agip Eni)` und `OIL! Tankstelle Sulzbach` explizit den vorhandenen
 lokalen Logos zu. Die Beta basiert auf `v0.7.0-beta.7`, deren Funktionen erhalten
@@ -98,7 +98,7 @@ Die bestätigte Länder-/Preisabdeckung bleibt Voraussetzung für Auto; unbekann
 Nakordoni-Abdeckung wird nicht geraten. `v0.6.1` enthält die
 persistierte Cache-Wiederherstellung, die Cooldown-Recovery und die optionale
 adaptive GPS-Aktualisierung. Die Lovelace-Komponente bleibt als eigene Ressource auf
-Version `0.7.1-beta.1` versioniert.
+Version `0.7.0-beta.8` versioniert.
 
 Die Integration bietet unter anderem:
 
@@ -140,7 +140,7 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und registriert. Die
 Die unabhängig versionierte Frontend-Ressource lautet weiterhin:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.1-beta.1
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.0-beta.8
 ```
 
 Bei einer bestehenden Installation können alte Ressourcen im Browser- oder

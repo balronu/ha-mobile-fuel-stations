@@ -69,12 +69,12 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Current stable release |
-| Pre-release | `v0.7.1-beta.1` | Logo-cache and reported-brand hotfix; static OAuth QA |
+| Pre-release | `v0.7.0-beta.8` | Logo-cache and reported-brand hotfix; static OAuth QA |
 | Previous beta | `v0.7.0-beta.7` | Nakordoni account usage and logo-rights audit |
 | Previous stable | `v0.5.1` | Available rollback version |
-| Frontend component | `v0.7.1-beta.1` | Independently versioned Lovelace component |
+| Frontend component | `v0.7.0-beta.8` | Independently versioned Lovelace component |
 
-`v0.6.1` remains the current stable release. The `v0.7.1-beta.1` hotfix updates
+`v0.6.1` remains the current stable release. The `v0.7.0-beta.8` hotfix updates
 the Lovelace resource cache version and explicitly maps the reported names
 `Eni (Agip Eni)` and `OIL! Tankstelle Sulzbach` to the existing local logos. It
 is based on `v0.7.0-beta.7`, whose features remain unchanged. The `v0.7.0-beta.7` beta includes
@@ -88,7 +88,7 @@ selection, cache, cooldown, and retry diagnostics. Confirmed country/price
 coverage remains required for Auto; unknown Nakordoni coverage is never
 inferred. `v0.6.1` includes persisted cache recovery,
 cooldown recovery, and optional adaptive GPS updates. The Lovelace component
-remains independently versioned at `0.7.1-beta.1`. It also polls the documented
+remains independently versioned at `0.7.0-beta.8`. It also polls the documented
 `GET /api/v2/account/usage` endpoint no more often than every 15 minutes and
 exposes quota, reset, market, and Trip Pass information through HA sensors.
 The supplied logo ZIP contributes 54 normalized PNG station-brand assets;
@@ -123,7 +123,7 @@ The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.1-beta.1
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.0-beta.8
 ```
 
 For technical resource-loading details, see

@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.7.1-beta.1 — Logo cache invalidation and provider-name matching
+## 0.7.0-beta.8 — Logo cache invalidation and provider-name matching
 
-- Bump the local Lovelace resource URL to `v=0.7.1-beta.1` so Home Assistant
+- Bump the local Lovelace resource URL to `v=0.7.0-beta.8` so Home Assistant
   cannot retain the beta.6 bundle after the beta.7 logo update.
 - Resolve the reported `Eni (Agip Eni)` and `OIL! Tankstelle Sulzbach` names
   through explicit aliases to the existing local assets, without broad
