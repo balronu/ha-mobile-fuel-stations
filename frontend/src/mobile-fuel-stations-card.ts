@@ -290,12 +290,21 @@ function isUsableStation(state: HassState | undefined): boolean {
   return Boolean(state && !unavailable.has(state.state));
 }
 
-function isOverviewEntity(entityId: string, state: HassState | undefined): boolean {
+const MOBILE_FUEL_STATIONS_ENTITY_PREFIX = "sensor.mobile_fuel_stations_";
+
+export function isOverviewEntity(entityId: string, state: HassState | undefined): boolean {
   if (!entityId.startsWith("sensor.") || !state) return false;
   if (Array.isArray(state.attributes.station_entities)) return true;
   const mobileFuelMarkers = ["location_entity", "radius", "fuel_type", "station_count"]
     .filter((key) => state.attributes[key] !== undefined).length;
-  return entityId.endsWith("_nearby_stations") && mobileFuelMarkers >= 2;
+  if (entityId.endsWith("_nearby_stations") && mobileFuelMarkers >= 2) return true;
+
+  // HA omits extra attributes while an entity is unavailable.  The stable
+  // integration-owned entity-id prefix is the remaining client-side marker;
+  // it keeps unavailable/unknown entries selectable without treating foreign
+  // sensors with a similar suffix as Mobile Fuel Stations entities.
+  return entityId.startsWith(MOBILE_FUEL_STATIONS_ENTITY_PREFIX)
+    && entityId.endsWith("_nearby_stations");
 }
 
 export function findOverviewEntity(hass: Hass | undefined, entities: string[] = [], entitiesFallback: string[] = []): string | undefined {
@@ -567,7 +576,7 @@ class MobileFuelStationsCardEditor extends LitElement {
     const entities = Object.entries(this._hass?.states ?? {}).filter(([id, value]) => this._isOverview(id, value));
     return html`<label>${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label><div class="row"><label><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}> ${this._text("navigation")}</label></div><div class="row"><label>${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option><option value="waze">${this._text("waze")}</option></select></label></div><div class="row"><label><input type="checkbox" .checked=${this._config.show_brand_logos !== false} @change=${(event: Event) => this._changeBrandLogos(event)}> ${this._text("brandLogos")}</label><label>${this._text("logoPath")}<input .value=${this._config.logo_path ?? DEFAULT_LOGO_PATH} @change=${(event: Event) => this._changeLogoPath(event)}></label></div>`;
   }
-  private _isOverview(id: string, value: HassState | undefined): boolean { return Boolean(id.startsWith("sensor.") && value && (Array.isArray(value.attributes.station_entities) || (id.endsWith("_nearby_stations") && value.attributes.station_count !== undefined))); }
+  private _isOverview(id: string, value: HassState | undefined): boolean { return isOverviewEntity(id, value); }
   private _changeEntity(event: Event) { this._configChanged({ ...this._config, entity: (event.target as HTMLSelectElement).value }); }
   private _changeNavigation(event: Event) { this._configChanged({ ...this._config, navigation: (event.target as HTMLInputElement).checked }); }
   private _changeProvider(event: Event) { this._configChanged({ ...this._config, navigation_provider: (event.target as HTMLSelectElement).value as NavigationProvider }); }
