@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.1"><img src="https://img.shields.io/badge/Stable-v0.7.1-16a34a" alt="Stable v0.7.1"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.2"><img src="https://img.shields.io/badge/Stable-v0.7.2-16a34a" alt="Stable v0.7.2"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -68,24 +68,29 @@ opening status, and destination navigation.
 
 | Channel | Version | Meaning |
 | --- | --- | --- |
-| Stable | `v0.7.1` | Current stable release |
+| Stable | `v0.7.2` | Current stable release |
 | Previous stable | `v0.7.0` | Available rollback version |
-| Frontend component | `v0.7.1` | Independently versioned Lovelace component |
+| Frontend component | `v0.7.2` | Independently versioned Lovelace component |
 
-`v0.7.1` is the current stable release. It bundles Tankerkönig, Petromap, and
+`v0.7.2` is the current stable release. It bundles Tankerkönig, Petromap, and
 Nakordoni with automatic provider selection, country- and market-aware
 fallback, quota/Trip Pass diagnostics, OAuth2-PKCE, and manual API keys. The
 60 local PNG logos come from the supplied ZIP, and the resource is registered
-automatically with cache key `v=0.7.1`. Nakordoni OAuth was checked statically
+automatically with cache key `v=0.7.2`. Nakordoni OAuth was checked statically
 but has not been confirmed through a live callback. Source, missing per-image
 license, and residual trademark risks are documented in
 [BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
 
-v0.7.1 also improves discovery of integration-owned overview sensors in the
+v0.7.1 also improved discovery of integration-owned overview sensors in the
 visual Lovelace editor. Temporarily `unavailable` sensors are offered for
 selection as well. Multiple vehicles or Config Entries remain separate: select
 the vehicle's own overview entity for each card. Existing YAML cards with a
 direct entity ID remain compatible.
+
+v0.7.2 includes stations with unknown opening status in the “NEAREST” and
+“CHEAPEST” highlights. Explicitly closed stations remain excluded, and an
+unknown status is never rendered as “Open”. Selection is provider-neutral and
+deterministic.
 
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
@@ -105,14 +110,14 @@ refresh.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.7.1` is the current stable HACS version; `v0.7.0` remains available as the
+`v0.7.2` is the current stable HACS version; `v0.7.0` remains available as the
 previous stable rollback.
 
 The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.1
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.2
 ```
 
 For technical resource-loading details, see
@@ -225,7 +230,7 @@ With multiple vehicles, each config entry has its own overview sensor. The
 visual editor also lists temporarily unavailable Mobile Fuel Stations sensors;
 manually configured entity IDs remain supported.
 
-Stable v0.7.1 recognizes all 60 bundled local PNG assets, including:
+Stable v0.7.2 recognizes all 60 bundled local PNG assets, including:
 Aral (`aral.png`), Shell (`shell.png`), JET (`jet.png`),
 Total/TotalEnergies (`total.png`), ORLEN/ORLEN Express (`orlen.png`),
 and OMV (`omv.png`). Matching normalizes
@@ -317,6 +322,9 @@ and must not be used as a public data feed.
   confirms entity discovery; it does not confirm a successful data request.
   Check location, provider configuration, API key, country/market permission,
   and the available diagnostics.
+- **Highlight missing despite station data:** Since v0.7.2, stations with an
+  unknown opening status are eligible for “NEAREST” and “CHEAPEST”. Explicitly
+  closed stations remain excluded; unknown status is not shown as “Open”.
 - **Known Opel Grandland E10 case:** In one configuration, Tankerkönig
   produced `ProviderResponseError` and entered a provider cooldown. Removing
   Tankerkönig and selecting Nakordoni made the request work. This does not
@@ -354,7 +362,7 @@ recovery tests use mocks and fixtures rather than unverified live credentials.
 
 Historical release notes are preserved in the
 [GitHub release archive](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/), including the current
-[`v0.7.1 release notes`](docs/releases/RELEASE_NOTES_v0.7.1.md).
+[`v0.7.2 release notes`](docs/releases/RELEASE_NOTES_v0.7.2.md).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).

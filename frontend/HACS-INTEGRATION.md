@@ -8,7 +8,7 @@
 - Home Assistant registriert beim Integrations-Setup den statischen Pfad
   `/mobile_fuel_stations` über `async_register_static_paths`.
 - Die automatisch registrierte JavaScript-URL enthält die Integrationsversion,
-  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.1`.
+  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.2`.
 - Der physische StaticPath und die ausgelieferte Datei bleiben
   `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
 
@@ -26,6 +26,10 @@ Fahrzeugs; ab v0.7.1 werden auch integrationszugehörige Entities mit Zustand
 `unavailable` zur Auswahl angeboten. Bestehende YAML-Karten mit einer direkt
 eingetragenen Entity-ID bleiben kompatibel. Die automatische Registrierung der
 Lovelace-Ressource bleibt aktiv; eine manuelle Resource-URL ist nicht nötig.
+
+Ab v0.7.2 berücksichtigen die Karten-Highlights auch Stationen mit unbekanntem
+Öffnungsstatus. Explizit geschlossene Stationen bleiben ausgeschlossen; ein
+unbekannter Status wird weiterhin nicht als „Geöffnet“ dargestellt.
 
 Die öffentliche HA-API garantiert allerdings keinen sofortigen Cache-Flush in
 jedem Browser/Companion-Client. Bestehende v0.2.x-Installationen dürfen ihren
