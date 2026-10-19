@@ -27,13 +27,30 @@ def test_nearest_uses_distance_before_slot_limiting_and_allows_missing_price():
     assert nearest_station(stations).station_id == "near"
 
 
-def test_cheapest_requires_open_station_and_uses_station_id_tie_breaker():
+def test_nearest_includes_unknown_open_status_but_excludes_closed():
+    stations = [
+        Station("unknown", "Unknown", "", None, 1.0, None, "", "", "", "", None, None),
+        Station("closed", "Closed", "", None, 0.5, False, "", "", "", "", None, None),
+    ]
+    assert nearest_station(stations).station_id == "unknown"
+
+
+def test_cheapest_includes_unknown_open_status_but_excludes_closed():
     stations = [
         Station("z", "Z", "", 1.5, 2.0, True, "", "", "", "", None, None),
         Station("a", "A", "", 1.5, 1.0, True, "", "", "", "", None, None),
         Station("closed", "Closed", "", 1.0, 0.5, False, "", "", "", "", None, None),
+        Station("unknown", "Unknown", "", 0.9, 3.0, None, "", "", "", "", None, None),
     ]
-    assert cheapest_station(stations).station_id == "a"
+    assert cheapest_station(stations).station_id == "unknown"
+
+
+def test_unknown_open_status_wins_per_fuel_price_comparison():
+    stations = [
+        Station("closed", "Closed", "", 1.0, 1.0, False, "", "", "", "", None, None, fuel_prices={"e10": 1.0}),
+        Station("unknown", "Unknown", "", 1.8, 2.0, None, "", "", "", "", None, None, fuel_prices={"e10": 1.8}),
+    ]
+    assert cheapest_by_fuel(stations) == {"e10": stations[1]}
 
 
 def test_station_attributes_preserve_optional_values():

@@ -58,38 +58,70 @@ def sort_stations(stations: list[Station], limit: int, *, mode: str = "price", f
 
 
 def nearest_station(stations: list[Station]) -> Station | None:
-    """Return the nearest open station with a valid distance."""
+    """Return the nearest non-closed station with a valid distance.
+
+    Providers such as Nakordoni may not expose opening status.  ``None`` means
+    unknown, not closed, so those stations remain eligible for a distance-based
+    highlight while the frontend still omits a made-up open/closed label.
+    """
 
     candidates = [
         station
         for station in stations
-        if station.is_open and station.distance is not None and isfinite(station.distance)
+        if station.is_open is not False
+        and station.distance is not None
+        and isfinite(station.distance)
     ]
-    return min(candidates, key=lambda station: (station.distance, station.station_id)) if candidates else None
+    return min(
+        candidates,
+        key=lambda station: (
+            station.distance,
+            station.is_open is not True,
+            station.station_id,
+        ),
+    ) if candidates else None
 
 
 def cheapest_station(stations: list[Station]) -> Station | None:
-    """Return the cheapest open station with a valid price."""
+    """Return the cheapest non-closed station with a valid price.
+
+    An unknown opening status must not suppress a comparable provider price;
+    only an explicitly closed station is excluded.
+    """
 
     candidates = [
         station
         for station in stations
-        if station.is_open and station.price is not None and isfinite(station.price)
+        if station.is_open is not False
+        and station.price is not None
+        and isfinite(station.price)
     ]
-    return min(candidates, key=lambda station: (station.price, station.station_id)) if candidates else None
+    return min(
+        candidates,
+        key=lambda station: (
+            station.price,
+            station.is_open is not True,
+            station.station_id,
+        ),
+    ) if candidates else None
 
 
 def cheapest_by_fuel(stations: list[Station]) -> dict[str, Station]:
-    """Return the cheapest station independently for every requested fuel."""
+    """Return the cheapest non-closed station for every requested fuel."""
     result: dict[str, Station] = {}
     for station in stations:
-        if not station.is_open:
+        if station.is_open is False:
             continue
         for fuel, price in (station.fuel_prices or {}).items():
             if price is None or not isfinite(price):
                 continue
             current = result.get(fuel)
-            if current is None or price < (current.fuel_prices or {}).get(fuel, float("inf")):
+            current_price = (current.fuel_prices or {}).get(fuel, float("inf")) if current else float("inf")
+            if current is None or (price, station.is_open is not True, station.station_id) < (
+                current_price,
+                current.is_open is not True,
+                current.station_id,
+            ):
                 result[fuel] = station
     return result
 

@@ -14,7 +14,7 @@ from mobile_fuel_stations.providers.base import (
     ProviderUnsupportedFuelError,
     StationSearchQuery,
 )
-from mobile_fuel_stations.api import station_attributes
+from mobile_fuel_stations.api import cheapest_station, nearest_station, station_attributes
 from mobile_fuel_stations.providers.nakordoni import (
     NAKORDONI_ACCOUNT_USAGE_URL,
     NakordoniProvider,
@@ -157,6 +157,8 @@ def test_nakordoni_request_uses_bearer_header_and_one_page():
     assert provider.last_response_metadata.quota_remaining == 999
     assert station_attributes(stations[0])["currency"] == "EUR"
     assert station_attributes(stations[0])["price_age_hours"] == 0.5
+    assert nearest_station(stations).station_id == "stable-ref"
+    assert cheapest_station(stations).station_id == "stable-ref"
 
 
 def test_nakordoni_binds_aiohttp_request_context_to_response():
