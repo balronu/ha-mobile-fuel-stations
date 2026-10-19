@@ -962,15 +962,24 @@ class MobileFuelStationsOptionsFlow(config_entries.OptionsFlow):
         """Exchange the one-time code and continue the normal options save."""
 
         try:
-            token = await self._oauth_impl.async_resolve_external_data(
-                self._oauth_external_data
-            )
-            if "expires_in" not in token:
+            async with asyncio.timeout(30):
+                token = await self._oauth_impl.async_resolve_external_data(
+                    self._oauth_external_data
+                )
+            if not isinstance(token, dict) or "expires_in" not in token:
                 return self.async_abort(reason="oauth_error")
-            token["expires_in"] = int(token["expires_in"])
-            token["expires_at"] = time.time() + token["expires_in"]
+            expires_in = int(token["expires_in"])
+            if expires_in <= 0:
+                return self.async_abort(reason="oauth_error")
+            token["expires_in"] = expires_in
+            token["expires_at"] = time.time() + expires_in
+        except TimeoutError:
+            return self.async_abort(reason="oauth_timeout")
         except (TypeError, ValueError):
             return self.async_abort(reason="oauth_error")
+        except Exception:
+            _LOGGER.error("Nakordoni OAuth token exchange failed")
+            return self.async_abort(reason="oauth_failed")
         self._oauth_result = {
             "auth_implementation": self._oauth_impl.domain,
             "token": token,

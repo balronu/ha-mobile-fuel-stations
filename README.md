@@ -68,11 +68,16 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Aktuelle stabile Version |
-| Pre-release | `v0.7.0-beta.7` | Beta mit Nakordoni Account Usage und Logo-Rechteaudit |
+| Pre-release | `v0.7.1-beta.1` | Hotfix für Logo-Cache und gemeldete Markennamen; statisches OAuth-QA |
+| Vorherige Beta | `v0.7.0-beta.7` | Nakordoni Account Usage und Logo-Rechteaudit |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
-| Frontend-Komponente | `v0.6.0` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.7.1-beta.1` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Die Beta `v0.7.0-beta.7`
+`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Der Hotfix `v0.7.1-beta.1`
+behebt die Cache-Versionierung der Lovelace-Ressource und ordnet die gemeldeten
+Namen `Eni (Agip Eni)` und `OIL! Tankstelle Sulzbach` explizit den vorhandenen
+lokalen Logos zu. Die Beta basiert auf `v0.7.0-beta.7`, deren Funktionen erhalten
+bleiben. Die Beta `v0.7.0-beta.7`
 ergänzt den geschützten Admin-Service `mobile_fuel_stations.probe_nakordoni`
 für einzelne, bereinigte Nakordoni-Diagnoseabfragen mit bestehenden HA-
 Credentials. Die experimentelle Nakordoni-OAuth-Anmeldung ist weiterhin nicht
@@ -92,8 +97,8 @@ erweitert die geheimnisfreien Diagnosen um Auswahl-, Cache- und Retry-Status.
 Die bestätigte Länder-/Preisabdeckung bleibt Voraussetzung für Auto; unbekannte
 Nakordoni-Abdeckung wird nicht geraten. `v0.6.1` enthält die
 persistierte Cache-Wiederherstellung, die Cooldown-Recovery und die optionale
-adaptive GPS-Aktualisierung. Die Lovelace-Komponente bleibt unabhängig auf
-Version `0.6.0` versioniert.
+adaptive GPS-Aktualisierung. Die Lovelace-Komponente bleibt als eigene Ressource auf
+Version `0.7.1-beta.1` versioniert.
 
 Die Integration bietet unter anderem:
 
@@ -135,7 +140,7 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und registriert. Die
 Die unabhängig versionierte Frontend-Ressource lautet weiterhin:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.1-beta.1
 ```
 
 Bei einer bestehenden Installation können alte Ressourcen im Browser- oder
@@ -223,7 +228,7 @@ erfolgreich geprüft wurde. Der Optionsdialog startet keine unnötigen
 Provider-Anfragen. Zugangsdaten werden nicht in Git, Logs oder Diagnostics
 ausgegeben.
 
-### Nakordoni OAuth2-PKCE und Account Usage (Beta.7)
+### Nakordoni OAuth2-PKCE und Account Usage (Beta.7-Basis, Beta.1-QA)
 
 Beta.6 bietet die bevorzugte automatische Nakordoni-Anmeldung über den
 Home-Assistant-Authorization-Code-Flow mit PKCE S256. Die registrierte
@@ -292,7 +297,7 @@ navigation: true
 show_brand_logos: true
 ```
 
-Beta.7 erkennt die sechs mitgelieferten lokalen SVGs sowie 54 normalisierte
+Beta.1 erkennt die sechs mitgelieferten lokalen SVGs sowie 54 normalisierte
 lokale PNG-Markenlogos aus dem geprüften Archiv. Die sechs SVGs sind:
 
 | Marke | Datei |
@@ -307,7 +312,10 @@ lokale PNG-Markenlogos aus dem geprüften Archiv. Die sechs SVGs sind:
 Die Erkennung normalisiert Groß-/Kleinschreibung, Unicode-Akzente, Leerzeichen
 und Satzzeichen. Wenn das `brand`-Feld fehlt oder keinen Treffer liefert, wird
 zusätzlich der Stationsname als Fallback geprüft. Unbekannte, leere oder nicht
-ladbare Logos zeigen das generische Zapfsäulensymbol. `show_brand_logos: false`
+ladbare Logos zeigen das generische Zapfsäulensymbol. Die gemeldeten Namen
+`Eni (Agip Eni)` und `OIL! Tankstelle Sulzbach` werden über explizite Varianten
+auf `agip-eni.png` beziehungsweise `oil.png` abgebildet; unsichere allgemeine
+Teilstring-Treffer bleiben ausgeschlossen. `show_brand_logos: false`
 deaktiviert die Anzeige. Die vorhandenen Logoquellen und Prüfsummen stehen in
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md).
 

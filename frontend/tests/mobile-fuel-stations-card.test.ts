@@ -61,6 +61,39 @@ describe("formatting and discovery", () => {
     expect(buildBrandLogoUrl("GULF")).toBe("/mobile_fuel_stations/logos/gulf.png");
     expect(buildBrandLogoUrl("TinQ")).toBe("/mobile_fuel_stations/logos/tinq.png");
   });
+  it("resolves the reported provider names from station names and invalidates old bundle caches", () => {
+    expect(resolveBrandLogoKey(null, "Eni (Agip Eni)")).toBe("agip-eni");
+    expect(buildBrandLogoUrl(null, undefined, "Eni (Agip Eni)")).toBe("/mobile_fuel_stations/logos/agip-eni.png");
+    expect(resolveBrandLogoKey(null, "OIL! Tankstelle Sulzbach")).toBe("oil");
+    expect(buildBrandLogoUrl(null, undefined, "OIL! Tankstelle Sulzbach")).toBe("/mobile_fuel_stations/logos/oil.png");
+  });
+  it("maps every bundled logo key to a local resource path", () => {
+    const bundled = [
+      ["Aral", "aral.svg"], ["JET", "jet.svg"], ["OMV", "omv.svg"], ["ORLEN", "orlen.svg"],
+      ["Shell", "shell.svg"], ["TotalEnergies", "total.svg"], ["Access", "access.png"],
+      ["Agip Eni", "agip-eni.png"], ["Allguth", "allguth.png"], ["Avia Xpress", "avia-xpress.png"],
+      ["Avia", "avia.png"], ["BayWa", "baywa.png"], ["Bell Oil", "bell-oil.png"], ["bft", "bft.png"],
+      ["Calpam", "calpam.png"], ["citi oil SB-Tankstelle", "citi-oil-sb-tankstelle.png"],
+      ["CLASSIC", "classic.png"], ["E-Center", "e-center.png"], ["ED", "ed.png"], ["EDEKA", "edeka.png"],
+      ["ELAN", "elan.png"], ["Esso", "esso.png"], ["Feneberg", "feneberg.png"],
+      ["Fläming Tank", "flaeming-tank.png"], ["Globus", "globus.png"], ["Greenline", "greenline.png"],
+      ["Grüne", "gruene.png"], ["Gulf", "gulf.png"], ["HEM", "hem.png"], ["Hessol", "hessol.png"],
+      ["Hornbach", "hornbach.png"], ["Hoyer", "hoyer.png"], ["Joiss", "joiss.png"],
+      ["K+K Klaas & Kock", "kk-klaas-kock.png"], ["Minera", "minera.png"], ["MOL", "mol.png"],
+      ["Mr. Wash Autoservice AG", "mr-wash-autoservice-ag.png"], ["MTB", "mtb.png"],
+      ["Mundorf Tank", "mundorf-tank.png"], ["Nordoel", "nordoel.png"], ["OIL!", "oil.png"],
+      ["Oktan", "oktan.png"], ["PIN", "pin.png"], ["Q1", "q1.png"], ["Raiffeisen", "raiffeisen.png"],
+      ["RAN", "ran.png"], ["Roth Energie", "roth-energie.png"], ["SB", "sb.png"],
+      ["Schillhorn", "schillhorn-tankstelle.png"], ["Schindele", "schindele.png"],
+      ["SCORE", "score.png"], ["Spreves", "spreves.png"], ["Sprint", "sprint.png"], ["star", "star.png"],
+      ["Supermarkt-Tankstelle", "supermarkt-tankstelle.png"], ["team", "team.png"], ["TinQ", "tinq.png"],
+      ["Trigema", "trigema.png"], ["V-Markt", "v-markt.png"], ["Westfalen", "westfalen.png"],
+    ] as const;
+    for (const [brand, filename] of bundled) {
+      expect(buildBrandLogoUrl(brand), brand).toBe("/mobile_fuel_stations/logos/" + filename);
+    }
+    expect(bundled).toHaveLength(60);
+  });
   it("covers all 62 named reference stems while keeping the 404 entry non-brand", () => {
     const referenceStems = [
       "access", "agip-eni", "allguth", "aral", "avia-xpress", "avia", "baywa", "bell-oil", "bft", "calpam",

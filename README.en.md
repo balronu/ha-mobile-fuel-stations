@@ -69,11 +69,15 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Current stable release |
-| Pre-release | `v0.7.0-beta.7` | Beta with Nakordoni account usage and logo-rights audit |
+| Pre-release | `v0.7.1-beta.1` | Logo-cache and reported-brand hotfix; static OAuth QA |
+| Previous beta | `v0.7.0-beta.7` | Nakordoni account usage and logo-rights audit |
 | Previous stable | `v0.5.1` | Available rollback version |
-| Frontend component | `v0.6.0` | Independently versioned Lovelace component |
+| Frontend component | `v0.7.1-beta.1` | Independently versioned Lovelace component |
 
-`v0.6.1` remains the current stable release. The `v0.7.0-beta.7` beta includes
+`v0.6.1` remains the current stable release. The `v0.7.1-beta.1` hotfix updates
+the Lovelace resource cache version and explicitly maps the reported names
+`Eni (Agip Eni)` and `OIL! Tankstelle Sulzbach` to the existing local logos. It
+is based on `v0.7.0-beta.7`, whose features remain unchanged. The `v0.7.0-beta.7` beta includes
 the protected `mobile_fuel_stations.probe_nakordoni` administrator service for
 single, redacted Nakordoni diagnostic requests using existing HA credentials.
 The experimental Nakordoni OAuth sign-in remains unverified against the live
@@ -84,7 +88,7 @@ selection, cache, cooldown, and retry diagnostics. Confirmed country/price
 coverage remains required for Auto; unknown Nakordoni coverage is never
 inferred. `v0.6.1` includes persisted cache recovery,
 cooldown recovery, and optional adaptive GPS updates. The Lovelace component
-remains independently versioned at `0.6.0`. It also polls the documented
+remains independently versioned at `0.7.1-beta.1`. It also polls the documented
 `GET /api/v2/account/usage` endpoint no more often than every 15 minutes and
 exposes quota, reset, market, and Trip Pass information through HA sensors.
 The supplied logo ZIP contributes 54 normalized PNG station-brand assets;
@@ -119,7 +123,7 @@ The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.6.0
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.1-beta.1
 ```
 
 For technical resource-loading details, see
@@ -228,12 +232,16 @@ navigation: true
 show_brand_logos: true
 ```
 
-Beta.7 recognizes the six bundled local SVGs: Aral (`aral.svg`), Shell
+Beta.1 recognizes all 60 bundled local assets, including the six canonical SVGs:
+Aral (`aral.svg`), Shell
 (`shell.svg`), JET (`jet.svg`), Total/TotalEnergies (`total.svg`),
 ORLEN/ORLEN Express (`orlen.svg`), and OMV (`omv.svg`). Matching normalizes
 case, Unicode accents, whitespace, and punctuation. If `brand` is missing or
 does not match, the station name is checked as a fallback. Unknown, empty, or
-unloadable logos use the generic fuel-pump symbol. Set
+unloadable logos use the generic fuel-pump symbol. The reported names
+`Eni (Agip Eni)` and `OIL! Tankstelle Sulzbach` use explicit aliases for
+`agip-eni.png` and `oil.png`; broad uncertain substring matches remain
+excluded. Set
 `show_brand_logos: false` to disable logos. Sources and checksums are listed in
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md).
 
