@@ -27,7 +27,7 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 - **Kraftstoffpreise:** E5, E10, Diesel, LPG/Autogas und HVO100 mit
   Entfernungs- oder Preis-Sortierung.
 - **Lovelace für unterwegs:** Responsive Karte, Erkennung vieler
-  Markenschreibweisen, sechs lokale Markenlogos und direkte Navigation zum
+  Markenschreibweisen, 60 lokale Markenlogos und direkte Navigation zum
   ausgewählten Ziel.
 
 ### Vorschau
@@ -78,9 +78,14 @@ für einzelne, bereinigte Nakordoni-Diagnoseabfragen mit bestehenden HA-
 Credentials. Die experimentelle Nakordoni-OAuth-Anmeldung ist weiterhin nicht
 live verifiziert. `v0.7.0-beta.7` ergänzt die dokumentierte Nakordoni-Abfrage
 `GET /api/v2/account/usage` höchstens alle 15 Minuten sowie Sensoren für
-Restkontingent, Reset-Zeit und Trip-Pass. Die bereitgestellte Logo-ZIP wurde
-geprüft, aber wegen fehlender Herkunfts- und Weiterverteilungsnachweise nicht
-veröffentlicht. `v0.7.0-beta.6` führt providergebundene Request-Cooldowns
+Restkontingent, Reset-Zeit und Trip-Pass. Die bereitgestellte Logo-ZIP liefert
+54 normalisierte PNGs; zusammen mit den sechs bestehenden SVGs werden 60 Logos
+lokal ohne CDN-Abhängigkeit ausgeliefert. `404.png`, `svg.png`, Dubletten
+und bereits durch SVGs abgedeckte Archivvarianten bleiben ausgeschlossen.
+Herkunft, fehlende Einzelbildlizenz und die ausdrückliche Branch-Autorisierung
+sind in der [Logo-Dokumentation](BRAND_LOGOS.md) festgehalten; dies ist keine
+Markenlizenz oder Herstellerempfehlung. `v0.7.0-beta.6` führt
+providergebundene Request-Cooldowns
 und Cache-Zustände ein, verhindert, dass ein Providerwechsel durch den
 vorherigen Provider blockiert wird, erkennt OAuth-only Nakordoni in Auto und
 erweitert die geheimnisfreien Diagnosen um Auswahl-, Cache- und Retry-Status.
@@ -287,7 +292,8 @@ navigation: true
 show_brand_logos: true
 ```
 
-v0.6.1 erkennt die sechs mitgelieferten lokalen SVGs:
+Beta.7 erkennt die sechs mitgelieferten lokalen SVGs sowie 54 normalisierte
+lokale PNG-Markenlogos aus dem geprüften Archiv. Die sechs SVGs sind:
 
 | Marke | Datei |
 | --- | --- |
@@ -305,16 +311,17 @@ ladbare Logos zeigen das generische Zapfsäulensymbol. `show_brand_logos: false`
 deaktiviert die Anzeige. Die vorhandenen Logoquellen und Prüfsummen stehen in
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md).
 
-Die bereitgestellte `gasstation_logos.zip` wurde als Referenzinventar geprüft,
-aber nicht übernommen: 66 Dateien enthalten 63 eindeutige Inhalte, drei
-Duplikatpaare und mehrere technisch als JPEG codierte Dateien mit `.png`-Endung;
-eine belastbare Bildlizenz oder Herkunft je Datei fehlt.
+Die bereitgestellte `gasstation_logos.zip` enthält 66 Dateien mit 63
+eindeutigen Inhalten, drei Duplikatpaaren und mehreren technisch als JPEG
+codierten Dateien mit `.png`-Endung. 54 Dateien wurden nach PNG normalisiert
+und lokal übernommen; `404.png`, `svg.png`, Duplikate und durch SVGs
+abgedeckte Varianten bleiben ausgeschlossen. Die Rechtebasis und das
+verbleibende Markenrisiko sind in [BRAND_LOGOS.md](BRAND_LOGOS.md) dokumentiert.
 
 Die Alias-Erkennung versteht nun deutlich mehr Markennamen und
-Provider-Schreibweisen. Das bedeutet nicht, dass für jede erkannte Marke ein
-Bild gebündelt ist: Aktuell sind weiterhin nur die sechs oben genannten lokalen
-SVGs enthalten. Für weitere Marken werden konkrete Bildrechte zunächst separat
-geklärt; bis dahin bleiben sie beim neutralen Tankstellensymbol, während der
+Provider-Schreibweisen. Für alle gebündelten Marken werden die Dateien
+zentral und ohne unsichere Teilstring-Suche zugeordnet. Unbekannte oder nicht
+ladbare Marken bleiben beim neutralen Tankstellensymbol, während der
 Markenname lesbar bleibt. Die vollständige Referenzinventur steht in
 [docs/BRAND_LOGO_INVENTORY.md](docs/BRAND_LOGO_INVENTORY.md).
 

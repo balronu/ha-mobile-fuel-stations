@@ -42,20 +42,24 @@ describe("formatting and discovery", () => {
     expect(resolveBrandLogoKey("")).toBeNull();
     expect(resolveBrandLogoKey(undefined)).toBeNull();
   });
-  it("recognizes every named reference inventory entry without enabling unlicensed assets", () => {
+  it("recognizes every named reference inventory entry with canonical local assets", () => {
     const referenceAliases: Record<string, string> = {
       Access: "access", Allguth: "allguth", "Bell Oil": "bell-oil", Calpam: "calpam",
       "citi oil SB-Tankstelle": "citi-oil-sb-tankstelle", "E-Center": "e-center", ELAN: "elan",
       Feneberg: "feneberg", "Fläming Tank": "flaeming-tank", Greenline: "greenline", Grüne: "gruene",
-      Hessol: "hessol", Hornbach: "hornbach", "Jantzon Tankstelle": "jantzon-tankstelle", Joiss: "joiss",
-      "K+K Klaas & Kock": "kk-klaas--kock", "Minera Automatenstation": "minera-automatenstation", Minera: "minera",
+      Hessol: "hessol", Hornbach: "hornbach", "Jantzon Tankstelle": "aral", Joiss: "joiss",
+      "K+K Klaas & Kock": "kk-klaas-kock", "Minera Automatenstation": "minera", Minera: "minera",
       "Mr. Wash Autoservice AG": "mr-wash-autoservice-ag", MTB: "mtb", "Mundorf Tank": "mundorf-tank",
       Nordoel: "nordoel", Oktan: "oktan", PIN: "pin", RAN: "ran", "Roth Energie": "roth-energie", SB: "sb",
       Schillhorn: "schillhorn-tankstelle", Schindele: "schindele", SCORE: "score", Spreves: "spreves",
       "Supermarkt-Tankstelle": "supermarkt-tankstelle", Trigema: "trigema", "V-Markt": "v-markt",
     };
     for (const [brand, key] of Object.entries(referenceAliases)) expect(resolveBrandLogoKey(brand)).toBe(key);
-    for (const [brand] of Object.entries(referenceAliases)) expect(buildBrandLogoUrl(brand)).toBeNull();
+    for (const brand of Object.keys(referenceAliases)) {
+      if (!buildBrandLogoUrl(brand)) throw new Error("missing logo for " + brand);
+    }
+    expect(buildBrandLogoUrl("GULF")).toBe("/mobile_fuel_stations/logos/gulf.png");
+    expect(buildBrandLogoUrl("TinQ")).toBe("/mobile_fuel_stations/logos/tinq.png");
   });
   it("covers all 62 named reference stems while keeping the 404 entry non-brand", () => {
     const referenceStems = [
@@ -80,7 +84,7 @@ describe("formatting and discovery", () => {
     expect(buildBrandLogoUrl("Shell", "/local/fuel-logos/")).toBe("/local/fuel-logos/shell.svg");
     expect(buildBrandLogoUrl("Shell")).toBe("/mobile_fuel_stations/logos/shell.svg");
     expect(buildBrandLogoUrl(null, undefined, "Aral Tankstelle")).toBe("/mobile_fuel_stations/logos/aral.svg");
-    expect(buildBrandLogoUrl("Esso")).toBeNull();
+    expect(buildBrandLogoUrl("Esso")).toBe("/mobile_fuel_stations/logos/esso.png");
     expect(buildBrandLogoUrl("Shell", "https://evil.example/logos/")).toBeNull();
     expect(buildBrandLogoUrl("Unknown", "/local/fuel-logos/")).toBeNull();
   });

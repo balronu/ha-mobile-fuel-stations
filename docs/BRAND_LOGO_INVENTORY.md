@@ -1,8 +1,10 @@
 # Reference logo inventory and publication boundary
 
-This is an audit inventory of the 63 PNG filenames in the reference
-repository's `src/gasstation_logos` directory. No PNG from that repository is
-included in Mobile Fuel Stations.
+This is an audit inventory of the 66 supplied/reference PNG filenames in
+`src/gasstation_logos`. Beta.7 bundles 54 normalized archive-derived PNGs
+plus the six existing canonical SVGs. The historical table below records the
+pre-beta.7 rights assessment; the publishable scope at the end of this file
+supersedes its former “no asset” status text.
 
 The reference repository has an MIT code license, but no per-image license or
 complete source manifest was found for these files. Every concrete reference
@@ -86,15 +88,21 @@ and hashes in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md).
 | `v-markt.png` | V-Markt | **UNRESOLVED** | Alias prepared; no asset |
 | `westfalen.png` | Westfalen | **UNRESOLVED** | Alias prepared; no asset |
 
-## Publishable scope of this preparation branch
+## Publishable scope of this beta.7 branch
 
-- No reference PNG is copied or bundled.
+- 54 normalized archive-derived PNGs are copied to both the frontend source and
+  deployed integration resource directories; six separately sourced SVGs remain
+  bundled.
 - No GitHub Raw or other external runtime logo URL is introduced.
-- The alias resolver recognizes the named inventory entries, while the
-  default local asset set remains limited to the six documented SVGs.
+- The alias resolver maps provider names and documented variants to canonical
+  local filenames without unsafe substring matching.
 - Unknown or unavailable assets continue to use the neutral gas-pump fallback.
-- Adding any image requires a separate source, rights, security, and hash
-  review before publication.
+- `404.png` and `svg.png` are generic/non-brand files; duplicate byte-identical
+  copies and archive variants already covered by canonical SVGs are not bundled.
+- The exact upstream directory is documented. The upstream repository's MIT
+  code license does not establish per-image rights; explicit authorization for
+  this branch is recorded as the redistribution basis, not as a trademark
+  license or endorsement.
 
 ## Supplied `gasstation_logos.zip` audit — 2026-10-19
 
@@ -108,9 +116,9 @@ others use RGB, indexed-colour, or RGBA encodings and a wide range of sizes.
 `404.png` and `svg.png` are not treated as brand assets.
 
 The archive contains no license file, source manifest, copyright statement, or
-per-file provenance. Public availability and a trademark disclaimer do not
-establish redistribution rights. Consequently **none of the 66 archive files
-is copied, transformed, bundled, or published**. The six separately sourced
-SVGs listed in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md) remain the complete
-bundled set; all other aliases use the neutral fallback unless a user supplies
-a permitted local override.
+per-file image license. Its exact source directory was nevertheless verified
+against the upstream repository, and the repository owner explicitly
+authorized use of the supplied archive for this branch. After excluding the
+generic files, duplicate copies, and six archive variants already covered by
+canonical SVGs, 54 files were normalized and bundled. The authorization is not
+a trademark license or endorsement; residual rights risk remains documented.

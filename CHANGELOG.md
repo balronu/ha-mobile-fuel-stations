@@ -1,12 +1,13 @@
 # Changelog
 
-## 0.7.0-beta.7 — Nakordoni account usage and logo-rights audit
+## 0.7.0-beta.7 — Nakordoni account usage and complete local station logos
 
 - Add the documented `GET /api/v2/account/usage` call for Nakordoni API-key and OAuth credentials, rate-limited to at most once per 15 minutes.
 - Expose cheap-quota calls remaining, quota reset timestamp, Trip Pass state, quota classes, market allowance, and official upgrade/pass links through Home Assistant sensors and secret-free diagnostics.
 - Preserve documented `quota_exceeded`, `market_not_allowed`, and `integration_product_not_allowed` classifications without inventing response fields or payment handling.
-- Audit the supplied 66-file logo archive: 63 unique contents, three duplicate pairs, several mislabeled JPEG files, and no per-file provenance or redistribution license. No archive image is bundled or published.
-- Keep the six separately sourced local SVGs, strict brand normalization, neutral fallback, existing providers, cooldowns, OAuth/API-key compatibility, and station-card behavior.
+- Bundle 54 normalized PNG logos from the supplied 66-file archive alongside the six separately sourced local SVGs. Exclude the generic `404.png`/`svg.png` files, duplicate copies, and archive variants already covered by canonical SVGs; decode mislabeled JPEGs to PNG.
+- Document the exact upstream asset directory, MIT repository license, missing per-image license, and explicit branch-level authorization. This is a redistribution basis for the beta assets, not a trademark license or endorsement.
+- Keep strict brand normalization, neutral fallback, existing providers, cooldowns, OAuth/API-key compatibility, and station-card behavior.
 
 ## 0.7.0-beta.6 — Nakordoni OAuth, markets, and fallback policy
 

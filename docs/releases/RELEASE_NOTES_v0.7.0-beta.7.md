@@ -10,9 +10,9 @@
 
 ## Station Logos
 
-- The supplied archive was inventoried but not published because it contains no provenance or redistribution permission.
+- The supplied 66-file archive is integrated as 54 normalized PNG assets. Generic `404.png`/`svg.png`, duplicate copies, and archive variants already covered by the six canonical SVGs are excluded; mislabeled JPEG files are decoded to PNG.
 - The audit found 66 files, 63 unique contents, three duplicate pairs, and several files with a `.png` name but JPEG encoding.
-- Existing separately sourced local SVGs remain the only bundled logos. Other recognized brands use the neutral pump icon unless the user supplies a permitted local override.
+- The exact upstream source directory is documented. The upstream repository is MIT-licensed as code but has no per-image license; explicit authorization for this branch is recorded as the redistribution basis, without claiming trademark license, endorsement, or affiliation.
 
 ## Compatibility and scope
 

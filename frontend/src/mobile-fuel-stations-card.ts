@@ -47,7 +47,22 @@ export type CardConfig = {
 const unavailable = new Set(["unknown", "unavailable"]);
 export const DEFAULT_LOGO_PATH = "/mobile_fuel_stations/logos/";
 
-const BUNDLED_LOGO_KEYS = new Set(["aral", "jet", "omv", "orlen", "shell", "total"]);
+const BUNDLED_LOGO_FILES: Record<string, string> = {
+  aral: "aral.svg", jet: "jet.svg", omv: "omv.svg", orlen: "orlen.svg", shell: "shell.svg", total: "total.svg",
+  access: "access.png", "agip-eni": "agip-eni.png", allguth: "allguth.png", "avia-xpress": "avia-xpress.png", avia: "avia.png",
+  baywa: "baywa.png", "bell-oil": "bell-oil.png", bft: "bft.png", calpam: "calpam.png", "citi-oil-sb-tankstelle": "citi-oil-sb-tankstelle.png",
+  classic: "classic.png", "e-center": "e-center.png", ed: "ed.png", edeka: "edeka.png", elan: "elan.png", esso: "esso.png",
+  feneberg: "feneberg.png", "flaeming-tank": "flaeming-tank.png", globus: "globus.png", greenline: "greenline.png", gruene: "gruene.png",
+  gulf: "gulf.png", hem: "hem.png", hessol: "hessol.png", hornbach: "hornbach.png", hoyer: "hoyer.png", joiss: "joiss.png",
+  "kk-klaas-kock": "kk-klaas-kock.png", minera: "minera.png", mol: "mol.png", "mr-wash-autoservice-ag": "mr-wash-autoservice-ag.png",
+  mtb: "mtb.png", "mundorf-tank": "mundorf-tank.png", nordoel: "nordoel.png", oil: "oil.png", oktan: "oktan.png", pin: "pin.png",
+  q1: "q1.png", raiffeisen: "raiffeisen.png", ran: "ran.png", "roth-energie": "roth-energie.png", sb: "sb.png",
+  "schillhorn-tankstelle": "schillhorn-tankstelle.png", schindele: "schindele.png", score: "score.png", spreves: "spreves.png",
+  sprint: "sprint.png", star: "star.png", "supermarkt-tankstelle": "supermarkt-tankstelle.png", team: "team.png", tinq: "tinq.png",
+  trigema: "trigema.png", "v-markt": "v-markt.png", westfalen: "westfalen.png",
+};
+
+const BUNDLED_LOGO_KEYS = new Set(Object.keys(BUNDLED_LOGO_FILES));
 
 const BRAND_ALIASES: Record<string, string> = {
   aral: "aral",
@@ -60,8 +75,8 @@ const BRAND_ALIASES: Record<string, string> = {
   totalenergies: "total",
   hem: "hem",
   avia: "avia",
-  "avia express": "avia",
-  "avia xpress": "avia",
+  "avia express": "avia-xpress",
+  "avia xpress": "avia-xpress",
   orlen: "orlen",
   "orlen express": "orlen",
   omv: "omv",
@@ -95,12 +110,12 @@ const BRAND_ALIASES: Record<string, string> = {
   grune: "gruene",
   hessol: "hessol",
   hornbach: "hornbach",
-  "jantzon tankstelle": "jantzon-tankstelle",
+  "jantzon tankstelle": "aral",
   joiss: "joiss",
-  "k k klaas and kock": "kk-klaas--kock",
-  "k k klaas kock": "kk-klaas--kock",
-  "kk klaas kock": "kk-klaas--kock",
-  "minera automatenstation": "minera-automatenstation",
+  "k k klaas and kock": "kk-klaas-kock",
+  "k k klaas kock": "kk-klaas-kock",
+  "kk klaas kock": "kk-klaas-kock",
+  "minera automatenstation": "minera",
   minera: "minera",
   "mr wash autoservice ag": "mr-wash-autoservice-ag",
   mtb: "mtb",
@@ -122,9 +137,9 @@ const BRAND_ALIASES: Record<string, string> = {
   svg: "svg",
   kaufland: "kaufland",
   edeka: "edeka",
-  eni: "eni",
-  agip: "eni",
-  "agip eni": "eni",
+  eni: "agip-eni",
+  agip: "agip-eni",
+  "agip eni": "agip-eni",
   bp: "bp",
   mol: "mol",
   "circle k": "circle-k",
@@ -141,6 +156,8 @@ const BRAND_ALIASES: Record<string, string> = {
   gazprom: "gazprom",
   okko: "okko",
   wog: "wog",
+  gulf: "gulf",
+  tinq: "tinq",
 };
 
 function normalizeBrand(value: string): string {
@@ -163,7 +180,8 @@ export function resolveBrandLogoKey(brand: unknown, stationName?: unknown): stri
     if (!candidate) continue;
     const candidateWords = new Set(candidate.split(" "));
     for (const [alias, key] of Object.entries(BRAND_ALIASES)) {
-      if (BUNDLED_LOGO_KEYS.has(key) && alias.split(" ").every((word) => candidateWords.has(word))) return key;
+      const ambiguousShortAliases = new Set(["ed", "sb", "oil", "pin", "q1", "svg"]);
+      if (BUNDLED_LOGO_KEYS.has(key) && (alias.includes(" ") || !ambiguousShortAliases.has(alias)) && alias.split(" ").every((word) => candidateWords.has(word))) return key;
     }
   }
   return null;
@@ -183,7 +201,8 @@ export function buildBrandLogoUrl(brand: unknown, logoPath: unknown = DEFAULT_LO
   const base = normalizeLogoPath(logoPath);
   if (!key || !base) return null;
   if (base === DEFAULT_LOGO_PATH && !BUNDLED_LOGO_KEYS.has(key)) return null;
-  return `${base}${key}.svg`;
+  const filename = BUNDLED_LOGO_FILES[key] ?? `${key}.svg`;
+  return `${base}${filename}`;
 }
 
 export function formatPrice(value: unknown, locale = "de-DE", currency = "EUR"): string | null {

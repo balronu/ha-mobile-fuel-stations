@@ -27,7 +27,7 @@ opening status, and destination navigation.
 - **Fuel prices:** E5, E10, diesel, LPG, and HVO100 with distance or price
   sorting.
 - **Built for Lovelace:** Responsive card, recognition of many brand spellings,
-  six local station-brand logos, and direct navigation to the selected
+  60 local station-brand logos, and direct navigation to the selected
   destination.
 
 ### Preview
@@ -87,8 +87,12 @@ cooldown recovery, and optional adaptive GPS updates. The Lovelace component
 remains independently versioned at `0.6.0`. It also polls the documented
 `GET /api/v2/account/usage` endpoint no more often than every 15 minutes and
 exposes quota, reset, market, and Trip Pass information through HA sensors.
-The supplied logo ZIP was audited but not published because provenance and
-redistribution permission were not provided.
+The supplied logo ZIP contributes 54 normalized PNG station-brand assets;
+together with the six existing SVGs, 60 logos are served locally without a CDN
+dependency. `404.png`, `svg.png`, duplicate copies, and archive variants
+already covered by the canonical SVGs remain excluded. The exact source,
+missing per-image license, and explicit branch authorization are documented in
+[BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
 
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
@@ -224,7 +228,7 @@ navigation: true
 show_brand_logos: true
 ```
 
-v0.6.1 recognizes the six bundled local SVGs: Aral (`aral.svg`), Shell
+Beta.7 recognizes the six bundled local SVGs: Aral (`aral.svg`), Shell
 (`shell.svg`), JET (`jet.svg`), Total/TotalEnergies (`total.svg`),
 ORLEN/ORLEN Express (`orlen.svg`), and OMV (`omv.svg`). Matching normalizes
 case, Unicode accents, whitespace, and punctuation. If `brand` is missing or
@@ -235,9 +239,9 @@ unloadable logos use the generic fuel-pump symbol. Set
 
 Alias matching now recognizes substantially more brand names and provider
 spellings. This does not mean that an image is bundled for every recognized
-brand: only the six local SVGs listed above are currently included. Concrete
-image rights for additional brands must be clarified separately; until then,
-they use the neutral fuel-pump symbol while the brand name remains readable.
+brand: the six local SVGs and 54 normalized archive PNGs listed in the
+inventory are included. The excluded generic files, unknown brands, and failed
+assets use the neutral fuel-pump symbol while the brand name remains readable.
 The complete reference inventory is documented in
 [docs/BRAND_LOGO_INVENTORY.md](docs/BRAND_LOGO_INVENTORY.md).
 
