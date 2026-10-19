@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.6.1"><img src="https://img.shields.io/badge/Stable-v0.6.1-16a34a" alt="Stable v0.6.1"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.0"><img src="https://img.shields.io/badge/Stable-v0.7.0-16a34a" alt="Stable v0.7.0"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -67,38 +67,19 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.6.1` | Aktuelle stabile Version |
-| Pre-release | `v0.7.0-beta.8` | Hotfix für Logo-Cache und gemeldete Markennamen; statisches OAuth-QA |
-| Vorherige Beta | `v0.7.0-beta.7` | Nakordoni Account Usage und Logo-Rechteaudit |
-| Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
-| Frontend-Komponente | `v0.7.0-beta.8` | Unabhängig versionierte Lovelace-Komponente |
+| Stable | `v0.7.0` | Aktuelle stabile Version |
+| Vorherige Stable | `v0.6.1` | Verfügbare Rollback-Version |
+| Frontend-Komponente | `v0.7.0` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Der Hotfix `v0.7.0-beta.8`
-behebt die Cache-Versionierung der Lovelace-Ressource und ordnet die gemeldeten
-Namen `Eni (Agip Eni)` und `OIL! Tankstelle Sulzbach` explizit den vorhandenen
-lokalen Logos zu. Die Beta basiert auf `v0.7.0-beta.7`, deren Funktionen erhalten
-bleiben. Die Beta `v0.7.0-beta.7`
-ergänzt den geschützten Admin-Service `mobile_fuel_stations.probe_nakordoni`
-für einzelne, bereinigte Nakordoni-Diagnoseabfragen mit bestehenden HA-
-Credentials. Die experimentelle Nakordoni-OAuth-Anmeldung ist weiterhin nicht
-live verifiziert. `v0.7.0-beta.7` ergänzt die dokumentierte Nakordoni-Abfrage
-`GET /api/v2/account/usage` höchstens alle 15 Minuten sowie Sensoren für
-Restkontingent, Reset-Zeit und Trip-Pass. Die bereitgestellte Logo-ZIP liefert
-54 normalisierte PNGs; zusammen mit den sechs bestehenden SVGs werden 60 Logos
-lokal ohne CDN-Abhängigkeit ausgeliefert. `404.png`, `svg.png`, Dubletten
-und bereits durch SVGs abgedeckte Archivvarianten bleiben ausgeschlossen.
-Herkunft, fehlende Einzelbildlizenz und die ausdrückliche Branch-Autorisierung
-sind in der [Logo-Dokumentation](BRAND_LOGOS.md) festgehalten; dies ist keine
-Markenlizenz oder Herstellerempfehlung. `v0.7.0-beta.6` führt
-providergebundene Request-Cooldowns
-und Cache-Zustände ein, verhindert, dass ein Providerwechsel durch den
-vorherigen Provider blockiert wird, erkennt OAuth-only Nakordoni in Auto und
-erweitert die geheimnisfreien Diagnosen um Auswahl-, Cache- und Retry-Status.
-Die bestätigte Länder-/Preisabdeckung bleibt Voraussetzung für Auto; unbekannte
-Nakordoni-Abdeckung wird nicht geraten. `v0.6.1` enthält die
-persistierte Cache-Wiederherstellung, die Cooldown-Recovery und die optionale
-adaptive GPS-Aktualisierung. Die Lovelace-Komponente bleibt als eigene Ressource auf
-Version `0.7.0-beta.8` versioniert.
+`v0.7.0` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
+Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
+marktberechtigtem Fallback, Quota-/Trip-Pass-Diagnose, OAuth2-PKCE und manuellen
+API-Keys. Die 60 lokalen PNG-Logos stammen aus der bereitgestellten ZIP; die
+Ressource wird mit dem Cache-Key `v=0.7.0` automatisch registriert. Die
+experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
+über einen Live-Callback bestätigt. Herkunft, fehlende Einzelbildlizenz und
+verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
+festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
 
 Die Integration bietet unter anderem:
 
@@ -129,18 +110,18 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.6.1` ist die stabile HACS-Version. Für einen Rücksprung steht `v0.5.1`
+`v0.7.0` ist die stabile HACS-Version. Für einen Rücksprung steht `v0.6.1`
 als vorherige Stable-Version zur Verfügung.
 
 Die adaptive Aktualisierung ist standardmäßig deaktiviert und wird nur über
 den Optionsdialog aktiviert. Sie verwendet ausschließlich gültige, aktuelle
 GPS-Daten; künstliche Positionen werden nicht erzeugt.
 
-Die Lovelace-Karte wird von der Integration bereitgestellt und registriert. Die
-Die unabhängig versionierte Frontend-Ressource lautet weiterhin:
+Die Lovelace-Karte wird von der Integration bereitgestellt und automatisch
+registriert. Die Frontend-Ressource lautet:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.0-beta.8
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.0
 ```
 
 Bei einer bestehenden Installation können alte Ressourcen im Browser- oder
@@ -228,9 +209,9 @@ erfolgreich geprüft wurde. Der Optionsdialog startet keine unnötigen
 Provider-Anfragen. Zugangsdaten werden nicht in Git, Logs oder Diagnostics
 ausgegeben.
 
-### Nakordoni OAuth2-PKCE und Account Usage (Beta.7-Basis, Beta.1-QA)
+### Nakordoni OAuth2-PKCE und Account Usage
 
-Beta.6 bietet die bevorzugte automatische Nakordoni-Anmeldung über den
+Die Integration bietet die bevorzugte automatische Nakordoni-Anmeldung über den
 Home-Assistant-Authorization-Code-Flow mit PKCE S256. Die registrierte
 Redirect-URI ist exakt
 `https://my.home-assistant.io/redirect/oauth`; ein Client Secret wird nicht
@@ -246,7 +227,7 @@ Diagnostics ausgeschlossen. OAuth ist erst vollständig, wenn Nakordoni die
 benötigten Tokenfelder einschließlich `expires_in` liefert; nicht
 dokumentierte Scopes oder Refresh-Parameter werden nicht angenommen.
 
-Mit Beta.7 wird zusätzlich `GET /api/v2/account/usage` höchstens alle 15 Minuten
+Zusätzlich wird `GET /api/v2/account/usage` höchstens alle 15 Minuten
 abgerufen. Die Sensoren zeigen Restabfragen, Quota-Reset und Trip-Pass-Status;
 Quota-Klassen, Länderberechtigungen und offizielle Upgrade-Links stehen als
 Attribute und in den geheimnisfreien Diagnostics bereit. `quota_exceeded`,
@@ -297,17 +278,17 @@ navigation: true
 show_brand_logos: true
 ```
 
-Beta.1 erkennt die sechs mitgelieferten lokalen SVGs sowie 54 normalisierte
-lokale PNG-Markenlogos aus dem geprüften Archiv. Die sechs SVGs sind:
+Stable v0.7.0 erkennt die 60 lokal gebündelten PNG-Markenlogos aus dem
+geprüften Archiv, darunter:
 
 | Marke | Datei |
 | --- | --- |
-| Aral | `aral.svg` |
-| Shell | `shell.svg` |
-| JET | `jet.svg` |
-| Total / TotalEnergies | `total.svg` |
-| ORLEN / ORLEN Express | `orlen.svg` |
-| OMV | `omv.svg` |
+| Aral | `aral.png` |
+| Shell | `shell.png` |
+| JET | `jet.png` |
+| Total / TotalEnergies | `total.png` |
+| ORLEN / ORLEN Express | `orlen.png` |
+| OMV | `omv.png` |
 
 Die Erkennung normalisiert Groß-/Kleinschreibung, Unicode-Akzente, Leerzeichen
 und Satzzeichen. Wenn das `brand`-Feld fehlt oder keinen Treffer liefert, wird
@@ -321,9 +302,9 @@ deaktiviert die Anzeige. Die vorhandenen Logoquellen und Prüfsummen stehen in
 
 Die bereitgestellte `gasstation_logos.zip` enthält 66 Dateien mit 63
 eindeutigen Inhalten, drei Duplikatpaaren und mehreren technisch als JPEG
-codierten Dateien mit `.png`-Endung. 54 Dateien wurden nach PNG normalisiert
-und lokal übernommen; `404.png`, `svg.png`, Duplikate und durch SVGs
-abgedeckte Varianten bleiben ausgeschlossen. Die Rechtebasis und das
+codierten Dateien mit `.png`-Endung. Alle 60 verwendeten Markenlogos wurden
+als PNG normalisiert und lokal übernommen; `404.png`, `svg.png` und Duplikate
+bleiben ausgeschlossen. Die Rechtebasis und das
 verbleibende Markenrisiko sind in [BRAND_LOGOS.md](BRAND_LOGOS.md) dokumentiert.
 
 Die Alias-Erkennung versteht nun deutlich mehr Markennamen und
@@ -367,8 +348,8 @@ Zugangsdaten, Stationssensoren und kompatible Dashboard-Konfigurationen bleiben
 erhalten. Prüfe nach einem größeren Versionssprung die versionierte Karten-
 Ressource und lösche bei Bedarf einen veralteten Browser-Cache.
 
-Für einen Rücksprung bleibt `v0.5.1` als vorherige Stable-Version verfügbar.
-Historische Beta-Releases bleiben im GitHub-Archiv erhalten.
+Für einen Rücksprung bleibt `v0.6.1` als vorherige Stable-Version verfügbar.
+Historische Releases bleiben im GitHub-Archiv erhalten.
 
 ## Datenschutz und Einschränkungen
 

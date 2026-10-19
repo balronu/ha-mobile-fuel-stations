@@ -48,7 +48,7 @@ const unavailable = new Set(["unknown", "unavailable"]);
 export const DEFAULT_LOGO_PATH = "/mobile_fuel_stations/logos/";
 
 const BUNDLED_LOGO_FILES: Record<string, string> = {
-  aral: "aral.svg", jet: "jet.svg", omv: "omv.svg", orlen: "orlen.svg", shell: "shell.svg", total: "total.svg",
+  aral: "aral.png", jet: "jet.png", omv: "omv.png", orlen: "orlen.png", shell: "shell.png", total: "total.png",
   access: "access.png", "agip-eni": "agip-eni.png", allguth: "allguth.png", "avia-xpress": "avia-xpress.png", avia: "avia.png",
   baywa: "baywa.png", "bell-oil": "bell-oil.png", bft: "bft.png", calpam: "calpam.png", "citi-oil-sb-tankstelle": "citi-oil-sb-tankstelle.png",
   classic: "classic.png", "e-center": "e-center.png", ed: "ed.png", edeka: "edeka.png", elan: "elan.png", esso: "esso.png",

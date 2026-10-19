@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0 — Stable release
+
+- Promote the tested provider, OAuth2/PKCE, account-usage, quota, Trip Pass,
+  market-permission, fallback, cooldown, and diagnostics features to stable.
+- Replace the six legacy station-brand SVGs with their matching normalized PNG
+  files from the supplied archive; the final bundle contains 60 local PNGs.
+- Preserve exact provider-name aliases, neutral fallback behavior, local-only
+  resource loading, and the documented rights/trademark caveats.
+- Keep the stable frontend cache key at `v=0.7.0`; no live OAuth callback or
+  provider API test is implied by this release.
+
 ## 0.7.0-beta.8 — Logo cache invalidation and provider-name matching
 
 - Bump the local Lovelace resource URL to `v=0.7.0-beta.8` so Home Assistant
