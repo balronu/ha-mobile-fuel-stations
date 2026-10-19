@@ -17,6 +17,16 @@ Home-Assistant-Frontend-API. Bei Neuinstallationen ist daher kein manueller
 Lovelace-Resource-Eintrag erforderlich. Mehrere Config Entries erzeugen trotzdem
 nur einen statischen Pfad. Die Versionsnummer erzeugt bei HACS-Updates
 automatisch eine neue Cache-URL.
+
+## Mehrere Fahrzeuge und Overview-Entities
+
+Für jedes Fahrzeug wird ein eigener Config Entry mit eigener Overview-Entity
+angelegt. Wähle im visuellen Karteneditor die Overview-Entity des jeweiligen
+Fahrzeugs; ab v0.7.1 werden auch integrationszugehörige Entities mit Zustand
+`unavailable` zur Auswahl angeboten. Bestehende YAML-Karten mit einer direkt
+eingetragenen Entity-ID bleiben kompatibel. Die automatische Registrierung der
+Lovelace-Ressource bleibt aktiv; eine manuelle Resource-URL ist nicht nötig.
+
 Die öffentliche HA-API garantiert allerdings keinen sofortigen Cache-Flush in
 jedem Browser/Companion-Client. Bestehende v0.2.x-Installationen dürfen ihren
 alten manuellen Resource-Eintrag nach erfolgreichem Update, Neustart und

@@ -81,6 +81,13 @@ experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
 festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
 
+v0.7.1 verbessert außerdem die Erkennung integrationszugehöriger Overview-
+Sensoren im visuellen Lovelace-Editor. Auch vorübergehend `unavailable`-
+Sensoren werden zur Auswahl angeboten. Mehrere Fahrzeuge beziehungsweise
+Config Entries bleiben getrennt; pro Fahrzeug wird die eigene Overview-Entity
+ausgewählt. Bestehende YAML-Karten mit direkt eingetragener Entity-ID bleiben
+kompatibel.
+
 Die Integration bietet unter anderem:
 
 - Tankstellen im konfigurierten Suchradius anhand einer Tracker-Entity
@@ -110,8 +117,8 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.7.1` ist die stabile HACS-Version. Für einen Rücksprung steht `v0.7.0`
-als vorherige Stable-Version zur Verfügung.
+`v0.7.1` ist die aktuelle stabile HACS-Version. Für einen Rücksprung steht
+`v0.7.0` als vorherige Stable-Version zur Verfügung.
 
 Die adaptive Aktualisierung ist standardmäßig deaktiviert und wird nur über
 den Optionsdialog aktiviert. Sie verwendet ausschließlich gültige, aktuelle
@@ -393,6 +400,20 @@ werden.
 
 ## Fehlerbehebung und Diagnostics
 
+- **Overview-Sensor wird nicht im Karteneditor angezeigt:** Ab v0.7.1 werden
+  auch nicht verfügbare, integrationszugehörige Overview-Sensoren im visuellen
+  Editor erkannt und zur Auswahl angeboten. Bestehende YAML-Karten können ihre
+  Entity-ID weiterhin direkt verwenden.
+- **Overview-Sensor ist `unavailable`:** Die Auswahl im Editor bestätigt nur,
+  dass die Entity erkannt wurde; sie bestätigt keine erfolgreiche
+  Datenabfrage. Standort, Provider-Konfiguration, API-Key, Länderfreigaben
+  und die vorhandenen Diagnostics prüfen.
+- **Bekannter Praxisfall Opel Grandland mit E10:** Bei einer Konfiguration
+  führte Tankerkönig zu `ProviderResponseError` beziehungsweise einem
+  Provider-Cooldown. Nach dem Entfernen von Tankerkönig und der Auswahl von
+  Nakordoni funktionierte die Abfrage. Die konkrete Tankerkönig-Fehlerursache
+  und ein allgemeines Fallback-Verhalten sind damit nicht abschließend
+  bewertet oder als behoben bestätigt.
 - **Keine Tankstellen:** Entity, gültige Koordinaten, Radius, Providerwahl und
   Zugangsstatus prüfen.
 - **GPS beim Start unavailable:** Die Recovery-Diagnostics zeigen Status,
