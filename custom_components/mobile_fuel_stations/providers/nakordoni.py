@@ -303,6 +303,40 @@ def _text(value: Any) -> str:
     return value if isinstance(value, str) else ""
 
 
+def _first_text(*values: Any) -> str:
+    for value in values:
+        text = _text(value).strip()
+        if text:
+            return text
+    return ""
+
+
+def _address_fields(item: dict[str, Any]) -> tuple[str, str, str, str]:
+    """Normalize only address fields explicitly returned by Nakordoni."""
+
+    raw_address = item.get("address")
+    address = raw_address if isinstance(raw_address, dict) else {}
+    street = _first_text(
+        address.get("street"), address.get("street_name"), address.get("road"), item.get("street")
+    )
+    house_number = _first_text(
+        address.get("house_number"), address.get("houseNumber"), address.get("number"),
+        item.get("house_number"), item.get("houseNumber"),
+    )
+    postcode = _first_text(
+        address.get("postcode"), address.get("postal_code"), address.get("postCode"), address.get("zip"),
+        item.get("postcode"), item.get("postal_code"),
+    )
+    place = _first_text(
+        address.get("city"), address.get("town"), address.get("locality"), item.get("city"), item.get("town")
+    )
+    # Some responses expose only one formatted address string. Preserve that
+    # provider value as-is; never parse or invent postal components.
+    if not any((street, house_number, postcode, place)) and isinstance(raw_address, str):
+        street = raw_address.strip()
+    return street, house_number, postcode, place
+
+
 def _error(
     status: int,
     payload: object,
@@ -348,23 +382,23 @@ def _parse_station(item: object, fuel_type: str) -> Station:
     if not isinstance(station_ref, str) or not station_ref:
         legacy_id = item.get("id")
         station_ref = str(legacy_id) if legacy_id is not None else f"{_text(item.get('name'))}:{lat}:{lon}"
-    address = item.get("address")
-    address = address if isinstance(address, dict) else {}
     prices = item.get("prices")
     prices = prices if isinstance(prices, dict) else {}
     quote = prices.get(fuel_type)
     quote = quote if isinstance(quote, dict) else {}
+    street, house_number, postcode, place = _address_fields(item)
+    price = _number(quote.get("price"), "prices.price", optional=True)
     return Station(
         station_id=station_ref,
         name=_text(item.get("name")),
         brand=_text(item.get("brand")),
-        price=_number(quote.get("price"), "prices.price", optional=True),
+        price=price,
         distance=_number(item.get("distance_km"), "distance_km", optional=True),
         is_open=None,
-        street=_text(address.get("street", item.get("street"))),
-        house_number=_text(address.get("house_number", address.get("houseNumber", item.get("house_number")))),
-        postcode=_text(address.get("postcode", address.get("postal_code", item.get("postcode")))),
-        place=_text(address.get("city", address.get("town", item.get("city")))),
+        street=street,
+        house_number=house_number,
+        postcode=postcode,
+        place=place,
         latitude=lat,
         longitude=lon,
         currency=_text(quote.get("currency")) or None,
@@ -374,6 +408,9 @@ def _parse_station(item: object, fuel_type: str) -> Station:
         price_confirmed_at=_timestamp(quote.get("confirmed_at")),
         price_age_hours=_number(quote.get("age_hours"), "prices.age_hours", optional=True),
         price_stale=quote.get("stale") if isinstance(quote.get("stale"), bool) else None,
+        fuel_type=fuel_type,
+        requested_fuel=fuel_type,
+        fuel_prices={fuel_type: price} if price is not None else None,
     )
 
 
