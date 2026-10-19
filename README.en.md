@@ -331,7 +331,7 @@ recovery tests use mocks and fixtures rather than unverified live credentials.
 
 Historical release notes are preserved in the
 [GitHub release archive](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/), including the current
-[`v0.6.1 release notes`](docs/releases/RELEASE_NOTES_v0.6.1.md).
+[`v0.7.0 release notes`](docs/releases/RELEASE_NOTES_v0.7.0.md).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).
