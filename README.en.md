@@ -81,6 +81,12 @@ but has not been confirmed through a live callback. Source, missing per-image
 license, and residual trademark risks are documented in
 [BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
 
+v0.7.1 also improves discovery of integration-owned overview sensors in the
+visual Lovelace editor. Temporarily `unavailable` sensors are offered for
+selection as well. Multiple vehicles or Config Entries remain separate: select
+the vehicle's own overview entity for each card. Existing YAML cards with a
+direct entity ID remain compatible.
+
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
 sorting, automatic provider selection, startup recovery, regular coordinator
@@ -99,7 +105,7 @@ refresh.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.7.1` is the stable HACS version; `v0.7.0` remains available as the
+`v0.7.1` is the current stable HACS version; `v0.7.0` remains available as the
 previous stable rollback.
 
 The Lovelace card is supplied and registered by the integration. The
@@ -303,6 +309,19 @@ and must not be used as a public data feed.
 
 ## Troubleshooting and diagnostics
 
+- **Overview sensor is missing from the card editor:** Since v0.7.1,
+  integration-owned overview sensors that are temporarily unavailable are also
+  discovered and offered by the visual editor. Existing YAML cards may still
+  specify their entity ID directly.
+- **Overview sensor is `unavailable`:** Being selectable in the editor only
+  confirms entity discovery; it does not confirm a successful data request.
+  Check location, provider configuration, API key, country/market permission,
+  and the available diagnostics.
+- **Known Opel Grandland E10 case:** In one configuration, Tankerkönig
+  produced `ProviderResponseError` and entered a provider cooldown. Removing
+  Tankerkönig and selecting Nakordoni made the request work. This does not
+  establish the exact Tankerkönig root cause or prove that general fallback
+  behavior is fixed.
 - **No stations:** check the entity, valid coordinates, radius, provider mode,
   and credential status.
 - **GPS unavailable at startup:** inspect recovery status, attempt count, and
