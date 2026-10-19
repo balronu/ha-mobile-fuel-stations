@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.2 — Provider-neutral station highlights
+
+- Include nearby and cheapest station highlights when the provider does not
+  report an opening status.
+- Continue excluding explicitly closed stations and prefer known-open stations
+  on equal distance or price.
+- Use deterministic station selection across Tankerkönig, Nakordoni, and
+  Petromap without changing existing Config Entries, sensor attributes, or
+  Lovelace YAML configuration.
+- Keep the frontend resource cache key at `v=0.7.2`; no live provider API or
+  OAuth test is implied by this release.
+
 ## 0.7.1 — Stable hotfix
 
 - Discover integration-owned overview sensors in the Lovelace editor even

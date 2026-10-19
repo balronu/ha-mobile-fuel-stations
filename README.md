@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.1"><img src="https://img.shields.io/badge/Stable-v0.7.1-16a34a" alt="Stable v0.7.1"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.2"><img src="https://img.shields.io/badge/Stable-v0.7.2-16a34a" alt="Stable v0.7.2"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -67,26 +67,31 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.7.1` | Aktuelle stabile Version |
+| Stable | `v0.7.2` | Aktuelle stabile Version |
 | Vorherige Stable | `v0.7.0` | Verfügbare Rollback-Version |
-| Frontend-Komponente | `v0.7.1` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.7.2` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.7.1` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
+`v0.7.2` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
 marktberechtigtem Fallback, Quota-/Trip-Pass-Diagnose, OAuth2-PKCE und manuellen
 API-Keys. Die 60 lokalen PNG-Logos stammen aus der bereitgestellten ZIP; die
-Ressource wird mit dem Cache-Key `v=0.7.1` automatisch registriert. Die
+Ressource wird mit dem Cache-Key `v=0.7.2` automatisch registriert. Die
 experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 über einen Live-Callback bestätigt. Herkunft, fehlende Einzelbildlizenz und
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
 festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
 
-v0.7.1 verbessert außerdem die Erkennung integrationszugehöriger Overview-
+v0.7.1 verbesserte außerdem die Erkennung integrationszugehöriger Overview-
 Sensoren im visuellen Lovelace-Editor. Auch vorübergehend `unavailable`-
 Sensoren werden zur Auswahl angeboten. Mehrere Fahrzeuge beziehungsweise
 Config Entries bleiben getrennt; pro Fahrzeug wird die eigene Overview-Entity
 ausgewählt. Bestehende YAML-Karten mit direkt eingetragener Entity-ID bleiben
 kompatibel.
+
+v0.7.2 berücksichtigt für die Highlights „NÄCHSTE“ und „GÜNSTIGSTE“ auch
+Stationen mit unbekanntem Öffnungsstatus. Explizit geschlossene Stationen
+bleiben ausgeschlossen; ein unbekannter Status wird nicht als „Geöffnet"
+dargestellt. Die Auswahl ist providerübergreifend und deterministisch.
 
 Die Integration bietet unter anderem:
 
@@ -117,7 +122,7 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.7.1` ist die aktuelle stabile HACS-Version. Für einen Rücksprung steht
+`v0.7.2` ist die aktuelle stabile HACS-Version. Für einen Rücksprung steht
 `v0.7.0` als vorherige Stable-Version zur Verfügung.
 
 Die adaptive Aktualisierung ist standardmäßig deaktiviert und wird nur über
@@ -128,7 +133,7 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und automatisch
 registriert. Die Frontend-Ressource lautet:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.1
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.2
 ```
 
 Bei einer bestehenden Installation können alte Ressourcen im Browser- oder
@@ -289,7 +294,7 @@ Bei mehreren Fahrzeugen gibt es pro Config Entry einen eigenen Overview-Sensor;
 der visuelle Editor listet auch vorübergehend nicht verfügbare Mobile-Fuel-
 Stations-Sensoren. Eine manuell eingetragene Entity-ID bleibt ebenfalls gültig.
 
-Stable v0.7.1 erkennt die 60 lokal gebündelten PNG-Markenlogos aus dem
+Stable v0.7.2 erkennt die 60 lokal gebündelten PNG-Markenlogos aus dem
 geprüften Archiv, darunter:
 
 | Marke | Datei |
@@ -408,6 +413,10 @@ werden.
   dass die Entity erkannt wurde; sie bestätigt keine erfolgreiche
   Datenabfrage. Standort, Provider-Konfiguration, API-Key, Länderfreigaben
   und die vorhandenen Diagnostics prüfen.
+- **Highlight fehlt trotz Stationsdaten:** Ab v0.7.2 werden Stationen mit
+  unbekanntem Öffnungsstatus für „NÄCHSTE“ und „GÜNSTIGSTE“ berücksichtigt.
+  Explizit geschlossene Stationen bleiben ausgeschlossen. Der unbekannte Status
+  wird nicht als „Geöffnet“ angezeigt.
 - **Bekannter Praxisfall Opel Grandland mit E10:** Bei einer Konfiguration
   führte Tankerkönig zu `ProviderResponseError` beziehungsweise einem
   Provider-Cooldown. Nach dem Entfernen von Tankerkönig und der Auswahl von
@@ -456,7 +465,7 @@ Provider-Mindestabständen, Cache-Reload, Cooldown und Unload-Abbruch geprüft.
 Historische Release Notes liegen unverändert im
 [Release-Archiv auf GitHub](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/).
 Die Stable-Release Notes stehen in
-[`docs/releases/RELEASE_NOTES_v0.7.1.md`](docs/releases/RELEASE_NOTES_v0.7.1.md)
+[`docs/releases/RELEASE_NOTES_v0.7.2.md`](docs/releases/RELEASE_NOTES_v0.7.2.md)
 beschrieben. Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
 der [Markendokumentation](docs/BRAND_LOGOS.md) und im
 [GitHub-Release-Archiv](https://github.com/balronu/ha-mobile-fuel-stations/releases).
