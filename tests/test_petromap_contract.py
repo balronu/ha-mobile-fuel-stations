@@ -183,7 +183,7 @@ def test_parser_rejects_invalid_required_data():
         parse_search_response({"places": [_place(id="")]})
 
 
-def test_unknown_open_state_and_missing_price_cannot_be_selected():
+def test_unknown_open_state_is_selected_without_inventing_a_price():
     result = parse_search_response(
         {
             "places": [
@@ -193,7 +193,7 @@ def test_unknown_open_state_and_missing_price_cannot_be_selected():
         }
     )
 
-    assert nearest_station(result.stations) is None
+    assert nearest_station(result.stations).station_id == "unknown"
     assert cheapest_station(result.stations) is None
 
 
