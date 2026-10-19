@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
@@ -69,7 +69,97 @@ async def async_setup_entry(hass, entry: MobileFuelStationsEntry, async_add_enti
         StationSlotSensor(coordinator, entry, index)
         for index in range(int(coordinator.config[CONF_STATION_COUNT]))
     )
+    if coordinator.nakordoni_usage_enabled:
+        entities.extend(
+            (
+                NakordoniCallsRemainingSensor(coordinator, entry),
+                NakordoniQuotaResetSensor(coordinator, entry),
+                NakordoniTripPassSensor(coordinator, entry),
+            )
+        )
     async_add_entities(entities)
+
+
+class _NakordoniUsageSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEntity):
+    """Base for account-usage entities; never exposes credential material."""
+
+    def __init__(self, coordinator, entry, suffix: str, name: str) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_nakordoni_{suffix}"
+        self._attr_name = name
+        self._attr_device_info = _device_info(entry)
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.nakordoni_account_usage is not None and super().available
+
+    @property
+    def extra_state_attributes(self):
+        usage = self.coordinator.nakordoni_account_usage
+        if usage is None:
+            return {
+                "last_attempt": self.coordinator.nakordoni_usage_last_attempt.isoformat()
+                if self.coordinator.nakordoni_usage_last_attempt else None,
+                "error": self.coordinator.nakordoni_usage_error,
+                "upgrade_url": self.coordinator.nakordoni_usage_upgrade_url,
+                "pass_url": self.coordinator.nakordoni_usage_pass_url,
+                "reset_at": self.coordinator.nakordoni_usage_reset_at.isoformat()
+                if self.coordinator.nakordoni_usage_reset_at else None,
+            }
+        attributes = usage.as_diagnostics()
+        attributes.update({
+            "last_success": self.coordinator.nakordoni_usage_last_success.isoformat()
+            if self.coordinator.nakordoni_usage_last_success else None,
+            "last_error": self.coordinator.nakordoni_usage_error,
+            "last_error_at": self.coordinator.nakordoni_usage_error_at.isoformat()
+            if self.coordinator.nakordoni_usage_error_at else None,
+        })
+        return attributes
+
+
+class NakordoniCallsRemainingSensor(_NakordoniUsageSensor):
+    """Cheap daily calls remaining, as documented by Nakordoni."""
+
+    _attr_icon = "mdi:counter"
+
+    def __init__(self, coordinator, entry) -> None:
+        super().__init__(coordinator, entry, "calls_remaining", "Nakordoni calls remaining")
+
+    @property
+    def native_value(self) -> int | None:
+        usage = self.coordinator.nakordoni_account_usage
+        return usage.cheap.remaining if usage else None
+
+
+class NakordoniQuotaResetSensor(_NakordoniUsageSensor):
+    """Timestamp at which the cheap quota resets."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:calendar-refresh"
+
+    def __init__(self, coordinator, entry) -> None:
+        super().__init__(coordinator, entry, "quota_reset", "Nakordoni quota reset")
+
+    @property
+    def native_value(self):
+        usage = self.coordinator.nakordoni_account_usage
+        return usage.cheap.reset_at if usage else None
+
+
+class NakordoniTripPassSensor(_NakordoniUsageSensor):
+    """Trip Pass state and expiry metadata."""
+
+    _attr_icon = "mdi:ticket-confirmation"
+
+    def __init__(self, coordinator, entry) -> None:
+        super().__init__(coordinator, entry, "trip_pass", "Nakordoni Trip Pass")
+
+    @property
+    def native_value(self) -> str | None:
+        usage = self.coordinator.nakordoni_account_usage
+        if usage is None or usage.pass_active is None:
+            return None
+        return "active" if usage.pass_active else "inactive"
 
 
 class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEntity):

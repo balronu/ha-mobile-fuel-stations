@@ -105,6 +105,7 @@ _MAX_PLAUSIBLE_SPEED_KMH = 200.0
 _MIN_PROVIDER_INTERVALS = {
     PROVIDER_TANKERKOENIG: timedelta(minutes=5),
 }
+_NAKORDONI_USAGE_INTERVAL = timedelta(minutes=15)
 _STATION_CACHE_KEY = "stations"
 _CACHE_CONTEXT_KEY = "station_cache_context"
 _CACHE_PROVIDER_KEY = "station_cache_provider"
@@ -384,6 +385,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.nakordoni_coverage_fuels: tuple[str, ...] = ()
         self.nakordoni_coverage_status = "unknown"
         self.nakordoni_upgrade_url = self.nakordoni_market_access.upgrade_url
+        self.nakordoni_account_usage = None
+        self.nakordoni_usage_last_attempt: datetime | None = None
+        self.nakordoni_usage_last_success: datetime | None = None
+        self.nakordoni_usage_error: str | None = None
+        self.nakordoni_usage_error_at: datetime | None = None
+        self.nakordoni_usage_upgrade_url: str | None = None
+        self.nakordoni_usage_pass_url: str | None = None
+        self.nakordoni_usage_reset_at: datetime | None = None
         self.fuel_types = self._configured_fuels(self.options)
         self.provider_modes = self._configured_provider_modes(self.options)
         self.available_provider_modes = frozenset(
@@ -412,6 +421,49 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             PROVIDER_NAKORDONI: "nakordoni_api_key",
         }.get(provider)
         return bool(key_name and self.options.get(key_name))
+
+    @property
+    def nakordoni_usage_enabled(self) -> bool:
+        """Whether this entry has a Nakordoni credential usable for usage."""
+
+        return PROVIDER_NAKORDONI in self.provider_modes and self._provider_configured(PROVIDER_NAKORDONI)
+
+    async def async_update_nakordoni_usage(self, *, force: bool = False) -> None:
+        """Refresh account usage without coupling its errors to station data."""
+
+        if not self.nakordoni_usage_enabled:
+            return
+        now = datetime.now().astimezone()
+        last_attempt = self.nakordoni_usage_last_attempt
+        if not force and last_attempt and now - last_attempt < _NAKORDONI_USAGE_INTERVAL:
+            return
+        self.nakordoni_usage_last_attempt = now
+        try:
+            provider = self._get_provider(PROVIDER_NAKORDONI)
+            get_usage = getattr(provider, "async_get_account_usage", None)
+            if not callable(get_usage):
+                return
+            usage = await get_usage()
+        except ProviderError as err:
+            diagnostics = getattr(err, "diagnostics", None)
+            self.nakordoni_usage_error = getattr(diagnostics, "error_code", None) or type(err).__name__
+            self.nakordoni_usage_error_at = now
+            self.nakordoni_usage_upgrade_url = getattr(err, "upgrade_url", None)
+            self.nakordoni_usage_pass_url = getattr(err, "pass_url", None)
+            self.nakordoni_usage_reset_at = getattr(err, "reset_at", None)
+            _LOGGER.warning(
+                "Nakordoni account usage failed: code=%s reset_at=%s",
+                self.nakordoni_usage_error,
+                self.nakordoni_usage_reset_at.isoformat() if self.nakordoni_usage_reset_at else None,
+            )
+            return
+        self.nakordoni_account_usage = usage
+        self.nakordoni_usage_last_success = now
+        self.nakordoni_usage_error = None
+        self.nakordoni_usage_error_at = None
+        self.nakordoni_usage_upgrade_url = usage.upgrade_url
+        self.nakordoni_usage_pass_url = usage.pass_url
+        self.nakordoni_usage_reset_at = usage.cheap.reset_at
 
     def _nakordoni_auto_eligible(self) -> bool:
         """Auto mode requires explicit market metadata, never just a token/key."""
@@ -545,6 +597,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "qps_exceeded": "Nakordoni rate limit reached: qps_exceeded",
             "quota_exceeded": "Nakordoni quota exceeded",
             "market_not_allowed": "Nakordoni market not allowed",
+            "integration_product_not_allowed": "Nakordoni integration product is not allowed",
             "not_approved": "Nakordoni account/product not approved",
             "invalid_grant": "Nakordoni OAuth authorization expired; reauthentication required",
         }.get(code, "nakordoni request failed")
@@ -1188,6 +1241,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         now = datetime.now().astimezone()
         self.last_update_attempt = now
         self.last_update_result = "started"
+        await self.async_update_nakordoni_usage()
         if self._retry_not_before and now < self._retry_not_before:
             if _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]):
                 _LOGGER.debug(

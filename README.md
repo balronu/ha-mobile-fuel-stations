@@ -27,7 +27,7 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 - **Kraftstoffpreise:** E5, E10, Diesel, LPG/Autogas und HVO100 mit
   Entfernungs- oder Preis-Sortierung.
 - **Lovelace für unterwegs:** Responsive Karte, Erkennung vieler
-  Markenschreibweisen, sechs lokale Markenlogos und direkte Navigation zum
+  Markenschreibweisen, 60 lokale Markenlogos und direkte Navigation zum
   ausgewählten Ziel.
 
 ### Vorschau
@@ -68,15 +68,24 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Aktuelle stabile Version |
-| Pre-release | `v0.7.0-beta.6` | Beta mit OAuth-/Marktberechtigungen und Auto-Fallback |
+| Pre-release | `v0.7.0-beta.7` | Beta mit Nakordoni Account Usage und Logo-Rechteaudit |
 | Vorherige Stable | `v0.5.1` | Verfügbare Rollback-Version |
 | Frontend-Komponente | `v0.6.0` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Die Beta `v0.7.0-beta.6`
+`v0.6.1` bleibt die aktuelle stabile Veröffentlichung. Die Beta `v0.7.0-beta.7`
 ergänzt den geschützten Admin-Service `mobile_fuel_stations.probe_nakordoni`
 für einzelne, bereinigte Nakordoni-Diagnoseabfragen mit bestehenden HA-
 Credentials. Die experimentelle Nakordoni-OAuth-Anmeldung ist weiterhin nicht
-live verifiziert. `v0.7.0-beta.6` führt providergebundene Request-Cooldowns
+live verifiziert. `v0.7.0-beta.7` ergänzt die dokumentierte Nakordoni-Abfrage
+`GET /api/v2/account/usage` höchstens alle 15 Minuten sowie Sensoren für
+Restkontingent, Reset-Zeit und Trip-Pass. Die bereitgestellte Logo-ZIP liefert
+54 normalisierte PNGs; zusammen mit den sechs bestehenden SVGs werden 60 Logos
+lokal ohne CDN-Abhängigkeit ausgeliefert. `404.png`, `svg.png`, Dubletten
+und bereits durch SVGs abgedeckte Archivvarianten bleiben ausgeschlossen.
+Herkunft, fehlende Einzelbildlizenz und die ausdrückliche Branch-Autorisierung
+sind in der [Logo-Dokumentation](BRAND_LOGOS.md) festgehalten; dies ist keine
+Markenlizenz oder Herstellerempfehlung. `v0.7.0-beta.6` führt
+providergebundene Request-Cooldowns
 und Cache-Zustände ein, verhindert, dass ein Providerwechsel durch den
 vorherigen Provider blockiert wird, erkennt OAuth-only Nakordoni in Auto und
 erweitert die geheimnisfreien Diagnosen um Auswahl-, Cache- und Retry-Status.
@@ -214,7 +223,7 @@ erfolgreich geprüft wurde. Der Optionsdialog startet keine unnötigen
 Provider-Anfragen. Zugangsdaten werden nicht in Git, Logs oder Diagnostics
 ausgegeben.
 
-### Nakordoni OAuth2-PKCE (Beta.6)
+### Nakordoni OAuth2-PKCE und Account Usage (Beta.7)
 
 Beta.6 bietet die bevorzugte automatische Nakordoni-Anmeldung über den
 Home-Assistant-Authorization-Code-Flow mit PKCE S256. Die registrierte
@@ -231,6 +240,13 @@ Home-Assistant-OAuth2-Config-Entry-Infrastruktur gespeichert und aus
 Diagnostics ausgeschlossen. OAuth ist erst vollständig, wenn Nakordoni die
 benötigten Tokenfelder einschließlich `expires_in` liefert; nicht
 dokumentierte Scopes oder Refresh-Parameter werden nicht angenommen.
+
+Mit Beta.7 wird zusätzlich `GET /api/v2/account/usage` höchstens alle 15 Minuten
+abgerufen. Die Sensoren zeigen Restabfragen, Quota-Reset und Trip-Pass-Status;
+Quota-Klassen, Länderberechtigungen und offizielle Upgrade-Links stehen als
+Attribute und in den geheimnisfreien Diagnostics bereit. `quota_exceeded`,
+`market_not_allowed` und `integration_product_not_allowed` werden getrennt
+klassifiziert. Es gibt keine eigene Zahlungsabwicklung.
 
 ## GPS, Polling und Startup-Recovery
 
@@ -276,7 +292,8 @@ navigation: true
 show_brand_logos: true
 ```
 
-v0.6.1 erkennt die sechs mitgelieferten lokalen SVGs:
+Beta.7 erkennt die sechs mitgelieferten lokalen SVGs sowie 54 normalisierte
+lokale PNG-Markenlogos aus dem geprüften Archiv. Die sechs SVGs sind:
 
 | Marke | Datei |
 | --- | --- |
@@ -294,11 +311,17 @@ ladbare Logos zeigen das generische Zapfsäulensymbol. `show_brand_logos: false`
 deaktiviert die Anzeige. Die vorhandenen Logoquellen und Prüfsummen stehen in
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md).
 
+Die bereitgestellte `gasstation_logos.zip` enthält 66 Dateien mit 63
+eindeutigen Inhalten, drei Duplikatpaaren und mehreren technisch als JPEG
+codierten Dateien mit `.png`-Endung. 54 Dateien wurden nach PNG normalisiert
+und lokal übernommen; `404.png`, `svg.png`, Duplikate und durch SVGs
+abgedeckte Varianten bleiben ausgeschlossen. Die Rechtebasis und das
+verbleibende Markenrisiko sind in [BRAND_LOGOS.md](BRAND_LOGOS.md) dokumentiert.
+
 Die Alias-Erkennung versteht nun deutlich mehr Markennamen und
-Provider-Schreibweisen. Das bedeutet nicht, dass für jede erkannte Marke ein
-Bild gebündelt ist: Aktuell sind weiterhin nur die sechs oben genannten lokalen
-SVGs enthalten. Für weitere Marken werden konkrete Bildrechte zunächst separat
-geklärt; bis dahin bleiben sie beim neutralen Tankstellensymbol, während der
+Provider-Schreibweisen. Für alle gebündelten Marken werden die Dateien
+zentral und ohne unsichere Teilstring-Suche zugeordnet. Unbekannte oder nicht
+ladbare Marken bleiben beim neutralen Tankstellensymbol, während der
 Markenname lesbar bleibt. Die vollständige Referenzinventur steht in
 [docs/BRAND_LOGO_INVENTORY.md](docs/BRAND_LOGO_INVENTORY.md).
 

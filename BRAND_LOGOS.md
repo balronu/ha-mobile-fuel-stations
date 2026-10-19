@@ -15,9 +15,19 @@ redistribution rights for each concrete image file are assessed separately
 and documented below. A trademark disclaimer does not replace a missing image
 license.
 
-Beta.2 bundles only the six sanitized SVG assets listed below. They are
-installed with the integration and served locally from
-`/mobile_fuel_stations/logos/`; no logo request is made to a CDN at runtime.
+Beta.7 bundles the six sanitized SVG assets listed below plus 54 normalized PNG
+assets from the supplied archive. They are installed with the integration and
+served locally from `/mobile_fuel_stations/logos/`; no logo request is made
+to a CDN at runtime.
+
+The archive files were matched to the exact
+[reference directory](https://github.com/timmaurice/lovelace-tankerkoenig-card/tree/main/src/gasstation_logos)
+in the upstream Tankerkönig card repository. That repository is MIT-licensed
+as a code repository, but provides no separate per-image license or trademark
+permission. For this branch, the repository owner explicitly authorized use of
+the supplied archive. That authorization is the documented redistribution
+basis for these beta assets; it is not a trademark license, endorsement, or
+affiliation claim. Residual rights and trademark risk remain.
 
 The package is an independent, free Home Assistant integration. It is not
 endorsed by, affiliated with, or sponsored by any displayed station brand.
@@ -43,9 +53,8 @@ and local SVG fragments.
 
 ## Fallback and overrides
 
-The bundled set is deliberately incomplete. Esso, HEM, AVIA, Q1, Raiffeisen,
-OIL!, star, BFT, Westfalen and other unresolved provider values use the pump
-fallback until a matching current asset and documented rights basis are found.
-Users may still configure their own local `logo_path`; explicit user logos
-take priority over bundled files. `show_brand_logos: false` always disables
-logo rendering.
+The bundled set covers the normalized archive brands and the six separately
+sourced SVGs. The excluded generic `404.png`/`svg.png` files, unknown
+brands, and failed local assets use the neutral pump fallback. Users may still
+configure their own local `logo_path`; explicit user logos take priority
+over bundled files. `show_brand_logos: false` always disables logo rendering.
