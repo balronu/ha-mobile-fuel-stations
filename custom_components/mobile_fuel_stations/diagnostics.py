@@ -102,6 +102,18 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "coverage_fuels": getattr(coordinator, "nakordoni_coverage_fuels", []),
             "coverage_status": getattr(coordinator, "nakordoni_coverage_status", "unknown"),
             "quota": getattr(coordinator, "diagnostic_quota", {"limit": None, "remaining": None}),
+            "nakordoni_account_usage": (
+                coordinator.nakordoni_account_usage.as_diagnostics()
+                if getattr(coordinator, "nakordoni_account_usage", None) is not None
+                else None
+            ),
+            "nakordoni_usage_last_attempt": _iso(getattr(coordinator, "nakordoni_usage_last_attempt", None)),
+            "nakordoni_usage_last_success": _iso(getattr(coordinator, "nakordoni_usage_last_success", None)),
+            "nakordoni_usage_error": getattr(coordinator, "nakordoni_usage_error", None),
+            "nakordoni_usage_error_at": _iso(getattr(coordinator, "nakordoni_usage_error_at", None)),
+            "nakordoni_usage_upgrade_url": getattr(coordinator, "nakordoni_usage_upgrade_url", None),
+            "nakordoni_usage_pass_url": getattr(coordinator, "nakordoni_usage_pass_url", None),
+            "nakordoni_usage_reset_at": _iso(getattr(coordinator, "nakordoni_usage_reset_at", None)),
             "startup_recovery_status": getattr(coordinator, "recovery_status", None),
             "recovery_task_status": getattr(coordinator, "recovery_task_status", None),
             "recovery_attempt_count": getattr(coordinator, "recovery_attempt_count", 0),

@@ -15,7 +15,11 @@ from mobile_fuel_stations.providers.base import (
     StationSearchQuery,
 )
 from mobile_fuel_stations.api import station_attributes
-from mobile_fuel_stations.providers.nakordoni import NakordoniProvider, NAKORDONI_API_URL
+from mobile_fuel_stations.providers.nakordoni import (
+    NAKORDONI_ACCOUNT_USAGE_URL,
+    NakordoniProvider,
+    NAKORDONI_API_URL,
+)
 
 
 class Response:
@@ -93,6 +97,27 @@ def payload():
     }
 
 
+def usage_payload():
+    return {
+        "ok": True,
+        "api_version": "v2",
+        "product": "account-usage",
+        "data": {
+            "plan": {"slug": "explorer", "name": "Explorer"},
+            "qps": 2,
+            "quotas": {
+                "cheap": {"limit": 1000, "used": 42, "remaining": 958, "reset_at": "2026-10-20T00:00:00Z"},
+                "heavy": {"limit": 200, "used": 3, "remaining": 197, "reset_at": "2026-10-20T00:00:00Z"},
+                "route": {"limit": 10, "used": 0, "remaining": 10, "reset_at": "2026-10-20T00:00:00Z"},
+            },
+            "markets": {"approved": ["DE"], "allowed": 1, "available": ["AT"], "key_bound": True},
+            "pass": {"active": True, "expires_at": "2026-10-22T14:05:00Z", "days_left": 3},
+            "upgrade_url": "https://nakordoni.eu/en/developers/billing",
+            "pass_url": "https://nakordoni.eu/en/developers/billing?section=trip-pass#trip-pass",
+        },
+    }
+
+
 def query():
     return StationSearchQuery(49.24, 6.99, 25, "diesel", station_count=10)
 
@@ -154,6 +179,44 @@ def test_nakordoni_oauth_response_remains_supported():
     stations = asyncio.run(provider.async_search(query()))
 
     assert len(stations) == 1
+
+
+def test_nakordoni_account_usage_uses_documented_shape_without_station_params():
+    session = Session(Response(usage_payload()))
+    provider = NakordoniProvider(session, "dummy")
+
+    usage = asyncio.run(provider.async_get_account_usage())
+
+    url, params, headers, _ = session.calls[0]
+    assert url == NAKORDONI_ACCOUNT_USAGE_URL
+    assert params == {}
+    assert headers == {"Authorization": "Bearer dummy"}
+    assert usage.plan_slug == "explorer"
+    assert usage.cheap.remaining == 958
+    assert usage.cheap.reset_at.isoformat() == "2026-10-20T00:00:00+00:00"
+    assert usage.markets_approved == ("DE",)
+    assert usage.markets_allowed == 1
+    assert usage.pass_active is True
+    assert usage.pass_days_left == 3
+    assert usage.as_diagnostics()["quotas"]["route"]["remaining"] == 10
+
+
+def test_nakordoni_account_usage_preserves_product_permission_error():
+    provider = NakordoniProvider(Session(Response({
+        "ok": False,
+        "error": {
+            "code": "integration_product_not_allowed",
+            "upgrade_url": "https://example.invalid/upgrade",
+            "pass_url": "https://example.invalid/pass",
+        },
+    }, status=403)), "dummy")
+
+    with pytest.raises(ProviderPermissionError) as caught:
+        asyncio.run(provider.async_get_account_usage())
+
+    assert caught.value.diagnostics.error_code == "integration_product_not_allowed"
+    assert caught.value.upgrade_url == "https://example.invalid/upgrade"
+    assert caught.value.pass_url == "https://example.invalid/pass"
 
 
 @pytest.mark.parametrize("status, error_type", [(401, ProviderAuthError), (403, ProviderPermissionError), (429, ProviderRateLimitError)])

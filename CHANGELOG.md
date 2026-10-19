@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0-beta.7 — Nakordoni account usage and logo-rights audit
+
+- Add the documented `GET /api/v2/account/usage` call for Nakordoni API-key and OAuth credentials, rate-limited to at most once per 15 minutes.
+- Expose cheap-quota calls remaining, quota reset timestamp, Trip Pass state, quota classes, market allowance, and official upgrade/pass links through Home Assistant sensors and secret-free diagnostics.
+- Preserve documented `quota_exceeded`, `market_not_allowed`, and `integration_product_not_allowed` classifications without inventing response fields or payment handling.
+- Audit the supplied 66-file logo archive: 63 unique contents, three duplicate pairs, several mislabeled JPEG files, and no per-file provenance or redistribution license. No archive image is bundled or published.
+- Keep the six separately sourced local SVGs, strict brand normalization, neutral fallback, existing providers, cooldowns, OAuth/API-key compatibility, and station-card behavior.
+
 ## 0.7.0-beta.6 — Nakordoni OAuth, markets, and fallback policy
 
 - Keep OAuth2/PKCE as the preferred Nakordoni setup while retaining manual API-key entries and OAuth-only detection.

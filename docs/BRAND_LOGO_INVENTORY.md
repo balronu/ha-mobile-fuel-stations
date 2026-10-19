@@ -95,3 +95,22 @@ and hashes in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md).
 - Unknown or unavailable assets continue to use the neutral gas-pump fallback.
 - Adding any image requires a separate source, rights, security, and hash
   review before publication.
+
+## Supplied `gasstation_logos.zip` audit — 2026-10-19
+
+The separately supplied archive was inspected before any repository copy was
+considered. It contains 66 named files under `gasstation_logos/`, but only 63
+unique byte contents: `kk-klaas--kock.png` / `kk-klaas-kock.png`,
+`minera-automatenstation.png` / `minera.png`, and `jantzon-tankstelle.png` /
+`aral.png` are duplicate pairs by SHA256. Several files named `.png` are
+actually JPEG files (`bell-oil`, `feneberg`, `globus`, and `hessol`), while
+others use RGB, indexed-colour, or RGBA encodings and a wide range of sizes.
+`404.png` and `svg.png` are not treated as brand assets.
+
+The archive contains no license file, source manifest, copyright statement, or
+per-file provenance. Public availability and a trademark disclaimer do not
+establish redistribution rights. Consequently **none of the 66 archive files
+is copied, transformed, bundled, or published**. The six separately sourced
+SVGs listed in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md) remain the complete
+bundled set; all other aliases use the neutral fallback unless a user supplies
+a permitted local override.

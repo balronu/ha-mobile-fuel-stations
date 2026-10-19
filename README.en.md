@@ -69,11 +69,11 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.6.1` | Current stable release |
-| Pre-release | `v0.7.0-beta.6` | Beta with OAuth, market permissions, and Auto fallback |
+| Pre-release | `v0.7.0-beta.7` | Beta with Nakordoni account usage and logo-rights audit |
 | Previous stable | `v0.5.1` | Available rollback version |
 | Frontend component | `v0.6.0` | Independently versioned Lovelace component |
 
-`v0.6.1` remains the current stable release. The `v0.7.0-beta.6` beta includes
+`v0.6.1` remains the current stable release. The `v0.7.0-beta.7` beta includes
 the protected `mobile_fuel_stations.probe_nakordoni` administrator service for
 single, redacted Nakordoni diagnostic requests using existing HA credentials.
 The experimental Nakordoni OAuth sign-in remains unverified against the live
@@ -84,7 +84,11 @@ selection, cache, cooldown, and retry diagnostics. Confirmed country/price
 coverage remains required for Auto; unknown Nakordoni coverage is never
 inferred. `v0.6.1` includes persisted cache recovery,
 cooldown recovery, and optional adaptive GPS updates. The Lovelace component
-remains independently versioned at `0.6.0`.
+remains independently versioned at `0.6.0`. It also polls the documented
+`GET /api/v2/account/usage` endpoint no more often than every 15 minutes and
+exposes quota, reset, market, and Trip Pass information through HA sensors.
+The supplied logo ZIP was audited but not published because provenance and
+redistribution permission were not provided.
 
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
