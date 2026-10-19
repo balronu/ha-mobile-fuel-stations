@@ -15,10 +15,9 @@ redistribution rights for each concrete image file are assessed separately
 and documented below. A trademark disclaimer does not replace a missing image
 license.
 
-Beta.7 bundles the six sanitized SVG assets listed below plus 54 normalized PNG
-assets from the supplied archive. They are installed with the integration and
-served locally from `/mobile_fuel_stations/logos/`; no logo request is made
-to a CDN at runtime.
+Stable v0.7.0 bundles 60 normalized PNG assets from the supplied archive. They
+are installed with the integration and served locally from
+`/mobile_fuel_stations/logos/`; no logo request is made to a CDN at runtime.
 
 The archive files were matched to the exact
 [reference directory](https://github.com/timmaurice/lovelace-tankerkoenig-card/tree/main/src/gasstation_logos)
@@ -26,7 +25,7 @@ in the upstream Tankerkönig card repository. That repository is MIT-licensed
 as a code repository, but provides no separate per-image license or trademark
 permission. For this branch, the repository owner explicitly authorized use of
 the supplied archive. That authorization is the documented redistribution
-basis for these beta assets; it is not a trademark license, endorsement, or
+basis for these stable assets; it is not a trademark license, endorsement, or
 affiliation claim. Residual rights and trademark risk remain.
 
 The package is an independent, free Home Assistant integration. It is not
@@ -37,24 +36,24 @@ endorsement or partnership.
 
 | Key | Brand | File | Source | Rights assessment | Attribution | SHA256 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `aral` | Aral | `frontend/logos/aral.svg` | [Simple Icons source metadata](https://github.com/simple-icons/simple-icons/blob/dc7b10662a0a2cfdfc9305e2a2b06c023c30724a/data/simple-icons.json), [Commons file](https://commons.wikimedia.org/wiki/File:Aral_Logo.svg) | Simple Icons repository CC0; source Commons page claims public domain, with trademark warning. Current visual match is acceptable; legal trademark risk remains. | No CC0 attribution required; source retained for audit. | `c144c9cf303e15d1addc4ca45736c99508cfb68aabef07f09feb80bf0f21b76c` |
-| `jet` | JET | `frontend/logos/jet.svg` | [Simple Icons source metadata](https://github.com/simple-icons/simple-icons/blob/dc7b10662a0a2cfdfc9305e2a2b06c023c30724a/data/simple-icons.json), [JET source reference](https://de.wikipedia.org/wiki/Datei:JET.svg) | Simple Icons repository CC0; source and trademark status are retained as residual-risk items. Included only for factual station identification. | No CC0 attribution required; source retained for audit. | `83259f9ef037ad0449e2539eef9ff25c2b4eda222e01c87657de7bbb5b0e3d1f` |
-| `shell` | Shell | `frontend/logos/shell.svg` | [Simple Icons source metadata](https://github.com/simple-icons/simple-icons/blob/dc7b10662a0a2cfdfc9305e2a2b06c023c30724a/data/simple-icons.json), [Shell source reference](https://en.wikipedia.org/wiki/File:Shell_logo.svg) | Simple Icons repository CC0; Shell trademark remains protected. The asset is used only as a factual brand identifier and does not include endorsement language. | No CC0 attribution required; source retained for audit. | `d3a4b69b3437e4e94ac7a974c2d3b9780a57cdbf82ff57e2f2558fb38d03d7cf` |
-| `omv` | OMV | `frontend/logos/omv.svg` | [Commons file OMV Logo 2024](https://commons.wikimedia.org/wiki/File:OMV_Logo_2024.svg) | Commons page claims public domain for simple logo geometry and identifies OMV AG as author/source; trademark warning remains. Current 2024 artwork. | No attribution required by the page's PD claim; source link retained. | `b5d8b7f4f844698bdf0e35dae13416558c6c49cc92d326f16a210d1633615051` |
-| `orlen` | ORLEN | `frontend/logos/orlen.svg` | [Commons file ORLEN wordmark](https://commons.wikimedia.org/wiki/File:Orlen_wordmark_logo.svg) | Commons page claims public domain for simple geometry and identifies ORLEN SA as source; wordmark is older (2000) and trademark risk remains. Included as a conservative wordmark, not a claim of current corporate approval. | No attribution required by the page's PD claim; source link retained. | `467eb4cec9e954944d6506282e839a174ba36bbeef39775373776d08d2abe812` |
-| `total` | TotalEnergies | `frontend/logos/total.svg` | [Commons file TotalEnergies wordmark 2021-present](https://commons.wikimedia.org/wiki/File:TotalEnergies_wordmark_(2021-present).svg) | Commons page claims public domain for simple geometry and identifies TotalEnergies SE as author/source; current wordmark is suitable, but trademark risk remains. | No attribution required by the page's PD claim; source link retained. | `4bf2adc55ed00194bfdf3aab6e9d85f691cc5b76dd483a52aa40a1b92a24a4be` |
+| `aral` | Aral | `frontend/logos/aral.png` | Supplied `gasstation_logos.zip`, matched to the upstream Tankerkönig reference directory | Archive has no per-image license; explicit branch-level authorization is the redistribution basis, with residual trademark risk. | Source archive and upstream reference retained for audit. | `b835b987fb336cbf4c0f84152768ea4e587b313b60a0840c8e69bdcdbfd053cc` |
+| `jet` | JET | `frontend/logos/jet.png` | Supplied `gasstation_logos.zip`, matched to the upstream Tankerkönig reference directory | Archive has no per-image license; explicit branch-level authorization is the redistribution basis, with residual trademark risk. | Source archive and upstream reference retained for audit. | `e43dd03577d4545e567750837a47ca1a23274d396ba2bb60cea9d3400af541b5` |
+| `shell` | Shell | `frontend/logos/shell.png` | Supplied `gasstation_logos.zip`, matched to the upstream Tankerkönig reference directory | Archive has no per-image license; explicit branch-level authorization is the redistribution basis, with residual trademark risk. | Source archive and upstream reference retained for audit. | `d42eb4185143e11f73100c91d4f18f22caa1402150ffb4db31586f2f7e1f9ca1` |
+| `omv` | OMV | `frontend/logos/omv.png` | Supplied `gasstation_logos.zip`, matched to the upstream Tankerkönig reference directory | Archive has no per-image license; explicit branch-level authorization is the redistribution basis, with residual trademark risk. | Source archive and upstream reference retained for audit. | `e2af0ffdea92d304d9a44c9d4a7d1b7ddb5b4f7a5b7ab3efeb193b2024586a16` |
+| `orlen` | ORLEN | `frontend/logos/orlen.png` | Supplied `gasstation_logos.zip`, matched to the upstream Tankerkönig reference directory | Archive has no per-image license; explicit branch-level authorization is the redistribution basis, with residual trademark risk. | Source archive and upstream reference retained for audit. | `2c683bd01e7ac799f6970bfced43f34d47204e8d27ac2e497f8c0b1541edfccd` |
+| `total` | Total / TotalEnergies | `frontend/logos/total.png` | Supplied `gasstation_logos.zip`, matched to the upstream Tankerkönig reference directory | Archive has no per-image license; explicit branch-level authorization is the redistribution basis, with residual trademark risk. | Source archive and upstream reference retained for audit. | `fd3f6ba4420830aab54ff2c959c0f82ccee2b1420a2ec4130275cf5feb9652fa` |
 
 ## Technical safety
 
-Every bundled file is parsed as XML during the test suite. The asset test
-rejects scripts, foreign objects, frames, embeds, images, animations, external
-URLs, and external SVG references. The files contain only static vector data
-and local SVG fragments.
+Every bundled PNG is decoded and checked during the test suite for a valid
+image header, dimensions, alpha handling, and safe local packaging. The
+original image pixels are not edited; files that were technically JPEGs with a
+`.png` name were decoded and re-encoded as PNG before publication. No external
+URLs or runtime image requests are used.
 
 ## Fallback and overrides
 
-The bundled set covers the normalized archive brands and the six separately
-sourced SVGs. The excluded generic `404.png`/`svg.png` files, unknown
+The bundled set covers the normalized archive brands as local PNGs. The excluded generic `404.png`/`svg.png` files, unknown
 brands, and failed local assets use the neutral pump fallback. Users may still
 configure their own local `logo_path`; explicit user logos take priority
 over bundled files. `show_brand_logos: false` always disables logo rendering.

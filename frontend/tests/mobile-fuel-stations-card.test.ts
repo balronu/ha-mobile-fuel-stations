@@ -69,8 +69,8 @@ describe("formatting and discovery", () => {
   });
   it("maps every bundled logo key to a local resource path", () => {
     const bundled = [
-      ["Aral", "aral.svg"], ["JET", "jet.svg"], ["OMV", "omv.svg"], ["ORLEN", "orlen.svg"],
-      ["Shell", "shell.svg"], ["TotalEnergies", "total.svg"], ["Access", "access.png"],
+      ["Aral", "aral.png"], ["JET", "jet.png"], ["OMV", "omv.png"], ["ORLEN", "orlen.png"],
+      ["Shell", "shell.png"], ["TotalEnergies", "total.png"], ["Access", "access.png"],
       ["Agip Eni", "agip-eni.png"], ["Allguth", "allguth.png"], ["Avia Xpress", "avia-xpress.png"],
       ["Avia", "avia.png"], ["BayWa", "baywa.png"], ["Bell Oil", "bell-oil.png"], ["bft", "bft.png"],
       ["Calpam", "calpam.png"], ["citi oil SB-Tankstelle", "citi-oil-sb-tankstelle.png"],
@@ -114,9 +114,9 @@ describe("formatting and discovery", () => {
     expect(normalizeLogoPath("https://evil.example/logos/")).toBeNull();
     expect(normalizeLogoPath("/local/../secret/")).toBeNull();
     expect(normalizeLogoPath("/local/fuel-logos/%0a/")).toBeNull();
-    expect(buildBrandLogoUrl("Shell", "/local/fuel-logos/")).toBe("/local/fuel-logos/shell.svg");
-    expect(buildBrandLogoUrl("Shell")).toBe("/mobile_fuel_stations/logos/shell.svg");
-    expect(buildBrandLogoUrl(null, undefined, "Aral Tankstelle")).toBe("/mobile_fuel_stations/logos/aral.svg");
+    expect(buildBrandLogoUrl("Shell", "/local/fuel-logos/")).toBe("/local/fuel-logos/shell.png");
+    expect(buildBrandLogoUrl("Shell")).toBe("/mobile_fuel_stations/logos/shell.png");
+    expect(buildBrandLogoUrl(null, undefined, "Aral Tankstelle")).toBe("/mobile_fuel_stations/logos/aral.png");
     expect(buildBrandLogoUrl("Esso")).toBe("/mobile_fuel_stations/logos/esso.png");
     expect(buildBrandLogoUrl("Shell", "https://evil.example/logos/")).toBeNull();
     expect(buildBrandLogoUrl("Unknown", "/local/fuel-logos/")).toBeNull();
@@ -170,12 +170,12 @@ describe("card", () => {
   it("shows logos by default and respects an explicit opt-out", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     card.setConfig({ entity: overviewId }); card.hass = hassFor(1, {}, { brand: "Shell", provider: "petromap" }); await card.updateComplete;
-    expect(card.shadowRoot?.querySelector(".station img")?.getAttribute("src")).toContain("/mobile_fuel_stations/logos/shell.svg");
+    expect(card.shadowRoot?.querySelector(".station img")?.getAttribute("src")).toContain("/mobile_fuel_stations/logos/shell.png");
     card.setConfig({ entity: overviewId, show_brand_logos: false, logo_path: "/local/fuel-logos/" }); await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".station img")).toBeNull();
     card.setConfig({ entity: overviewId, logo_path: "/local/fuel-logos/" }); await card.updateComplete;
     const logo = card.shadowRoot?.querySelector(".station img") as HTMLImageElement;
-    expect(logo?.src).toContain("/local/fuel-logos/shell.svg");
+    expect(logo?.src).toContain("/local/fuel-logos/shell.png");
     expect(logo?.alt).toContain("Station 1");
   });
   it("uses the station name when the provider leaves brand empty", async () => {
@@ -183,7 +183,7 @@ describe("card", () => {
     card.setConfig({ entity: overviewId });
     card.hass = hassFor(1, {}, { station_name: "Aral Tankstelle am Bahnhof", brand: "" });
     await card.updateComplete;
-    expect(card.shadowRoot?.querySelector(".station img")?.getAttribute("src")).toContain("/mobile_fuel_stations/logos/aral.svg");
+    expect(card.shadowRoot?.querySelector(".station img")?.getAttribute("src")).toContain("/mobile_fuel_stations/logos/aral.png");
   });
   it("renders logos in nearest/cheapest highlights and falls back on image errors", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);

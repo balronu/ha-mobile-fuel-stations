@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.6.1"><img src="https://img.shields.io/badge/Stable-v0.6.1-16a34a" alt="Stable v0.6.1"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.0"><img src="https://img.shields.io/badge/Stable-v0.7.0-16a34a" alt="Stable v0.7.0"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -68,34 +68,17 @@ opening status, and destination navigation.
 
 | Channel | Version | Meaning |
 | --- | --- | --- |
-| Stable | `v0.6.1` | Current stable release |
-| Pre-release | `v0.7.0-beta.8` | Logo-cache and reported-brand hotfix; static OAuth QA |
-| Previous beta | `v0.7.0-beta.7` | Nakordoni account usage and logo-rights audit |
-| Previous stable | `v0.5.1` | Available rollback version |
-| Frontend component | `v0.7.0-beta.8` | Independently versioned Lovelace component |
+| Stable | `v0.7.0` | Current stable release |
+| Previous stable | `v0.6.1` | Available rollback version |
+| Frontend component | `v0.7.0` | Independently versioned Lovelace component |
 
-`v0.6.1` remains the current stable release. The `v0.7.0-beta.8` hotfix updates
-the Lovelace resource cache version and explicitly maps the reported names
-`Eni (Agip Eni)` and `OIL! Tankstelle Sulzbach` to the existing local logos. It
-is based on `v0.7.0-beta.7`, whose features remain unchanged. The `v0.7.0-beta.7` beta includes
-the protected `mobile_fuel_stations.probe_nakordoni` administrator service for
-single, redacted Nakordoni diagnostic requests using existing HA credentials.
-The experimental Nakordoni OAuth sign-in remains unverified against the live
-service. Beta 6 stores request cooldowns per provider, prevents a previous
-provider from blocking an Auto-mode provider switch, rejects cross-provider
-cache data, recognizes OAuth-only Nakordoni configuration, and adds secret-free
-selection, cache, cooldown, and retry diagnostics. Confirmed country/price
-coverage remains required for Auto; unknown Nakordoni coverage is never
-inferred. `v0.6.1` includes persisted cache recovery,
-cooldown recovery, and optional adaptive GPS updates. The Lovelace component
-remains independently versioned at `0.7.0-beta.8`. It also polls the documented
-`GET /api/v2/account/usage` endpoint no more often than every 15 minutes and
-exposes quota, reset, market, and Trip Pass information through HA sensors.
-The supplied logo ZIP contributes 54 normalized PNG station-brand assets;
-together with the six existing SVGs, 60 logos are served locally without a CDN
-dependency. `404.png`, `svg.png`, duplicate copies, and archive variants
-already covered by the canonical SVGs remain excluded. The exact source,
-missing per-image license, and explicit branch authorization are documented in
+`v0.7.0` is the current stable release. It bundles Tankerkönig, Petromap, and
+Nakordoni with automatic provider selection, country- and market-aware
+fallback, quota/Trip Pass diagnostics, OAuth2-PKCE, and manual API keys. The
+60 local PNG logos come from the supplied ZIP, and the resource is registered
+automatically with cache key `v=0.7.0`. Nakordoni OAuth was checked statically
+but has not been confirmed through a live callback. Source, missing per-image
+license, and residual trademark risks are documented in
 [BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
 
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
@@ -116,14 +99,14 @@ refresh.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.6.1` is the stable HACS version; `v0.5.1` remains available as the
+`v0.7.0` is the stable HACS version; `v0.6.1` remains available as the
 previous stable rollback.
 
 The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.0-beta.8
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.0
 ```
 
 For technical resource-loading details, see
@@ -180,9 +163,9 @@ Configure → Manage credentials**. A stored key is not proof of a successful
 live check. The options flow does not perform unnecessary network requests.
 Credentials are never written to Git, logs, or diagnostics.
 
-### Nakordoni OAuth2-PKCE (Beta 6)
+### Nakordoni OAuth2-PKCE
 
-Beta 6 provides the preferred automatic Nakordoni sign-in using Home
+The integration provides the preferred automatic Nakordoni sign-in using Home
 Assistant's OAuth2 Authorization Code flow with PKCE S256. The registered
 redirect is exactly
 `https://my.home-assistant.io/redirect/oauth`; no client secret is used.
@@ -232,10 +215,10 @@ navigation: true
 show_brand_logos: true
 ```
 
-Beta.1 recognizes all 60 bundled local assets, including the six canonical SVGs:
-Aral (`aral.svg`), Shell
-(`shell.svg`), JET (`jet.svg`), Total/TotalEnergies (`total.svg`),
-ORLEN/ORLEN Express (`orlen.svg`), and OMV (`omv.svg`). Matching normalizes
+Stable v0.7.0 recognizes all 60 bundled local PNG assets, including:
+Aral (`aral.png`), Shell (`shell.png`), JET (`jet.png`),
+Total/TotalEnergies (`total.png`), ORLEN/ORLEN Express (`orlen.png`),
+and OMV (`omv.png`). Matching normalizes
 case, Unicode accents, whitespace, and punctuation. If `brand` is missing or
 does not match, the station name is checked as a fallback. Unknown, empty, or
 unloadable logos use the generic fuel-pump symbol. The reported names
@@ -245,10 +228,10 @@ excluded. Set
 `show_brand_logos: false` to disable logos. Sources and checksums are listed in
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md).
 
-Alias matching now recognizes substantially more brand names and provider
+Alias matching recognizes substantially more brand names and provider
 spellings. This does not mean that an image is bundled for every recognized
-brand: the six local SVGs and 54 normalized archive PNGs listed in the
-inventory are included. The excluded generic files, unknown brands, and failed
+brand: the 60 normalized archive PNGs listed in the inventory are included.
+The excluded generic files, unknown brands, and failed
 assets use the neutral fuel-pump symbol while the brand name remains readable.
 The complete reference inventory is documented in
 [docs/BRAND_LOGO_INVENTORY.md](docs/BRAND_LOGO_INVENTORY.md).
@@ -279,8 +262,8 @@ Google Maps, Waze, or automatic selection.
 Create a Home Assistant backup before updating. Update through HACS and fully
 restart Home Assistant. Existing config entries, credentials, station sensors,
 and compatible dashboard configurations are retained. Check the versioned card
-resource and browser cache after a major update. `v0.5.1` remains available as
-the previous stable rollback; historical beta releases remain in the GitHub
+resource and browser cache after a major update. `v0.6.1` remains available as
+the previous stable rollback; historical releases remain in the GitHub
 archive.
 
 ## Privacy and limitations

@@ -1,10 +1,10 @@
 # Reference logo inventory and publication boundary
 
 This is an audit inventory of the 66 supplied/reference PNG filenames in
-`src/gasstation_logos`. Beta.7 bundles 54 normalized archive-derived PNGs
-plus the six existing canonical SVGs. The historical table below records the
-pre-beta.7 rights assessment; the publishable scope at the end of this file
-supersedes its former “no asset” status text.
+`src/gasstation_logos`. Stable v0.7.0 bundles 60 normalized archive-derived
+PNGs. The historical table below records the rights assessment for every
+archive filename; the publishable scope at the end supersedes former “no
+asset” status text.
 
 The reference repository has an MIT code license, but no per-image license or
 complete source manifest was found for these files. Every concrete reference
@@ -19,8 +19,9 @@ at the `main` revision. The filename in the first column completes that path;
 the reference project does not provide a separate per-file provenance record.
 
 `404.png` is the reference project's generic fallback, not a station brand.
-The six existing local Mobile Fuel Stations assets have their own provenance
-and hashes in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md).
+All stable local assets use the supplied archive; their final paths and hashes
+are recorded in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md). The table retains the
+original per-file rights assessment and historical pre-publication status.
 
 | Reference file | Interpretation | Reference image rights | Mobile Fuel Stations status |
 | --- | --- | --- | --- |
@@ -28,7 +29,7 @@ and hashes in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md).
 | `access.png` | Access | **UNRESOLVED** | Alias prepared; no asset |
 | `agip-eni.png` | Agip / Eni | **UNRESOLVED** | Alias prepared; no asset |
 | `allguth.png` | Allguth | **UNRESOLVED** | Alias prepared; no asset |
-| `aral.png` | Aral | **UNRESOLVED** | Existing separately sourced `aral.svg`; no PNG copied |
+| `aral.png` | Aral | **UNRESOLVED** | Bundled as `aral.png`; explicit archive authorization is documented, but no per-image license was supplied |
 | `avia-xpress.png` | Avia Xpress | **UNRESOLVED** | Alias prepared; no asset |
 | `avia.png` | Avia | **UNRESOLVED** | Alias prepared; no asset |
 | `baywa.png` | BayWa | **UNRESOLVED** | Alias prepared; no asset |
@@ -52,7 +53,7 @@ and hashes in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md).
 | `hornbach.png` | Hornbach | **UNRESOLVED** | Alias prepared; no asset |
 | `hoyer.png` | Hoyer | **UNRESOLVED** | Alias prepared; no asset |
 | `jantzon-tankstelle.png` | Jantzon Tankstelle | **UNRESOLVED** | Alias prepared; no asset |
-| `jet.png` | JET | **UNRESOLVED** | Existing separately sourced `jet.svg`; no PNG copied |
+| `jet.png` | JET | **UNRESOLVED** | Bundled as `jet.png`; explicit archive authorization is documented, but no per-image license was supplied |
 | `joiss.png` | Joiss | **UNRESOLVED** | Alias prepared; no asset |
 | `kk-klaas--kock.png` | K+K Klaas & Kock | **UNRESOLVED** | Alias prepared; no asset |
 | `minera-automatenstation.png` | Minera Automatenstation | **UNRESOLVED** | Alias prepared; no asset |
@@ -64,8 +65,8 @@ and hashes in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md).
 | `nordoel.png` | Nordoel | **UNRESOLVED** | Alias prepared; no asset |
 | `oil.png` | OIL! | **UNRESOLVED** | Alias prepared; no asset |
 | `oktan.png` | Oktan | **UNRESOLVED** | Alias prepared; no asset |
-| `omv.png` | OMV | **UNRESOLVED** | Existing separately sourced `omv.svg`; no PNG copied |
-| `orlen.png` | ORLEN | **UNRESOLVED** | Existing separately sourced `orlen.svg`; no PNG copied |
+| `omv.png` | OMV | **UNRESOLVED** | Bundled as `omv.png`; explicit archive authorization is documented, but no per-image license was supplied |
+| `orlen.png` | ORLEN | **UNRESOLVED** | Bundled as `orlen.png`; explicit archive authorization is documented, but no per-image license was supplied |
 | `pin.png` | PIN | **UNRESOLVED** | Alias prepared; no asset |
 | `q1.png` | Q1 | **UNRESOLVED** | Alias prepared; no asset |
 | `raiffeisen.png` | Raiffeisen | **UNRESOLVED** | Alias prepared; no asset |
@@ -75,30 +76,30 @@ and hashes in [`BRAND_LOGOS.md`](../BRAND_LOGOS.md).
 | `schillhorn-tankstelle.png` | Schillhorn Tankstelle | **UNRESOLVED** | Alias prepared; no asset |
 | `schindele.png` | Schindele | **UNRESOLVED** | Alias prepared; no asset |
 | `score.png` | SCORE | **UNRESOLVED** | Alias prepared; no asset |
-| `shell.png` | Shell | **UNRESOLVED** | Existing separately sourced `shell.svg`; no PNG copied |
+| `shell.png` | Shell | **UNRESOLVED** | Bundled as `shell.png`; explicit archive authorization is documented, but no per-image license was supplied |
 | `spreves.png` | Spreves | **UNRESOLVED** | Alias prepared; no asset |
 | `sprint.png` | Sprint | **UNRESOLVED** | Alias prepared; no asset |
 | `star.png` | star | **UNRESOLVED** | Alias prepared; no asset |
 | `supermarkt-tankstelle.png` | Supermarkt-Tankstelle | **UNRESOLVED** | Alias prepared; no asset |
 | `svg.png` | SVG | **UNRESOLVED** | Not treated as a generic fallback asset |
 | `team.png` | team | **UNRESOLVED** | Alias prepared; no asset |
-| `total.png` | Total / TotalEnergies | **UNRESOLVED** | Existing separately sourced `total.svg`; no PNG copied |
-| `totalenergies.png` | TotalEnergies | **UNRESOLVED** | Existing `total.svg` covers the local asset |
+| `total.png` | Total / TotalEnergies | **UNRESOLVED** | Bundled as `total.png`; explicit archive authorization is documented, but no per-image license was supplied |
+| `totalenergies.png` | TotalEnergies | **UNRESOLVED** | Archive variant not bundled; canonical local asset is `total.png` |
 | `trigema.png` | Trigema | **UNRESOLVED** | Alias prepared; no asset |
 | `v-markt.png` | V-Markt | **UNRESOLVED** | Alias prepared; no asset |
 | `westfalen.png` | Westfalen | **UNRESOLVED** | Alias prepared; no asset |
 
-## Publishable scope of this beta.7 branch
+## Publishable scope of stable v0.7.0
 
-- 54 normalized archive-derived PNGs are copied to both the frontend source and
-  deployed integration resource directories; six separately sourced SVGs remain
-  bundled.
+- 60 normalized archive-derived PNGs are copied byte-identically to both the
+  frontend source and deployed integration resource directories; no legacy SVG
+  station-brand assets remain.
 - No GitHub Raw or other external runtime logo URL is introduced.
 - The alias resolver maps provider names and documented variants to canonical
   local filenames without unsafe substring matching.
 - Unknown or unavailable assets continue to use the neutral gas-pump fallback.
 - `404.png` and `svg.png` are generic/non-brand files; duplicate byte-identical
-  copies and archive variants already covered by canonical SVGs are not bundled.
+  copies are not bundled.
 - The exact upstream directory is documented. The upstream repository's MIT
   code license does not establish per-image rights; explicit authorization for
   this branch is recorded as the redistribution basis, not as a trademark
@@ -119,6 +120,6 @@ The archive contains no license file, source manifest, copyright statement, or
 per-file image license. Its exact source directory was nevertheless verified
 against the upstream repository, and the repository owner explicitly
 authorized use of the supplied archive for this branch. After excluding the
-generic files, duplicate copies, and six archive variants already covered by
-canonical SVGs, 54 files were normalized and bundled. The authorization is not
-a trademark license or endorsement; residual rights risk remains documented.
+generic files and duplicate copies, 60 files were normalized and bundled. The
+authorization is not a trademark license or endorsement; residual rights risk
+remains documented.
