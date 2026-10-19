@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.0"><img src="https://img.shields.io/badge/Stable-v0.7.0-16a34a" alt="Stable v0.7.0"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.1"><img src="https://img.shields.io/badge/Stable-v0.7.1-16a34a" alt="Stable v0.7.1"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -67,15 +67,15 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.7.0` | Aktuelle stabile Version |
-| Vorherige Stable | `v0.6.1` | Verfügbare Rollback-Version |
-| Frontend-Komponente | `v0.7.0` | Unabhängig versionierte Lovelace-Komponente |
+| Stable | `v0.7.1` | Aktuelle stabile Version |
+| Vorherige Stable | `v0.7.0` | Verfügbare Rollback-Version |
+| Frontend-Komponente | `v0.7.1` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.7.0` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
+`v0.7.1` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
 marktberechtigtem Fallback, Quota-/Trip-Pass-Diagnose, OAuth2-PKCE und manuellen
 API-Keys. Die 60 lokalen PNG-Logos stammen aus der bereitgestellten ZIP; die
-Ressource wird mit dem Cache-Key `v=0.7.0` automatisch registriert. Die
+Ressource wird mit dem Cache-Key `v=0.7.1` automatisch registriert. Die
 experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 über einen Live-Callback bestätigt. Herkunft, fehlende Einzelbildlizenz und
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
@@ -110,7 +110,7 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.7.0` ist die stabile HACS-Version. Für einen Rücksprung steht `v0.6.1`
+`v0.7.1` ist die stabile HACS-Version. Für einen Rücksprung steht `v0.7.0`
 als vorherige Stable-Version zur Verfügung.
 
 Die adaptive Aktualisierung ist standardmäßig deaktiviert und wird nur über
@@ -121,7 +121,7 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und automatisch
 registriert. Die Frontend-Ressource lautet:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.0
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.1
 ```
 
 Bei einer bestehenden Installation können alte Ressourcen im Browser- oder
@@ -282,7 +282,7 @@ Bei mehreren Fahrzeugen gibt es pro Config Entry einen eigenen Overview-Sensor;
 der visuelle Editor listet auch vorübergehend nicht verfügbare Mobile-Fuel-
 Stations-Sensoren. Eine manuell eingetragene Entity-ID bleibt ebenfalls gültig.
 
-Stable v0.7.0 erkennt die 60 lokal gebündelten PNG-Markenlogos aus dem
+Stable v0.7.1 erkennt die 60 lokal gebündelten PNG-Markenlogos aus dem
 geprüften Archiv, darunter:
 
 | Marke | Datei |
@@ -435,7 +435,7 @@ Provider-Mindestabständen, Cache-Reload, Cooldown und Unload-Abbruch geprüft.
 Historische Release Notes liegen unverändert im
 [Release-Archiv auf GitHub](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/).
 Die Stable-Release Notes stehen in
-[`docs/releases/RELEASE_NOTES_v0.7.0.md`](docs/releases/RELEASE_NOTES_v0.7.0.md)
+[`docs/releases/RELEASE_NOTES_v0.7.1.md`](docs/releases/RELEASE_NOTES_v0.7.1.md)
 beschrieben. Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
 der [Markendokumentation](docs/BRAND_LOGOS.md) und im
 [GitHub-Release-Archiv](https://github.com/balronu/ha-mobile-fuel-stations/releases).

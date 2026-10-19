@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1 — Stable hotfix
+
+- Discover integration-owned overview sensors in the Lovelace editor even
+  when Home Assistant reports them as `unavailable` and omits integration
+  attributes.
+- Centralize overview discovery for the card, editor, stub configuration, and
+  entity suggestions while preserving multi-entry, disabled-entity, foreign-
+  sensor, and direct YAML entity behavior.
+- Keep the frontend resource cache key at `v=0.7.1`; live provider and OAuth
+  validation are not implied by this release.
+
 ## 0.7.0 — Stable release
 
 - Promote the tested provider, OAuth2/PKCE, account-usage, quota, Trip Pass,
