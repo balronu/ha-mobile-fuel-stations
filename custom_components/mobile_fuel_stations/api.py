@@ -93,6 +93,7 @@ def cheapest_station(stations: list[Station]) -> Station | None:
         station
         for station in stations
         if station.is_open is not False
+        and station.price_stale is not True
         and station.price is not None
         and isfinite(station.price)
     ]
@@ -113,7 +114,7 @@ def cheapest_by_fuel(stations: list[Station]) -> dict[str, Station]:
         if station.is_open is False:
             continue
         for fuel, price in (station.fuel_prices or {}).items():
-            if price is None or not isfinite(price):
+            if station.price_stale is True or price is None or not isfinite(price):
                 continue
             current = result.get(fuel)
             current_price = (current.fuel_prices or {}).get(fuel, float("inf")) if current else float("inf")

@@ -153,12 +153,63 @@ def test_nakordoni_request_uses_bearer_header_and_one_page():
     assert stations[0].station_id == "stable-ref"
     assert stations[0].brand == ""
     assert stations[0].price == 1.799
+    assert stations[0].fuel_type == "diesel"
+    assert stations[0].requested_fuel == "diesel"
+    assert stations[0].fuel_prices == {"diesel": 1.799}
+    assert stations[0].street == "Example Street"
+    assert stations[0].place == "Saarbrücken"
     assert stations[0].price_stale is False
     assert provider.last_response_metadata.quota_remaining == 999
     assert station_attributes(stations[0])["currency"] == "EUR"
     assert station_attributes(stations[0])["price_age_hours"] == 0.5
     assert nearest_station(stations).station_id == "stable-ref"
     assert cheapest_station(stations).station_id == "stable-ref"
+
+
+def test_nakordoni_e10_cheapest_uses_normalized_per_fuel_price():
+    response = payload()
+    stations = response["data"]["stations"]
+    stations[0]["prices"] = {"e10": {
+        "price": 2.069,
+        "currency": "EUR",
+        "confirmed_at": "2026-10-19T09:00:00Z",
+        "age_hours": 3,
+        "stale": False,
+    }}
+    stations.append({
+        "station_ref": "cheaper-e10",
+        "name": "TotalEnergies",
+        "address": {"street": "Other Street", "house_number": "2", "postal_code": "66113", "city": "Saarbrücken"},
+        "lat": 49.25,
+        "lng": 6.98,
+        "distance_km": 3.0,
+        "prices": {"e10": {"price": 1.999, "currency": "EUR", "stale": False}},
+    })
+    provider = NakordoniProvider(Session(Response(response)), "nakordoni-dummy")
+
+    result = asyncio.run(provider.async_search(StationSearchQuery(49.24, 6.99, 25, "e10", station_count=5)))
+
+    assert cheapest_station(result).station_id == "cheaper-e10"
+    assert result[1].fuel_prices == {"e10": 1.999}
+    assert result[1].street == "Other Street"
+    assert result[1].house_number == "2"
+    assert result[1].postcode == "66113"
+    assert result[1].place == "Saarbrücken"
+
+
+def test_nakordoni_preserves_formatted_or_missing_address_without_geocoding():
+    response = payload()
+    response["data"]["stations"] = [
+        {**response["data"]["stations"][0], "address": "Only provider-formatted address"},
+        {**response["data"]["stations"][0], "station_ref": "coordinates-only", "address": None},
+    ]
+    provider = NakordoniProvider(Session(Response(response)), "nakordoni-dummy")
+
+    result = asyncio.run(provider.async_search(query()))
+
+    assert result[0].street == "Only provider-formatted address"
+    assert result[0].latitude == 49.24 and result[0].longitude == 6.99
+    assert result[1].street == result[1].house_number == result[1].postcode == result[1].place == ""
 
 
 def test_nakordoni_binds_aiohttp_request_context_to_response():

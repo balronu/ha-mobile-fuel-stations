@@ -45,12 +45,30 @@ def test_cheapest_includes_unknown_open_status_but_excludes_closed():
     assert cheapest_station(stations).station_id == "unknown"
 
 
+def test_cheapest_ignores_explicitly_stale_price():
+    stale = Station("stale", "Stale", "", 1.0, 1.0, None, "", "", "", "", None, None, price_stale=True)
+    current = Station("current", "Current", "", 1.1, 2.0, None, "", "", "", "", None, None, price_stale=False)
+    assert cheapest_station([stale, current]).station_id == "current"
+
+
 def test_unknown_open_status_wins_per_fuel_price_comparison():
     stations = [
         Station("closed", "Closed", "", 1.0, 1.0, False, "", "", "", "", None, None, fuel_prices={"e10": 1.0}),
         Station("unknown", "Unknown", "", 1.8, 2.0, None, "", "", "", "", None, None, fuel_prices={"e10": 1.8}),
     ]
     assert cheapest_by_fuel(stations) == {"e10": stations[1]}
+
+
+def test_stale_per_fuel_price_is_not_selected_as_current_cheapest():
+    stale = Station(
+        "stale", "Stale", "", 1.0, 1.0, None, "", "", "", "", None, None,
+        price_stale=True, fuel_prices={"e10": 1.0},
+    )
+    current = Station(
+        "current", "Current", "", 1.1, 2.0, None, "", "", "", "", None, None,
+        price_stale=False, fuel_prices={"e10": 1.1},
+    )
+    assert cheapest_by_fuel([stale, current]) == {"e10": current}
 
 
 def test_station_attributes_preserve_optional_values():
