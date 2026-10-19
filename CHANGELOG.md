@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0-beta.8 — Logo cache invalidation and provider-name matching
+
+- Bump the local Lovelace resource URL to `v=0.7.0-beta.8` so Home Assistant
+  cannot retain the beta.6 bundle after the beta.7 logo update.
+- Resolve the reported `Eni (Agip Eni)` and `OIL! Tankstelle Sulzbach` names
+  through explicit aliases to the existing local assets, without broad
+  substring matching or changing the neutral fallback.
+- Keep all 60 local logo resources, provider priorities, cooldowns, OAuth/API
+  compatibility, and Nakordoni account-usage behavior unchanged.
+- Bound the options OAuth callback, require a positive `expires_in`, and
+  expose explicit timeout/error outcomes for failed token exchange.
+
 ## 0.7.0-beta.7 — Nakordoni account usage and complete local station logos
 
 - Add the documented `GET /api/v2/account/usage` call for Nakordoni API-key and OAuth credentials, rate-limited to at most once per 15 minutes.
