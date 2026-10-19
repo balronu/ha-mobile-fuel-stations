@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.2"><img src="https://img.shields.io/badge/Stable-v0.7.2-16a34a" alt="Stable v0.7.2"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.3"><img src="https://img.shields.io/badge/Stable-v0.7.3-16a34a" alt="Stable v0.7.3"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -68,15 +68,15 @@ opening status, and destination navigation.
 
 | Channel | Version | Meaning |
 | --- | --- | --- |
-| Stable | `v0.7.2` | Current stable release |
-| Previous stable | `v0.7.0` | Available rollback version |
-| Frontend component | `v0.7.2` | Independently versioned Lovelace component |
+| Stable | `v0.7.3` | Current stable release |
+| Previous stable | `v0.7.2` | Available rollback version |
+| Frontend component | `v0.7.3` | Independently versioned Lovelace component |
 
-`v0.7.2` is the current stable release. It bundles Tankerkönig, Petromap, and
+`v0.7.3` is the current stable release. It bundles Tankerkönig, Petromap, and
 Nakordoni with automatic provider selection, country- and market-aware
 fallback, quota/Trip Pass diagnostics, OAuth2-PKCE, and manual API keys. The
 60 local PNG logos come from the supplied ZIP, and the resource is registered
-automatically with cache key `v=0.7.2`. Nakordoni OAuth was checked statically
+automatically with cache key `v=0.7.3`. Nakordoni OAuth was checked statically
 but has not been confirmed through a live callback. Source, missing per-image
 license, and residual trademark risks are documented in
 [BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
@@ -91,6 +91,11 @@ v0.7.2 includes stations with unknown opening status in the “NEAREST” and
 “CHEAPEST” highlights. Explicitly closed stations remain excluded, and an
 unknown status is never rendered as “Open”. Selection is provider-neutral and
 deterministic.
+
+v0.7.3 normalizes Nakordoni E10 prices for the cheapest highlight even for
+single-fuel requests. Structured and formatted provider addresses are kept
+when supplied; missing addresses remain empty. Explicitly stale prices are not
+selected as the current cheapest result.
 
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
@@ -110,14 +115,14 @@ refresh.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.7.2` is the current stable HACS version; `v0.7.0` remains available as the
+`v0.7.3` is the current stable HACS version; `v0.7.2` remains available as the
 previous stable rollback.
 
 The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.2
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.3
 ```
 
 For technical resource-loading details, see
@@ -362,7 +367,7 @@ recovery tests use mocks and fixtures rather than unverified live credentials.
 
 Historical release notes are preserved in the
 [GitHub release archive](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/), including the current
-[`v0.7.2 release notes`](docs/releases/RELEASE_NOTES_v0.7.2.md).
+[`v0.7.3 release notes`](docs/releases/RELEASE_NOTES_v0.7.3.md).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).
