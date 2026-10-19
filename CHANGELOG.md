@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.3 — Nakordoni fuel and address normalization
+
+- Normalize Nakordoni fuel metadata for single-fuel requests so E10 cheapest
+  station highlights are populated correctly.
+- Preserve structured and provider-formatted Nakordoni addresses without
+  geocoding or inventing missing fields.
+- Exclude explicitly stale prices from current cheapest-station selection.
+- Keep existing Config Entries, Lovelace cards, coordinate-based navigation,
+  Tankerkönig, and Petromap behavior compatible.
+- Keep the frontend resource cache key at `v=0.7.3`; no live provider API or
+  OAuth test is implied by this release.
+
 ## 0.7.2 — Provider-neutral station highlights
 
 - Include nearby and cheapest station highlights when the provider does not
