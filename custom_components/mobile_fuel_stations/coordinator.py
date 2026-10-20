@@ -2506,6 +2506,15 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
 
         self._record_gps_event(event, event_type)
         if self.is_manual:
+            # Manual mode must still consume newly valid GPS positions for
+            # the local country decision.  This deliberately stops before
+            # movement/recovery scheduling so no provider or usage request is
+            # caused by a tracker event.
+            sample = self._current_gps_sample()
+            if sample is not None:
+                self.last_gps_sample = sample
+                self.country_auto_context.observe_position(sample.position)
+                self.async_update_listeners()
             return
         sample = self._current_gps_sample()
         if sample is None:
