@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0-beta.7 — Länder-Kontext und gemeinsame Providerentscheidung
+
+- Providerverfügbarkeit und manuelle Abruffreigabe verwenden denselben Länder- und Providerkontext.
+- Tankerkönig wird nicht mehr fälschlich als verfügbar gemeldet, wenn das Land unbekannt ist; ein zulässiger Tankerkönig bleibt unabhängig von veralteten Nakordoni-Metadaten nutzbar.
+- `country_unknown`, `unsupported_country`, Markt- und Kontingentsperren werden geheimnisfrei diagnostiziert.
+- Der Sperrgrund enthält nur tatsächlich blockierende Provider; die Lovelace-Karte zeigt konkrete Gründe statt einer pauschalen Meldung.
+- Länder-Kontext wird ohne Koordinaten oder Zugangsdaten persistiert und nach Neustart altersabhängig wiederhergestellt.
+
 ## 0.8.0-beta.6 — Nakordoni-Verfügbarkeit und Fallback-Gründe
 
 - Explizite Nakordoni-Marktberechtigungen aus geeigneten Usage-Metadaten werden für API-Key und OAuth2 synchronisiert.

@@ -88,6 +88,7 @@ from .providers.policy import (
     AutoRuntimeState,
     CountryHysteresis,
     choose_auto_provider,
+    normalize_country_code,
     validate_direct_fuel_runtime,
 )
 from .providers.nakordoni import (
@@ -125,6 +126,8 @@ _CACHE_PROVIDER_KEY = "station_cache_provider"
 _PROVIDER_REQUESTS_KEY = "provider_last_requests"
 _PROVIDER_RETRY_UNTIL_KEY = "provider_retry_not_before"
 _NAKORDONI_USAGE_KEY = "nakordoni_usage"
+_COUNTRY_CONTEXT_KEY = "country_context"
+_COUNTRY_CONTEXT_MAX_AGE = timedelta(minutes=15)
 
 
 @dataclass(slots=True, frozen=True)
@@ -221,7 +224,10 @@ def _retry_after_seconds(error: ProviderError) -> int | None:
 
 
 def _valid_position(hass: HomeAssistant, entity_id: str) -> tuple[float, float] | None:
-    state = hass.states.get(entity_id)
+    states = getattr(hass, "states", None)
+    if states is None:
+        return None
+    state = states.get(entity_id)
     if state is None or state.state in ("unknown", "unavailable"):
         return None
     try:
@@ -265,6 +271,8 @@ class CountryAutoContext:
         self._hysteresis = CountryHysteresis()
         self.raw_country: str | None = None
         self.confirmed_country: str | None = None
+        self.last_observed_at: datetime | None = None
+        self.context_source = "offline_resolver"
         self.auto_provider_decision: AutoProviderDecision | None = None
         self.nakordoni_enabled = nakordoni_enabled
         self.nakordoni_capabilities = nakordoni_capabilities
@@ -272,6 +280,8 @@ class CountryAutoContext:
     def observe_position(self, position: tuple[float, float]) -> AutoProviderDecision:
         """Resolve one relevant GPS position and evaluate the offline policy."""
 
+        self.last_observed_at = datetime.now().astimezone()
+        self.context_source = "offline_resolver"
         try:
             self.raw_country = self._resolver(position[0], position[1])
         except (OSError, json.JSONDecodeError, KeyError) as err:
@@ -296,6 +306,15 @@ class CountryAutoContext:
             nakordoni_capabilities=self.nakordoni_capabilities or nakordoni.capabilities,
         )
         return self.auto_provider_decision
+
+    def restore(self, *, raw_country: str | None, confirmed_country: str | None,
+                observed_at: datetime | None) -> None:
+        """Restore a previously resolved country without performing I/O."""
+
+        self.raw_country = raw_country
+        self.confirmed_country = confirmed_country
+        self.last_observed_at = observed_at
+        self.context_source = "persisted_offline_resolver"
 
 
 class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None]):
@@ -870,6 +889,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 self.last_gps_sample = GpsSample(
                     (float(gps_lat), float(gps_lon)), gps_at, None, None
                 )
+            self._restore_country_context(stored.get(_COUNTRY_CONTEXT_KEY))
             cached = self._load_cached_stations(stored)
             if cached is not None:
                 self._set_station_data(cached)
@@ -912,6 +932,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         # loaded.  Re-apply restored market access before the first position
         # decision so a previously verified Nakordoni entry can be selected.
         self._refresh_nakordoni_auto_context()
+        startup_position = _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY])
+        if startup_position is not None:
+            # Country resolution is local and bounded; it does not perform a
+            # provider/usage request and keeps manual-mode preflight usable
+            # after a restart when the tracker already has a valid position.
+            self.country_auto_context.observe_position(startup_position)
         domain_data = self.hass.data.setdefault(DOMAIN, {})
         domain_data.setdefault("provider_status", {})[self.entry.entry_id] = self.provider_status
         if self.options.get(CONF_MOVEMENT_UPDATES, True):
@@ -1426,6 +1452,13 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 "status": "cooldown",
                 "cooldown_remaining": cooldown,
             }
+        country = self._decision_country(now=now)
+        if country is None:
+            return {"available": False, "status": "country_unknown"}
+        if provider == PROVIDER_TANKERKOENIG and country not in {"DE"}:
+            return {"available": False, "status": "unsupported_country"}
+        if provider == PROVIDER_NAKORDONI and country not in NAKORDONI_MARKETS:
+            return {"available": False, "status": "unsupported_country"}
         if provider == PROVIDER_NAKORDONI:
             usage = getattr(self, "nakordoni_account_usage", None)
             cheap = usage.cheap if usage is not None else None
@@ -1480,7 +1513,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 provider
                 and self._provider_availability(provider, now=now)["available"]
             )
-        country = self.country_auto_context.confirmed_country
+        country = self._decision_country(now=now)
         if country is None:
             return False
         for fuel in getattr(self, "fuel_types", ()):
@@ -1539,10 +1572,107 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if not self.is_manual or self.diagnostic_manual_refresh_available:
             return None
         statuses = self.diagnostic_provider_availability
-        return ";".join(
+        blocked = ";".join(
             f"{provider}:{details.get('status', 'unavailable')}"
             for provider, details in statuses.items()
+            if not details.get("available", False)
         ) or "no_provider_available"
+        return blocked
+
+    def _decision_country(self, *, now: datetime | None = None) -> str | None:
+        """Return a fresh normalized country for provider decisions."""
+
+        context = getattr(self, "country_auto_context", None)
+        country = normalize_country_code(getattr(context, "confirmed_country", None))
+        observed_at = getattr(context, "last_observed_at", None)
+        current = now or datetime.now().astimezone()
+        if country is None:
+            return None
+        if observed_at is not None and current - observed_at > _COUNTRY_CONTEXT_MAX_AGE:
+            return None
+        return country
+
+    @property
+    def diagnostic_country_context(self) -> dict[str, object]:
+        """Expose country decision context without coordinates or credentials."""
+
+        context = getattr(self, "country_auto_context", None)
+        confirmed = normalize_country_code(getattr(context, "confirmed_country", None))
+        raw = normalize_country_code(getattr(context, "raw_country", None))
+        observed_at = getattr(context, "last_observed_at", None)
+        country = self._decision_country()
+        if country is None:
+            status = "country_unknown"
+        else:
+            status = "confirmed"
+        return {
+            "status": status,
+            "raw_country": raw,
+            "confirmed_country": country,
+            "stored_confirmed_country": confirmed,
+            "source": getattr(context, "context_source", "unknown"),
+            "observed_at": observed_at.isoformat() if observed_at else None,
+        }
+
+    @property
+    def diagnostic_next_provider(self) -> str | None:
+        """Return the next provider allowed by the current preflight policy."""
+
+        if not self._is_auto:
+            provider = self.options.get(CONF_PROVIDER_MODE)
+            return provider if provider and self._provider_availability(provider)["available"] else None
+        country = self._decision_country()
+        if country is None:
+            return None
+        for fuel in getattr(self, "fuel_types", ()):
+            decision = choose_auto_provider(
+                country,
+                fuel,
+                tankerkoenig_enabled=self._provider_availability(
+                    PROVIDER_TANKERKOENIG, for_auto=True
+                )["available"],
+                tankerkoenig_capabilities=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].capabilities,
+                petromap_enabled=self._provider_availability(
+                    PROVIDER_PETROMAP, for_auto=True
+                )["available"],
+                petromap_capabilities=PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities,
+                nakordoni_enabled=self._provider_availability(
+                    PROVIDER_NAKORDONI, for_auto=True
+                )["available"],
+                nakordoni_capabilities=self._nakordoni_auto_capabilities(),
+            )
+            if decision.provider_mode is not None:
+                return decision.provider_mode
+        return None
+
+    def _country_context_to_store(self) -> dict[str, object] | None:
+        context = getattr(self, "country_auto_context", None)
+        country = normalize_country_code(getattr(context, "confirmed_country", None))
+        if country is None:
+            return None
+        return {
+            "raw_country": normalize_country_code(getattr(context, "raw_country", None)),
+            "confirmed_country": country,
+            "observed_at": (
+                context.last_observed_at.isoformat()
+                if getattr(context, "last_observed_at", None) else None
+            ),
+        }
+
+    def _restore_country_context(self, stored: object) -> None:
+        if not isinstance(stored, dict):
+            return
+        confirmed = normalize_country_code(stored.get("confirmed_country"))
+        if confirmed is None:
+            return
+        context = getattr(self, "country_auto_context", None)
+        if context is None:
+            return
+        context.restore(
+            raw_country=normalize_country_code(stored.get("raw_country")),
+            confirmed_country=confirmed,
+            observed_at=self._parse_time(stored.get("observed_at")),
+        )
 
     def _diagnostic_provider(self) -> str | None:
         if self._is_auto:
@@ -2251,6 +2381,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 for key, value in getattr(self, "provider_retry_not_before", {}).items()
             },
             _NAKORDONI_USAGE_KEY: self._nakordoni_usage_to_store(),
+            _COUNTRY_CONTEXT_KEY: self._country_context_to_store(),
             "last_update_attempt": now.isoformat(),
             "last_update_error_at": None,
             "last_update_error_class": None,
@@ -2326,6 +2457,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 for key, value in getattr(self, "provider_retry_not_before", {}).items()
             },
             _NAKORDONI_USAGE_KEY: self._nakordoni_usage_to_store(),
+            _COUNTRY_CONTEXT_KEY: self._country_context_to_store(),
             "last_update_attempt": self.last_update_attempt.isoformat()
             if self.last_update_attempt else None,
             "last_update_error_at": now.isoformat(),

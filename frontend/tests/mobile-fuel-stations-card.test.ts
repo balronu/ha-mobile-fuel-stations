@@ -277,6 +277,46 @@ describe("card", () => {
     card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
     expect(card.shadowRoot?.textContent).toContain("Nakordoni · Marktabdeckung unbekannt");
   });
+  it("shows a country diagnostic instead of a generic provider message", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn();
+    const hass = { ...hassFor(1, {
+      config_entry_id: "entry-womo",
+      fetch_mode: "manual",
+      manual_refresh_available: false,
+      manual_refresh_retry_seconds: 0,
+      manual_refresh_blocked_reason: "nakordoni:country_unknown;tankerkoenig:country_unknown",
+      provider_availability: {
+        tankerkoenig: { available: false, status: "country_unknown" },
+        nakordoni: { available: false, status: "country_unknown" },
+      },
+    }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    const refresh = card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement;
+    expect(refresh.disabled).toBe(true);
+    expect(refresh.textContent).toContain("Land nicht bestätigt");
+    expect(card.shadowRoot?.textContent).toContain("Tankerkönig · Land nicht bestätigt");
+  });
+  it("keeps the button enabled when Tankerkönig is available and Nakordoni coverage is unknown", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn();
+    const hass = { ...hassFor(1, {
+      config_entry_id: "entry-womo",
+      fetch_mode: "manual",
+      manual_refresh_available: true,
+      manual_refresh_retry_seconds: 0,
+      provider_cooldown_remaining: 0,
+      provider_availability: {
+        tankerkoenig: { available: true, status: "available" },
+        nakordoni: { available: false, status: "coverage_unknown" },
+      },
+    }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    const refresh = card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement;
+    expect(refresh.disabled).toBe(false);
+    expect(refresh.textContent).toContain("Jetzt abrufen");
+    expect(card.shadowRoot?.textContent).toContain("Nakordoni · Marktabdeckung unbekannt");
+  });
   it("keeps the confirmed backend mode while a mode change is pending", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     let resolveService: (() => void) | undefined;

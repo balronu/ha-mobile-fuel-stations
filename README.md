@@ -68,15 +68,15 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.7.3` | Aktuelle stabile Version |
-| Beta | `v0.8.0-beta.6` | Aktuelle Beta-Version |
+| Beta | `v0.8.0-beta.7` | Aktuelle Beta-Version |
 | Vorherige Stable | `v0.7.2` | Verfügbare Rollback-Version |
-| Frontend-Komponente | `v0.8.0-beta.6` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.8.0-beta.7` | Unabhängig versionierte Lovelace-Komponente |
 
 `v0.7.3` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
 marktberechtigtem Fallback, Quota-/Trip-Pass-Diagnose, OAuth2-PKCE und manuellen
 API-Keys. Die 60 lokalen PNG-Logos stammen aus der bereitgestellten ZIP; die
-Ressource wird mit dem Cache-Key `v=0.8.0-beta.6` automatisch registriert. Die
+Ressource wird mit dem Cache-Key `v=0.8.0-beta.7` automatisch registriert. Die
 experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 über einen Live-Callback bestätigt. Herkunft, fehlende Einzelbildlizenz und
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
@@ -99,7 +99,7 @@ für das günstigste Highlight. Strukturierte und formatierte Provider-Adressen
 werden übernommen, sofern geliefert; fehlende Adressen bleiben leer. Explizit
 veraltete Preise werden nicht als aktueller Bestpreis ausgewählt.
 
-Die Beta `v0.8.0-beta.6` ergänzt einen pro Config Entry
+Die Beta `v0.8.0-beta.7` ergänzt einen pro Config Entry
 gespeicherten Abrufmodus: **Automatisch** nutzt weiterhin Zeitplan, GPS-Bewegung,
 Recovery und Provider-Cooldowns; **Manuell** führt keine automatischen
 Providerabfragen aus. Der Administrator kann in der Karte gezielt **Jetzt
@@ -109,8 +109,10 @@ persistierte Stations-Cache bleiben nach einem Neustart sichtbar. Cooldowns und
 verifizierte Nakordoni-Kontingente werden je Provider geheimnisfrei angezeigt;
 Tankerkönig und Petromap werden ohne belastbare Kontingentdaten als unbekannt
 ausgewiesen. Ein frischer automatischer Cache löst beim Start keinen vorzeitigen
-Abruf aus. Beta.5 ist als unveröffentlichter GitHub-Pre-Release-Kandidat
-vorbereitet; produktive
+Abruf aus. Beta.7 vereinheitlicht zusätzlich Länder-Kontext, Provider-
+Verfügbarkeit und manuelle Abrufsperre; unbekannte Länder werden als eigener
+Status diagnostiziert. Beta.7 ist als unveröffentlichter GitHub-Pre-Release-
+Kandidat vorbereitet; produktive
 HA-/Browser- und vollständige Live-Provider-/OAuth-Tests bleiben außerhalb
 dieses Beta-Scope.
 
@@ -151,7 +153,7 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.7.3` bleibt die aktuelle stabile HACS-Version; `v0.8.0-beta.6` ist als
+`v0.7.3` bleibt die aktuelle stabile HACS-Version; `v0.8.0-beta.7` ist als
 unveröffentlichter Pre-Release-Kandidat vorbereitet. Für einen Rücksprung steht
 `v0.7.2` als vorherige Stable-Version zur Verfügung.
 
@@ -163,7 +165,7 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und automatisch
 registriert. Die Frontend-Ressource lautet:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.6
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.7
 ```
 
 Bei einer bestehenden Installation können alte Ressourcen im Browser- oder

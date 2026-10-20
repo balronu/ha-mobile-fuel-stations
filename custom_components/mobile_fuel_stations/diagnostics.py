@@ -104,6 +104,25 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "provider_cooldown_remaining": getattr(
                 coordinator, "diagnostic_provider_cooldown_remaining", None
             ),
+            "provider_cooldowns": getattr(
+                coordinator, "diagnostic_provider_cooldowns", {}
+            ),
+            "provider_availability": getattr(
+                coordinator, "diagnostic_provider_availability", {}
+            ),
+            "manual_refresh_available": getattr(
+                coordinator, "diagnostic_manual_refresh_available", False
+            ),
+            "manual_refresh_retry_seconds": getattr(
+                coordinator, "diagnostic_manual_refresh_retry_seconds", 0
+            ),
+            "manual_refresh_blocked_reason": getattr(
+                coordinator, "diagnostic_manual_refresh_blocked_reason", None
+            ),
+            "country_context": getattr(
+                coordinator, "diagnostic_country_context", {}
+            ),
+            "next_provider": getattr(coordinator, "diagnostic_next_provider", None),
             "next_provider_retry": _iso(
                 getattr(coordinator, "diagnostic_next_provider_retry", None)
             ),
