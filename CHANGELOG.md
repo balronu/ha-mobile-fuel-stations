@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0-beta.8 — GPS- und Ländererkennung im manuellen Modus
+
+- Gültige Tracker-Positionen aktualisieren den lokalen Länder-Kontext auch im manuellen Abrufmodus.
+- Die Statusattribute und Provider-Verfügbarkeit werden nach der lokalen Auflösung ohne Seitenreload aktualisiert.
+- GPS-Events im manuellen Modus lösen weiterhin weder Tankstellen- noch Usage-Abfragen oder automatische Refreshes aus.
+- Persistenz, Cache, Provider-Cooldowns und Fallback-Regeln bleiben unverändert.
+
 ## 0.8.0-beta.7 — Länder-Kontext und gemeinsame Providerentscheidung
 
 - Providerverfügbarkeit und manuelle Abruffreigabe verwenden denselben Länder- und Providerkontext.

@@ -8,7 +8,7 @@
 - Home Assistant registriert beim Integrations-Setup den statischen Pfad
   `/mobile_fuel_stations` über `async_register_static_paths`.
 - Die automatisch registrierte JavaScript-URL enthält die Integrationsversion,
-  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.7`.
+  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.8`.
 - Der physische StaticPath und die ausgelieferte Datei bleiben
   `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
 
@@ -36,7 +36,10 @@ das günstigste Highlight normalisiert. Strukturierte und formatierte Adressen
 werden übernommen, sofern der Provider sie liefert; fehlende Adressen bleiben
 leer.
 
-Die Beta `v0.8.0-beta.7` ergänzt einen pro Config Entry
+Die Beta `v0.8.0-beta.8` ergänzt die lokale Ländererkennung bei später
+eintreffenden GPS-Positionen im manuellen Modus, ohne Provider- oder
+Usage-Abfragen auszulösen. Die Beta.7-Erweiterungen bleiben enthalten: Die Beta
+`v0.8.0-beta.7` ergänzt einen pro Config Entry
 persistierten Abrufmodus. Im Modus **Manuell** bleiben Cache und letzter
 erfolgreicher Abruf sichtbar, während Zeitplan, GPS, Recovery und Reload keine
 Providerabfrage auslösen. **Jetzt abrufen** ist ein admin-geschützter Service;
@@ -46,8 +49,8 @@ Provider-Cooldowns sowie belastbare Kontingentdaten. Ein frischer automatischer
 Cache löst beim Start keinen vorzeitigen Providerabruf aus; ein manueller Start
 bleibt providerfrei. Die Beta.2 behebt zusätzlich die
 fehlerhafte Backend-Synchronisierung beim Umschalten und hält vorhandene
-Stationsdaten bei Steuerungsfehlern sichtbar. Die Beta ist als GitHub-
-unveröffentlichter Pre-Release-Kandidat;
+Stationsdaten bei Steuerungsfehlern sichtbar. Beta.8 ist als GitHub-
+Pre-Release-Kandidat vorbereitet;
 produktive HA-/Browser- und vollständige Live-Provider-/OAuth-Tests bleiben
 ausdrücklich außerhalb dieses Beta-Scope.
 

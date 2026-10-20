@@ -14,7 +14,11 @@ from mobile_fuel_stations import (
     _async_set_fetch_mode_service,
     _require_admin,
 )
-from mobile_fuel_stations.coordinator import MobileFuelStationsCoordinator
+from mobile_fuel_stations.coordinator import (
+    CountryAutoContext,
+    GpsSample,
+    MobileFuelStationsCoordinator,
+)
 from mobile_fuel_stations.const import (
     CONF_FETCH_MODE,
     DEFAULT_FETCH_MODE,
@@ -74,16 +78,29 @@ def test_manual_update_path_does_not_call_provider(monkeypatch):
     provider.assert_not_awaited()
 
 
-def test_manual_mode_ignores_gps_and_startup_recovery_triggers(monkeypatch):
+def test_manual_mode_resolves_country_without_refresh_or_provider_calls(monkeypatch):
     coordinator = _manual_coordinator()
     movement = Mock()
     recovery = Mock()
+    listeners = Mock()
+    usage = AsyncMock()
     monkeypatch.setattr(coordinator, "_schedule_movement_refresh", movement)
     monkeypatch.setattr(coordinator, "_request_recovery_refresh", recovery)
+    monkeypatch.setattr(coordinator, "async_update_nakordoni_usage", usage)
+    coordinator.country_auto_context = CountryAutoContext(
+        "diesel", resolver=lambda _latitude, _longitude: "DE"
+    )
+    coordinator._current_gps_sample = Mock(
+        return_value=GpsSample((49.2, 7.0), datetime.now(timezone.utc), None, None)
+    )
+    coordinator.async_update_listeners = listeners
 
     coordinator._process_gps_event(SimpleNamespace(), "state_changed")
     coordinator.async_schedule_startup_recovery()
 
+    assert coordinator.country_auto_context.confirmed_country == "DE"
+    listeners.assert_called_once_with()
+    usage.assert_not_awaited()
     movement.assert_not_called()
     recovery.assert_not_called()
 
