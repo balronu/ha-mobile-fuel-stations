@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0 — Stable release
+
+- Stabilisiert automatischen und manuellen Abruf mit persistiertem Cache und
+  letztem erfolgreichen Abruf über Neustarts hinweg.
+- Vereinheitlicht providerbezogene Verfügbarkeit, Mindestintervalle,
+  Retry-/Rate-Limit-Cooldowns, Kontingente und Fallback-Auswahl.
+- Zeigt Nakordoni-Kontingente sowie Datenalter getrennt von unbekannten
+  Tankerkönig-/Petromap-Kontingenten an.
+- Korrigiert die lokale Ländererkennung bei später eintreffenden GPS-Events
+  im manuellen Modus, ohne Provider- oder Usage-Abfragen auszulösen.
+- Verbessert Sperrgrund-, Countdown- und Lovelace-Statusanzeige.
+- Behält bestehende Config Entries, Stationscache, Abrufmodi, Navigation,
+  Tankstellenliste und Markenlogos kompatibel.
+- Gegenüber v0.7.3: keine Live-Provider-/OAuth-Aufrufe in der Release-Prüfung;
+  Providerverfügbarkeit, Quoten, Marktberechtigungen und Preise bleiben von
+  externen Verträgen und Konten abhängig.
+
 ## 0.8.0-beta.8 — GPS- und Ländererkennung im manuellen Modus
 
 - Gültige Tracker-Positionen aktualisieren den lokalen Länder-Kontext auch im manuellen Abrufmodus.
