@@ -162,7 +162,7 @@ describe("card", () => {
     } };
     expect(MobileFuelStationsCard.getStubConfig(hass).entity).toBe("sensor.mobile_fuel_stations_device_tracker_auto_nearby_stations");
     expect(MobileFuelStationsCard.getStubConfig(hass, ["sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations"]).entity).toBe("sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations");
-    expect(MobileFuelStationsCard.getStubConfig({ states: {} })).toEqual({ navigation: true });
+    expect(MobileFuelStationsCard.getStubConfig({ states: {} })).toEqual({ navigation: true, display_mode: "compact" });
   });
   it("discovers multiple integration entries even when one is unavailable", () => {
     const grandland = "sensor.mobile_fuel_stations_device_tracker_auto_grandland_fahrzeug_nearby_stations";
@@ -529,6 +529,38 @@ describe("card", () => {
     expect(card.shadowRoot?.textContent).toContain("Günstigste E10");
     expect(card.shadowRoot?.querySelectorAll(".highlight .navigate")).toHaveLength(1);
   });
+  it("uses compact mode without duplicate highlight cards and marks nearest/cheapest inline", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, {
+      nearest_station: { station_id: "slot-1", station_name: "Compact Station", latitude: 49, longitude: 8 },
+      cheapest_stations_by_fuel: { diesel: { station_id: "slot-1", station_name: "Compact Station", fuel_type: "diesel", price: 1.699, latitude: 49, longitude: 8 } },
+      provider_quotas: { tankerkoenig: { available: true, quotas: { cheap: { remaining: 8, limit: 10 } } } },
+    }, { station_id: "slot-1", fuel_prices: { diesel: 1.699 }, latitude: 49, longitude: 8 });
+    card.setConfig({ entity: overviewId, display_mode: "compact" }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".highlight")).toBeNull();
+    expect(card.shadowRoot?.querySelectorAll(".station-badge")).toHaveLength(2);
+    expect(card.shadowRoot?.querySelector(".diagnostics")).toBeTruthy();
+    expect(card.shadowRoot?.textContent).toContain("8/10 Aufrufe verbleibend");
+  });
+  it("keeps multiple fuel prices side by side in compact mode and preserves missing prices", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId, display_mode: "compact" });
+    card.hass = hassFor(1, { fuel_types: ["e10", "diesel"] }, { fuel_prices: { e10: 1.659, diesel: null }, latitude: 49, longitude: 8 });
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelectorAll(".fuel-price")).toHaveLength(2);
+    expect(card.shadowRoot?.textContent).toContain("E10");
+    expect(card.shadowRoot?.textContent).toContain("Diesel");
+    expect(card.shadowRoot?.textContent).toContain("Preis nicht verfügbar");
+  });
+  it("keeps legacy YAML cards in detailed mode while new stubs are compact", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId });
+    card.hass = hassFor(1, { nearest_station: { station_id: "slot-1", station_name: "Nearest", latitude: 49, longitude: 8 } }, { station_id: "slot-1", latitude: 49, longitude: 8 });
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".detailed-mode")).toBeTruthy();
+    expect(card.shadowRoot?.querySelector(".highlight")).toBeTruthy();
+    expect(MobileFuelStationsCard.getStubConfig(hassFor(1)).display_mode).toBe("compact");
+  });
   it("wraps long station details without losing prices or navigation", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     const hass = hassFor(1, {}, {
@@ -588,8 +620,9 @@ describe("card", () => {
     document.body.append(editor); editor.hass = hassFor(1); editor.setConfig({ entity: overviewId, navigation: true }); await editor.updateComplete;
     let changed: CustomEvent | undefined; editor.addEventListener("config-changed", (event) => { changed = event as CustomEvent; });
     const select = editor.shadowRoot?.querySelector("select") as HTMLSelectElement; select.value = overviewId; select.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.entity).toBe(overviewId);
+    const mode = editor.shadowRoot?.querySelectorAll("select")[0] as HTMLSelectElement; expect(Array.from(mode.options).map((option) => option.value)).toEqual(["compact", "detailed"]); mode.value = "compact"; mode.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.display_mode).toBe("compact");
     const checkbox = editor.shadowRoot?.querySelector("input[type=checkbox]") as HTMLInputElement; checkbox.checked = false; checkbox.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation).toBe(false);
-    const provider = editor.shadowRoot?.querySelectorAll("select")[1] as HTMLSelectElement; expect(Array.from(provider.options).map((option) => option.value)).toEqual(["auto", "apple", "google", "waze"]); provider.value = "waze"; provider.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation_provider).toBe("waze"); expect(changed?.detail.config.entity).toBe(overviewId); expect(changed?.detail.config.navigation).toBe(false);
+    const provider = editor.shadowRoot?.querySelectorAll("select")[2] as HTMLSelectElement; expect(Array.from(provider.options).map((option) => option.value)).toEqual(["auto", "apple", "google", "waze"]); provider.value = "waze"; provider.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation_provider).toBe("waze"); expect(changed?.detail.config.entity).toBe(overviewId); expect(changed?.detail.config.navigation).toBe(false);
   });
   it("lists unavailable overview entities from separate vehicle entries", async () => {
     const editor = MobileFuelStationsCard.getConfigElement() as HTMLElement & { hass: unknown; setConfig: (config: unknown) => void; updateComplete: Promise<unknown> };
@@ -600,7 +633,7 @@ describe("card", () => {
     } };
     editor.setConfig({ entity: "sensor.mobile_fuel_stations_device_tracker_wohnmobil_zoe_nearby_stations" });
     await editor.updateComplete;
-    const select = editor.shadowRoot?.querySelector("select") as HTMLSelectElement;
+    const select = editor.shadowRoot?.querySelectorAll("select")[1] as HTMLSelectElement;
     expect(Array.from(select.options).map((option) => option.value)).toEqual([
       "",
       "sensor.mobile_fuel_stations_device_tracker_auto_grandland_fahrzeug_nearby_stations",
