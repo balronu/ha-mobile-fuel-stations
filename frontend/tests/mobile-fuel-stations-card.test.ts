@@ -492,7 +492,8 @@ describe("card", () => {
     expect(css).toContain(".brand-logo { width: 32px; height: 32px;");
     expect(css).toContain("object-fit: contain");
     expect(css).toContain("grid-template-columns: 32px minmax(0, 1fr) auto auto");
-    expect(css).toContain("grid-template-columns: 26px minmax(0, 1fr) auto auto");
+    expect(css).toContain("grid-template-columns: 36px minmax(0, 1fr) minmax(92px, auto) 36px");
+    expect(css).toContain("@container (max-width: 360px)");
   });
   it("renders nearest and cheapest highlights from the overview", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
@@ -551,6 +552,47 @@ describe("card", () => {
     expect(card.shadowRoot?.textContent).toContain("E10");
     expect(card.shadowRoot?.textContent).toContain("Diesel");
     expect(card.shadowRoot?.textContent).toContain("Preis nicht verfügbar");
+  });
+  it("renders every compact station as one dense row with inline metadata", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(5, {
+      nearest_station: { station_id: "slot-2", station_name: "Nearest", latitude: 49, longitude: 8 },
+      cheapest_stations_by_fuel: { diesel: { station_id: "slot-2", station_name: "Nearest", fuel_type: "diesel", price: 1.699, latitude: 49, longitude: 8 } },
+    }, { station_id: "slot-2", street: "Hauptstraße", house_number: "1", postcode: "66111", place: "Saarbrücken", distance: 2.4, is_open: false, latitude: 49, longitude: 8, fuel_prices: { e10: 1.659, diesel: 1.699 } });
+    card.setConfig({ entity: overviewId, display_mode: "compact" }); card.hass = hass; await card.updateComplete;
+    const rows = [...(card.shadowRoot?.querySelectorAll(".compact-station") ?? [])];
+    expect(rows).toHaveLength(5);
+    expect(rows.every((row) => row.querySelector(".station-main .name") && row.querySelector(".station-main .address") && row.querySelector(".station-meta"))).toBe(true);
+    expect(rows.every((row) => !row.querySelector(".provider"))).toBe(true);
+    expect(rows.every((row) => row.querySelectorAll(".navigate").length === 1)).toBe(true);
+    expect(rows[1].querySelector(".station-meta")?.textContent).toContain("Geschlossen");
+    expect(rows[1].querySelector(".station-meta")?.textContent).toContain("2,4 km");
+    expect(rows[1].querySelectorAll(".fuel-price")).toHaveLength(2);
+    expect(rows[1].querySelectorAll(".station-badge")).toHaveLength(2);
+    expect(card.shadowRoot?.querySelectorAll(".highlight")).toHaveLength(0);
+  });
+  it("keeps compact names and addresses bounded while preserving keyboard navigation", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, {}, { station_name: "Eine außergewöhnlich lange Tankstellenbezeichnung mit vielen Ortszusätzen", street: "Eine sehr lange Straße", house_number: "123456789", postcode: "12345", place: "Ein sehr langer Ort", distance: 1.1, latitude: 49, longitude: 8 });
+    card.setConfig({ entity: overviewId, display_mode: "compact" }); card.hass = hass; await card.updateComplete;
+    const row = card.shadowRoot?.querySelector(".compact-station") as HTMLElement;
+    expect(row.querySelector(".name")?.getAttribute("title")).toContain("außergewöhnlich lange");
+    expect(row.querySelector(".address")?.getAttribute("title")).toContain("sehr lange Straße");
+    const css = String((MobileFuelStationsCard as unknown as { styles: unknown }).styles);
+    expect(css).toContain("text-overflow: ellipsis; white-space: nowrap");
+    expect(row.querySelector(".navigate")).toBeTruthy();
+    let entityId: string | undefined;
+    card.addEventListener("hass-more-info", (event) => { entityId = (event as CustomEvent).detail.entityId; });
+    row.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(entityId).toBe("sensor.vehicle_station_1");
+  });
+  it("does not make provider calls while rendering compact rows", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn();
+    const hass = { ...hassFor(5), callService };
+    card.setConfig({ entity: overviewId, display_mode: "compact" }); card.hass = hass; await card.updateComplete;
+    expect(callService).not.toHaveBeenCalled();
+    expect(card.shadowRoot?.querySelectorAll(".compact-station")).toHaveLength(5);
   });
   it("keeps legacy YAML cards in detailed mode while new stubs are compact", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);

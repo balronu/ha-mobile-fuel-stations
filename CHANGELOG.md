@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.2 — Compact station rows
+
+- Korrigiert den Kompaktmodus für die vollständige normale Tankstellenliste.
+- Zeigt Logo, einzeiligen Namen, Adresse sowie Öffnungsstatus und Entfernung in einer dichten Zeile; Preise und Navigation bleiben direkt erreichbar.
+- Entfernt Providerzeilen und doppelte Sonderkarten aus dem Kompaktmodus, ohne die ausführliche Darstellung oder bestehende YAML-Karten zu ändern.
+- Ergänzt Regressionstests und eine 390-CSS-Pixel-Chromium-Prüfung für fünf normale Tankstellen.
+
 ## 0.8.1 — Compact Lovelace card
 
 - Added a compact display mode for newly created cards, with dense station rows, inline nearest/cheapest markers, responsive multi-fuel prices, and collapsible provider diagnostics.

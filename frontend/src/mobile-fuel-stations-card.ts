@@ -380,7 +380,11 @@ export class MobileFuelStationsCard extends LitElement {
     .compact-mode ha-card { padding: 10px 12px; }
     .compact-mode .header { margin-bottom: 6px; }
     .compact-mode .controls { margin-bottom: 6px; padding: 5px 0; }
-    .compact-mode .station { padding: 5px 0; gap: 6px; }
+    .compact-mode .station { padding: 4px 0; gap: 6px; }
+    .compact-station { grid-template-columns: 36px minmax(0, 1fr) auto auto; min-height: 56px; }
+    .compact-station .station-main { min-width: 0; }
+    .compact-station .station-meta { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--secondary-text-color); font-size: .75rem; line-height: 1.15; white-space: nowrap; }
+    .compact-station .station-meta > * { overflow: hidden; text-overflow: ellipsis; }
     .compact-mode .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .compact-mode .address { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .compact-mode .provider { display: none; }
@@ -388,7 +392,7 @@ export class MobileFuelStationsCard extends LitElement {
     .compact-mode .fuel-price { display: grid; justify-items: end; gap: 0; line-height: 1.1; }
     .compact-mode .fuel-price strong { font-size: .95rem; }
     .compact-mode .fuel-price > span { color: var(--secondary-text-color); font-size: .72rem; }
-    .compact-mode .meta { margin-left: 2px; }
+    .compact-mode .meta { margin-left: 0; }
     .compact-mode .navigate { min-width: 36px; min-height: 36px; padding: 5px; }
     .compact-mode .brand-logo, .compact-mode .icon { width: 36px; height: 36px; }
     .stations { grid-template-columns: minmax(0, 1fr); }
@@ -405,10 +409,18 @@ export class MobileFuelStationsCard extends LitElement {
       .station .prices { grid-column: 2; grid-row: 2; text-align: left; }
       .fuel-price { justify-content: flex-start; gap: 4px; }
       .station .navigate { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
-      .compact-mode .prices { grid-column: 2; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; }
-      .compact-mode .station .navigate { grid-column: 3; grid-row: 1 / span 2; }
+      .compact-mode .station { grid-template-columns: 36px minmax(0, 1fr) minmax(92px, auto) 36px; gap: 5px; }
+      .compact-mode .station .prices { grid-column: 3; grid-row: 1; justify-content: flex-end; flex-wrap: nowrap; text-align: right; }
+      .compact-mode .station .navigate { grid-column: 4; grid-row: 1; align-self: center; }
+      .compact-mode .fuel-price { min-width: 42px; }
       .highlight { grid-template-columns: 26px minmax(0, 1fr) auto auto; gap: 6px; }
       .highlight .navigate { grid-column: auto; }
+    }
+    @container (max-width: 360px) {
+      .compact-mode .station { grid-template-columns: 32px minmax(0, 1fr) 36px; }
+      .compact-mode .brand-logo, .compact-mode .icon { width: 32px; height: 32px; }
+      .compact-mode .station .prices { grid-column: 2; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; text-align: left; }
+      .compact-mode .station .navigate { grid-column: 3; grid-row: 1 / span 2; }
     }
   `;
 
@@ -787,11 +799,28 @@ export class MobileFuelStationsCard extends LitElement {
     const label = `${name}, ${priceRows.map((row) => `${row.fuel} ${row.value ?? this._text("noPrice")}`).join(", ")}`;
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
     const badges = compact ? this._stationBadges(overview, a.station_id) : nothing;
+    const fuelMarkup = priceRows.map((row) => html`<div class="fuel-price"><span>${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}</span><strong>${row.value ?? this._text("noPrice")}</strong></div>`);
+    const navigation = navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing;
+    if (compact) {
+      return html`<div class="station compact-station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
+        ${this._brandLogo(brand, name)}
+        <div class="station-main">
+          <div class="name" title=${name}>${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}${badges}</div>
+          ${address ? html`<div class="address" title=${address}>${address}</div>` : nothing}
+          <div class="station-meta" aria-label="${[status ? (open ? this._text("open") : this._text("closed")) : null, distance].filter(Boolean).join(", ")}">
+            ${status ? html`<span class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</span>` : nothing}
+            ${distance ? html`<span class="meta">${distance}</span>` : nothing}
+          </div>
+        </div>
+        <div class="prices">${fuelMarkup}</div>
+        ${navigation}
+      </div>`;
+    }
     return html`<div class="station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       ${this._brandLogo(brand, name)}
-      <div><div class="name" title=${name}>${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}${badges}</div>${address ? html`<div class="address" title=${address}>${address}</div>` : nothing}<div class="provider">${this._text("source")}: ${provider}</div>${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
-      <div class="prices">${priceRows.map((row) => html`<div class="fuel-price"><span>${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}</span><strong>${row.value ?? this._text("noPrice")}</strong></div>`)}${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
-      ${navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing}
+      <div><div class="name" title=${name}>${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address" title=${address}>${address}</div>` : nothing}<div class="provider">${this._text("source")}: ${provider}</div>${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
+      <div class="prices">${fuelMarkup}${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
+      ${navigation}
     </div>`;
   }
 
