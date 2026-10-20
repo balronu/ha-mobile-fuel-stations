@@ -69,15 +69,15 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.7.3` | Current stable release |
-| Beta | `v0.8.0-beta.5` | Current beta release |
+| Beta | `v0.8.0-beta.6` | Current beta release |
 | Previous stable | `v0.7.2` | Available rollback version |
-| Frontend component | `v0.8.0-beta.5` | Independently versioned Lovelace component |
+| Frontend component | `v0.8.0-beta.6` | Independently versioned Lovelace component |
 
 `v0.7.3` is the current stable release. It bundles Tankerkönig, Petromap, and
 Nakordoni with automatic provider selection, country- and market-aware
 fallback, quota/Trip Pass diagnostics, OAuth2-PKCE, and manual API keys. The
 60 local PNG logos come from the supplied ZIP, and the resource is registered
-automatically with cache key `v=0.8.0-beta.5`. Nakordoni OAuth was checked statically
+automatically with cache key `v=0.8.0-beta.6`. Nakordoni OAuth was checked statically
 but has not been confirmed through a live callback. Source, missing per-image
 license, and residual trademark risks are documented in
 [BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
@@ -98,7 +98,7 @@ single-fuel requests. Structured and formatted provider addresses are kept
 when supplied; missing addresses remain empty. Explicitly stale prices are not
 selected as the current cheapest result.
 
-The beta `v0.8.0-beta.5` adds a per-Config-Entry fetch
+The beta `v0.8.0-beta.6` adds a per-Config-Entry fetch
 mode: **Automatic** keeps the schedule, GPS movement, recovery and provider
 cooldowns; **Manual** performs no automatic provider requests. An administrator
 can use **Fetch now** in the card for one targeted attempt. Non-administrator
@@ -135,14 +135,14 @@ refresh.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.7.3` remains the current stable HACS version; `v0.8.0-beta.5` is an
+`v0.7.3` remains the current stable HACS version; `v0.8.0-beta.6` is an
 unpublished pre-release candidate, and `v0.7.2` remains available as the previous stable rollback.
 
 The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.5
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.6
 ```
 
 For technical resource-loading details, see
@@ -389,7 +389,7 @@ Historical release notes are preserved in the
 [GitHub release archive](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/), including the current
 [`v0.7.3 release notes`](docs/releases/RELEASE_NOTES_v0.7.3.md).
 The beta release notes are in
-[`RELEASE_NOTES_v0.8.0-beta.5.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.5.md).
+[`RELEASE_NOTES_v0.8.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).

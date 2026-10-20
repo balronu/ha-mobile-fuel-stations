@@ -2,7 +2,11 @@ import asyncio
 
 from mobile_fuel_stations.const import CONF_NAKORDONI_API_KEY, PROVIDER_NAKORDONI
 from mobile_fuel_stations.coordinator import MobileFuelStationsCoordinator
-from mobile_fuel_stations.providers.nakordoni import NakordoniAccountUsage, NakordoniQuota
+from mobile_fuel_stations.providers.nakordoni import (
+    NakordoniAccountUsage,
+    NakordoniMarketAccess,
+    NakordoniQuota,
+)
 
 
 class UsageProvider:
@@ -13,6 +17,8 @@ class UsageProvider:
         self.calls += 1
         return NakordoniAccountUsage(
             quotas={"cheap": NakordoniQuota(100, 1, 99)},
+            markets_approved=("DE",),
+            markets_available=("AT",),
             upgrade_url="https://example.invalid/upgrade",
         )
 
@@ -44,6 +50,8 @@ def test_account_usage_is_never_polled_more_often_than_15_minutes():
     assert provider.calls == 1
     assert coordinator.nakordoni_account_usage.cheap.remaining == 99
     assert coordinator.nakordoni_usage_upgrade_url == "https://example.invalid/upgrade"
+    assert coordinator.nakordoni_market_access.permitted_markets == frozenset({"DE"})
+    assert "AT" not in coordinator.nakordoni_market_access.permitted_markets
 
     asyncio.run(coordinator.async_update_nakordoni_usage(force=True))
     assert provider.calls == 2
@@ -61,3 +69,13 @@ def test_usage_snapshot_round_trips_without_secrets():
     assert restored.nakordoni_account_usage.cheap.remaining == 99
     assert restored.nakordoni_usage_last_success is not None
     assert "secret" not in repr(snapshot).lower()
+
+
+def test_numeric_markets_allowed_is_not_treated_as_a_country_list():
+    provider = UsageProvider()
+    coordinator = coordinator_for_usage(provider)
+    coordinator._restore_nakordoni_usage({
+        "markets": {"approved": ["DE"], "allowed": 1},
+        "quotas": {},
+    })
+    assert coordinator.nakordoni_market_access.permitted_markets == frozenset({"DE"})
