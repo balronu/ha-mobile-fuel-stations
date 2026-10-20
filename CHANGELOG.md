@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0-beta.3 — Manual fetch cooldown and provider diagnostics
+
+- Disable the manual-fetch button from the backend-provided provider cooldown;
+  show a German/English countdown and refresh the HA state at expiry without a
+  provider request.
+- Separate mode-control failures, manual-refresh failures, cooldowns,
+  provider responses, rate limits/quotas, missing location, and network/timeouts
+  while retaining cached stations and clearing recovered errors.
+- Keep API-fetch age separate from provider-price age; stale provider prices are
+  marked without promising that a fresh API response makes every price current.
+- Harden Tankerkönig HTTP-status and response-shape classification without
+  logging or exposing API keys, tokens, or raw response bodies.
+- Add regression coverage for cooldown UX, race-time server rejection, stale
+  provider prices, provider diagnostics, multi-entry modes, and persistence.
+- Prepared as a GitHub pre-release candidate; no live provider/OAuth or
+  productive Home Assistant validation is implied.
+
 ## 0.8.0-beta.2 — Practice-test hotfix
 
 - Fix the `set_fetch_mode` service handler so automatic/manual mode changes

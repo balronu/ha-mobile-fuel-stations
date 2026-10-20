@@ -188,6 +188,21 @@ describe("card", () => {
     (card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement)?.click();
     expect(callService).toHaveBeenCalledWith("mobile_fuel_stations", "manual_refresh", { entry_id: "entry-opel" });
   });
+  it("disables manual refresh from the backend cooldown and re-enables after backend expiry", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn().mockResolvedValue(undefined);
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual", provider_cooldown_remaining: 157, last_update_result: "provider_cooldown" }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    const refresh = card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement;
+    expect(refresh.disabled).toBe(true);
+    expect(refresh.textContent).toContain("Erneut abrufen in");
+    refresh.click();
+    expect(callService).not.toHaveBeenCalled();
+    hass.states[overviewId]!.attributes.provider_cooldown_remaining = 0;
+    hass.states[overviewId]!.attributes.last_update_result = "provider_success";
+    card.hass = hass; await card.updateComplete;
+    expect((card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement).disabled).toBe(false);
+  });
   it("keeps the confirmed backend mode while a mode change is pending", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     let resolveService: (() => void) | undefined;
@@ -297,6 +312,24 @@ describe("card", () => {
     expect(card.shadowRoot?.querySelector(".stale-warning")?.textContent).toContain("ProviderTimeoutError");
     expect(card.shadowRoot?.textContent).toContain("Daten veraltet");
     expect(card.shadowRoot?.textContent).toContain("Quelle unbekannt");
+  });
+  it("distinguishes stale provider prices from a stale API result", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId });
+    card.hass = hassFor(1, { data_stale: false, last_update_result: "provider_success", last_successful_update: new Date().toISOString() }, { price_stale: true });
+    await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Providerpreise sind veraltet");
+    expect(card.shadowRoot?.querySelector(".stale-warning")?.textContent).not.toContain("Daten veraltet");
+  });
+  it("renders distinct location, response, quota, and network errors", async () => {
+    for (const [result, label] of [["gps_unavailable", "Standortdaten fehlen"], ["provider_response_error", "Provider-Antwort konnte nicht verarbeitet werden"], ["provider_quota_exhausted", "API-Kontingent erschöpft"], ["network_timeout", "Netzwerk-/Timeout-Fehler beim Provider"]] as const) {
+      const card = new MobileFuelStationsCard(); document.body.append(card);
+      card.setConfig({ entity: overviewId });
+      card.hass = hassFor(1, { last_update_result: result, data_stale: false });
+      await card.updateComplete;
+      expect(card.shadowRoot?.textContent).toContain(label);
+      card.remove();
+    }
   });
   it("shows the actual provider for stations and highlights", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);

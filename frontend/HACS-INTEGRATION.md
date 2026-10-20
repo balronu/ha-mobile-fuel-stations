@@ -8,7 +8,7 @@
 - Home Assistant registriert beim Integrations-Setup den statischen Pfad
   `/mobile_fuel_stations` über `async_register_static_paths`.
 - Die automatisch registrierte JavaScript-URL enthält die Integrationsversion,
-  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.2`.
+  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.3`.
 - Der physische StaticPath und die ausgelieferte Datei bleiben
   `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
 
@@ -36,7 +36,7 @@ das günstigste Highlight normalisiert. Strukturierte und formatierte Adressen
 werden übernommen, sofern der Provider sie liefert; fehlende Adressen bleiben
 leer.
 
-Die Beta `v0.8.0-beta.2` ergänzt einen pro Config Entry
+Die Beta `v0.8.0-beta.3` ergänzt einen pro Config Entry
 persistierten Abrufmodus. Im Modus **Manuell** bleiben Cache und letzter
 erfolgreicher Abruf sichtbar, während Zeitplan, GPS, Recovery und Reload keine
 Providerabfrage auslösen. **Jetzt abrufen** ist ein admin-geschützter Service;

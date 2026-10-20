@@ -221,7 +221,11 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             if getattr(self.coordinator, "last_update_error_at", None)
             else None,
             "last_update_error_class": getattr(self.coordinator, "last_update_error_class", None),
+            "last_update_error_code": getattr(self.coordinator, "last_update_error_code", None),
             "last_update_error_provider": getattr(self.coordinator, "last_update_error_provider", None),
+            "stale_price_count": sum(
+                1 for station in (self.coordinator.data or []) if getattr(station, "price_stale", None) is True
+            ),
             "last_update_result": getattr(self.coordinator, "last_update_result", None),
             "last_retry_after": getattr(self.coordinator, "last_retry_after", None),
             "provider_cooldown_remaining": getattr(

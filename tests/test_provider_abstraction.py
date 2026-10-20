@@ -11,6 +11,10 @@ from mobile_fuel_stations.const import (
 )
 from mobile_fuel_stations.providers import PROVIDER_REGISTRY, create_provider
 from mobile_fuel_stations.providers.base import (
+    ProviderAuthError,
+    ProviderRateLimitError,
+    ProviderResponseError,
+    ProviderUnavailableError,
     ProviderDisabledError,
     StationSearchQuery,
     UnknownProviderError,
@@ -20,7 +24,10 @@ from mobile_fuel_stations.providers.tankerkoenig import TankerkoenigProvider
 
 
 class FakeResponse:
-    status = 200
+    def __init__(self, payload=None, status=200, headers=None):
+        self.status = status
+        self.payload = payload if payload is not None else {"ok": True, "status": "ok", "stations": []}
+        self.headers = headers or {}
 
     async def __aenter__(self):
         return self
@@ -32,16 +39,17 @@ class FakeResponse:
         return None
 
     async def json(self, content_type=None):
-        return {"ok": True, "status": "ok", "stations": []}
+        return self.payload
 
 
 class FakeSession:
-    def __init__(self):
+    def __init__(self, response=None):
         self.calls = []
+        self.response = response or FakeResponse()
 
     def get(self, url, *, params, timeout):
         self.calls.append((url, params, timeout))
-        return FakeResponse()
+        return self.response
 
 
 class SessionWithCloseGuard(FakeSession):
@@ -159,3 +167,45 @@ def test_tankerkoenig_request_parameters_remain_unchanged():
         "apikey": "secret",
     }
     assert timeout == 15
+
+
+@pytest.mark.parametrize(
+    ("status", "error_type"),
+    [(401, ProviderAuthError), (403, ProviderAuthError), (429, ProviderRateLimitError), (503, ProviderUnavailableError)],
+)
+def test_tankerkoenig_classifies_http_failures_without_secret_text(status, error_type):
+    provider = TankerkoenigProvider(FakeSession(FakeResponse(status=status)), "SECRET_NOT_EXPOSED")
+
+    with pytest.raises(error_type) as caught:
+        asyncio.run(provider.async_search(StationSearchQuery(50, 8, 5, "diesel")))
+
+    assert "SECRET_NOT_EXPOSED" not in str(caught.value)
+    assert caught.value.diagnostics.http_status == status
+
+
+def test_tankerkoenig_rejects_malformed_success_payload():
+    provider = TankerkoenigProvider(FakeSession(FakeResponse({"ok": True, "status": "ok", "stations": {}})), "secret")
+
+    with pytest.raises(ProviderResponseError) as caught:
+        asyncio.run(provider.async_search(StationSearchQuery(50, 8, 5, "diesel")))
+
+    assert caught.value.diagnostics.error_code == "invalid_stations_payload"
+
+
+def test_tankerkoenig_rejects_non_object_json_payload():
+    provider = TankerkoenigProvider(FakeSession(FakeResponse([])), "secret")
+
+    with pytest.raises(ProviderResponseError) as caught:
+        asyncio.run(provider.async_search(StationSearchQuery(50, 8, 5, "diesel")))
+
+    assert caught.value.diagnostics.error_code == "invalid_json_shape"
+
+
+def test_tankerkoenig_classifies_key_and_rate_status_without_raw_response():
+    for status, error_type in (("ERROR_INVALID_KEY", ProviderAuthError), ("ERROR_RATE_LIMIT", ProviderRateLimitError)):
+        provider = TankerkoenigProvider(
+            FakeSession(FakeResponse({"ok": False, "status": status, "stations": []})), "secret"
+        )
+        with pytest.raises(error_type) as caught:
+            asyncio.run(provider.async_search(StationSearchQuery(50, 8, 5, "diesel")))
+        assert status in caught.value.diagnostics.error_code

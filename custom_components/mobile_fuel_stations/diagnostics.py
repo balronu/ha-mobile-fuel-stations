@@ -79,6 +79,13 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "last_successful_update": _iso(coordinator.last_successful_update),
             "last_update_attempt": _iso(getattr(coordinator, "last_update_attempt", None)),
             "last_update_result": getattr(coordinator, "last_update_result", None),
+            "last_update_error_class": getattr(coordinator, "last_update_error_class", None),
+            "last_update_error_code": getattr(coordinator, "last_update_error_code", None),
+            "last_update_error_provider": getattr(coordinator, "last_update_error_provider", None),
+            "data_stale": getattr(coordinator, "data_stale", None),
+            "stale_price_count": sum(
+                1 for station in (getattr(coordinator, "data", None) or []) if getattr(station, "price_stale", None) is True
+            ),
             "last_provider_attempt": _iso(getattr(coordinator, "last_provider_attempt", None)),
             "last_provider_success": _iso(getattr(coordinator, "last_provider_success", None)),
             "effective_provider": getattr(coordinator, "diagnostic_effective_provider", None),
