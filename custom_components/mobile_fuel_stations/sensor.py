@@ -196,6 +196,8 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "station_entities": _registered_station_entity_ids(
                 self.hass, self._entry, int(self.coordinator.config[CONF_STATION_COUNT])
             ),
+            "config_entry_id": self._entry.entry_id,
+            "fetch_mode": getattr(self.coordinator, "fetch_mode", "automatic"),
             "last_successful_update": self.coordinator.last_successful_update.isoformat()
             if self.coordinator.last_successful_update
             else None,
@@ -220,7 +222,11 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             else None,
             "last_update_error_class": getattr(self.coordinator, "last_update_error_class", None),
             "last_update_error_provider": getattr(self.coordinator, "last_update_error_provider", None),
+            "last_update_result": getattr(self.coordinator, "last_update_result", None),
             "last_retry_after": getattr(self.coordinator, "last_retry_after", None),
+            "provider_cooldown_remaining": getattr(
+                self.coordinator, "diagnostic_provider_cooldown_remaining", 0
+            ),
             "recovery_status": getattr(self.coordinator, "recovery_status", "never"),
             "consecutive_failures": getattr(self.coordinator, "consecutive_failures", 0),
             "reference_latitude": ref[0] if ref else None,

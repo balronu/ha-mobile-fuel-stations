@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0-beta.1 — Beta release
+
+- Add a per-Config-Entry automatic/manual station-fetch mode; existing entries
+  default to automatic.
+- Disable scheduled, movement, startup-recovery, reload, and adaptive provider
+  requests in manual mode while retaining the persisted station cache.
+- Add an administrator-protected, single-entry manual refresh service and card
+  controls with in-flight/double-request protection.
+- Expose fetch mode and safe refresh status in Overview attributes and diagnostics.
+- Published as a pre-release; no productive Home Assistant/browser practice test
+  or complete live provider/OAuth test is implied.
+
 ## 0.7.3 — Nakordoni fuel and address normalization
 
 - Normalize Nakordoni fuel metadata for single-fuel requests so E10 cheapest

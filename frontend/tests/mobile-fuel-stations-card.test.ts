@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildBrandLogoUrl, buildNavigationUrl, detectNavigationProvider, discoverStationEntities, findOverviewEntity, formatDistance, formatPrice, fuelLabel, isOverviewEntity, MobileFuelStationsCard, normalizeLogoPath, resolveBrandLogoKey, shouldShowBrand } from "../src/mobile-fuel-stations-card";
 
 const overviewId = "sensor.vehicle_nearby_stations";
@@ -177,6 +177,25 @@ describe("card", () => {
   });
   it("renders overview, one, five and ten stations in order", async () => {
     for (const count of [1, 5, 10]) { const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ type: "custom:mobile-fuel-stations-card", entity: overviewId }); card.hass = hassFor(count); await card.updateComplete; expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(count); expect(card.shadowRoot?.textContent).toContain("Station 1"); }
+  });
+  it("shows the manual fetch control and calls only the selected entry service", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn().mockResolvedValue(undefined);
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual" }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Abrufmodus");
+    expect(card.shadowRoot?.textContent).toContain("Jetzt abrufen");
+    (card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement)?.click();
+    expect(callService).toHaveBeenCalledWith("mobile_fuel_stations", "manual_refresh", { entry_id: "entry-opel" });
+  });
+  it("keeps the card read-only for a non-admin dashboard user", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn().mockResolvedValue(undefined);
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual" }), user: { is_admin: false }, callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".controls")).toBeNull();
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+    expect(callService).not.toHaveBeenCalled();
   });
   it("shows logos by default and respects an explicit opt-out", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);

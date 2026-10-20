@@ -29,6 +29,7 @@ from .const import (
     CONF_ADAPTIVE_UPDATES,
     CONF_FUEL_TYPE,
     CONF_FUEL_TYPES,
+    CONF_FETCH_MODE,
     CONF_LOCATION_ENTITY,
     CONF_MANAGE_CREDENTIALS,
     CONF_MOVEMENT_THRESHOLD,
@@ -44,6 +45,7 @@ from .const import (
     DEFAULT_RADIUS,
     DEFAULT_STATION_COUNT,
     DEFAULT_UPDATE_INTERVAL,
+    DEFAULT_FETCH_MODE,
     DEFAULT_SORT_MODE,
     FUEL_TYPES,
     FUEL_TYPE_LABELS,
@@ -59,6 +61,8 @@ from .const import (
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
     PROVIDER_NAKORDONI,
+    FETCH_MODE_AUTOMATIC,
+    FETCH_MODE_MANUAL,
 )
 from .providers import PROVIDER_REGISTRY
 from .providers.base import (
@@ -170,6 +174,14 @@ def _schema(
             ),
             vol.Required(CONF_UPDATE_INTERVAL, default=defaults.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)): vol.All(
                 vol.Coerce(int), vol.Range(min=MIN_UPDATE_INTERVAL, max=1440)
+            ),
+            vol.Required(
+                CONF_FETCH_MODE, default=defaults.get(CONF_FETCH_MODE, DEFAULT_FETCH_MODE)
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[FETCH_MODE_AUTOMATIC, FETCH_MODE_MANUAL],
+                    translation_key=CONF_FETCH_MODE,
+                )
             ),
             vol.Required(CONF_MOVEMENT_UPDATES, default=defaults.get(CONF_MOVEMENT_UPDATES, DEFAULT_MOVEMENT_UPDATES)): bool,
             vol.Required(CONF_MOVEMENT_THRESHOLD, default=defaults.get(CONF_MOVEMENT_THRESHOLD, DEFAULT_MOVEMENT_THRESHOLD)): vol.All(
@@ -597,7 +609,7 @@ class MobileFuelStationsConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHa
         defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_FUEL_TYPES: [DEFAULT_FUEL_TYPE], CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL, CONF_MOVEMENT_UPDATES: DEFAULT_MOVEMENT_UPDATES,
                     CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN,
-                    CONF_ADAPTIVE_UPDATES: DEFAULT_ADAPTIVE_UPDATES}
+                    CONF_ADAPTIVE_UPDATES: DEFAULT_ADAPTIVE_UPDATES, CONF_FETCH_MODE: DEFAULT_FETCH_MODE}
         return self.async_show_form(
             step_id="user", data_schema=_schema(defaults, False, True), errors=errors
         )

@@ -60,6 +60,8 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "coordinator_instance_id": f"{id(coordinator):x}",
             "coordinator_listener_count": _listener_count(coordinator),
             "coordinator_update_interval_minutes": _update_interval_minutes(coordinator),
+            "fetch_mode": getattr(coordinator, "fetch_mode", "automatic"),
+            "manual_refresh_in_progress": getattr(coordinator, "_manual_refresh_in_progress", False),
             "periodic_refresh_scheduled": _periodic_refresh_scheduled(coordinator),
             "periodic_refresh_callback_status": _periodic_refresh_status(coordinator),
             # HA Core stores only a cancellation callback, not the TimerHandle.

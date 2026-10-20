@@ -4,12 +4,15 @@ import json
 import logging
 from pathlib import Path
 
+import voluptuous as vol
+
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
@@ -21,6 +24,7 @@ from .const import (
     CONF_PROVIDER_MODES,
     CONF_FUEL_TYPE,
     CONF_FUEL_TYPES,
+    CONF_FETCH_MODE,
     CONF_TANKERKOENIG_API_KEY,
     DOMAIN,
     FRONTEND_URL,
@@ -32,6 +36,9 @@ from .const import (
     PROVIDER_TANKERKOENIG,
     CONF_NAKORDONI_AUTH_METHOD,
     AUTH_METHOD_OAUTH2,
+    DEFAULT_FETCH_MODE,
+    FETCH_MODE_AUTOMATIC,
+    FETCH_MODE_MANUAL,
 )
 from .coordinator import MobileFuelStationsCoordinator
 from .country_resolver import load_countries
@@ -45,6 +52,13 @@ type MobileFuelStationsConfigEntry = ConfigEntry[MobileFuelStationsCoordinator]
 
 _FRONTEND_DIR = Path(__file__).parent / "frontend"
 _LOGGER = logging.getLogger(__name__)
+SERVICE_MANUAL_REFRESH = "manual_refresh"
+SERVICE_SET_FETCH_MODE = "set_fetch_mode"
+_SERVICE_SCHEMA = vol.Schema({vol.Required("entry_id"): cv.string})
+_MODE_SERVICE_SCHEMA = vol.Schema({
+    vol.Required("entry_id"): cv.string,
+    vol.Required(CONF_FETCH_MODE): vol.In((FETCH_MODE_AUTOMATIC, FETCH_MODE_MANUAL)),
+})
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -134,7 +148,57 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     if not domain_data.get("probe_registered") and hasattr(hass, "services"):
         await async_register_probe_service(hass)
         domain_data["probe_registered"] = True
+    if not domain_data.get("fetch_services_registered") and hasattr(hass, "services"):
+        hass.services.async_register(
+            DOMAIN, SERVICE_MANUAL_REFRESH, _async_manual_refresh_service, _SERVICE_SCHEMA
+        )
+        hass.services.async_register(
+            DOMAIN, SERVICE_SET_FETCH_MODE, _async_set_fetch_mode_service, _MODE_SERVICE_SCHEMA
+        )
+        domain_data["fetch_services_registered"] = True
     return True
+
+
+async def _require_admin(hass: HomeAssistant, call) -> None:
+    """Require an authenticated Home Assistant administrator for control calls."""
+
+    user_id = getattr(call.context, "user_id", None)
+    user = await hass.auth.async_get_user(user_id) if user_id else None
+    if user is None or not user.is_admin:
+        raise HomeAssistantError("Administrator permission required")
+
+
+def _entry_for_service(hass: HomeAssistant, entry_id: str) -> MobileFuelStationsConfigEntry:
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None or entry.domain != DOMAIN or entry.state is not ConfigEntryState.LOADED:
+        raise HomeAssistantError("Mobile Fuel Stations config entry is not loaded")
+    return entry
+
+
+async def _async_manual_refresh_service(call) -> None:
+    await _require_admin(call.hass, call)
+    entry = _entry_for_service(call.hass, call.data["entry_id"])
+    coordinator = entry.runtime_data
+    await coordinator.async_manual_refresh()
+
+
+async def _async_set_fetch_mode_service(call) -> None:
+    await _require_admin(call.hass, call)
+    entry = _entry_for_service(call.hass, call.data["entry_id"])
+    mode = call.data[CONF_FETCH_MODE]
+    current = {**entry.data, **entry.options}.get(CONF_FETCH_MODE, DEFAULT_FETCH_MODE)
+    if mode == current:
+        return
+    coordinator = getattr(entry, "runtime_data", None)
+    if coordinator is not None:
+        coordinator.prepare_fetch_mode_change(mode)
+        if mode == FETCH_MODE_AUTOMATIC:
+            hass.data.setdefault(DOMAIN, {}).setdefault("skip_initial_refresh", set()).add(
+                entry.entry_id
+            )
+    options = dict(entry.options)
+    options[CONF_FETCH_MODE] = mode
+    call.hass.config_entries.async_update_entry(entry, options=options)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfigEntry) -> bool:
@@ -155,15 +219,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfig
 
         implementation = await async_get_config_entry_implementation(hass, entry)
         oauth_session = OAuth2Session(hass, entry, implementation)
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    skip_initial_refresh = entry.entry_id in domain_data.pop("skip_initial_refresh", set())
     if oauth_session is None:
         coordinator = MobileFuelStationsCoordinator(hass, entry)
     else:
         coordinator = MobileFuelStationsCoordinator(
             hass, entry, oauth_session=oauth_session
         )
+    coordinator._skip_initial_refresh_on_reload = skip_initial_refresh
     await coordinator.async_setup()
     try:
-        await coordinator.async_config_entry_first_refresh()
+        if not getattr(coordinator, "is_manual", False) and not skip_initial_refresh:
+            await coordinator.async_config_entry_first_refresh()
     except ConfigEntryNotReady as err:
         cause = err.__cause__
         while cause is not None and cause.__cause__ is not None:
@@ -183,6 +251,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfig
 
 async def _async_update_listener(hass: HomeAssistant, entry: MobileFuelStationsConfigEntry) -> None:
     """Reload the entry after options or credential data changes."""
+
+    coordinator = getattr(entry, "runtime_data", None)
+    old_mode = getattr(coordinator, "fetch_mode", DEFAULT_FETCH_MODE)
+    new_mode = {**entry.data, **entry.options}.get(CONF_FETCH_MODE, DEFAULT_FETCH_MODE)
+    if old_mode != new_mode and new_mode == FETCH_MODE_AUTOMATIC:
+        hass.data.setdefault(DOMAIN, {}).setdefault("skip_initial_refresh", set()).add(
+            entry.entry_id
+        )
 
     await hass.config_entries.async_reload(entry.entry_id)
 

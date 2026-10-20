@@ -69,14 +69,15 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.7.3` | Current stable release |
+| Beta | `v0.8.0-beta.1` | Current beta release |
 | Previous stable | `v0.7.2` | Available rollback version |
-| Frontend component | `v0.7.3` | Independently versioned Lovelace component |
+| Frontend component | `v0.8.0-beta.1` | Independently versioned Lovelace component |
 
 `v0.7.3` is the current stable release. It bundles Tankerkönig, Petromap, and
 Nakordoni with automatic provider selection, country- and market-aware
 fallback, quota/Trip Pass diagnostics, OAuth2-PKCE, and manual API keys. The
 60 local PNG logos come from the supplied ZIP, and the resource is registered
-automatically with cache key `v=0.7.3`. Nakordoni OAuth was checked statically
+automatically with cache key `v=0.8.0-beta.1`. Nakordoni OAuth was checked statically
 but has not been confirmed through a live callback. Source, missing per-image
 license, and residual trademark risks are documented in
 [BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
@@ -97,6 +98,15 @@ single-fuel requests. Structured and formatted provider addresses are kept
 when supplied; missing addresses remain empty. Explicitly stale prices are not
 selected as the current cheapest result.
 
+The beta `v0.8.0-beta.1` adds a per-Config-Entry fetch
+mode: **Automatic** keeps the schedule, GPS movement, recovery and provider
+cooldowns; **Manual** performs no automatic provider requests. An administrator
+can use **Fetch now** in the card for one targeted attempt. Non-administrator
+Home Assistant users retain read-only station access and do not see the control.
+The last successful fetch and persisted station cache remain visible after a
+restart. This beta is published as a GitHub pre-release; productive Home
+Assistant/browser and complete live provider/OAuth tests remain outside its scope.
+
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
 sorting, automatic provider selection, startup recovery, regular coordinator
@@ -115,14 +125,14 @@ refresh.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.7.3` is the current stable HACS version; `v0.7.2` remains available as the
-previous stable rollback.
+`v0.7.3` remains the current stable HACS version; `v0.8.0-beta.1` is available
+as a pre-release, and `v0.7.2` remains available as the previous stable rollback.
 
 The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.7.3
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.1
 ```
 
 For technical resource-loading details, see
@@ -368,6 +378,8 @@ recovery tests use mocks and fixtures rather than unverified live credentials.
 Historical release notes are preserved in the
 [GitHub release archive](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/), including the current
 [`v0.7.3 release notes`](docs/releases/RELEASE_NOTES_v0.7.3.md).
+The beta release notes are in
+[`RELEASE_NOTES_v0.8.0-beta.1.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.1.md).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).
