@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 — Compact Lovelace card
+
+- Added a compact display mode for newly created cards, with dense station rows, inline nearest/cheapest markers, responsive multi-fuel prices, and collapsible provider diagnostics.
+- Existing YAML cards without display_mode retain the detailed presentation for compatibility.
+- Added frontend regression coverage for compact rendering, legacy configuration, markers, diagnostics, and multi-fuel prices.
+
 ## 0.8.0 — Stable release
 
 - Stabilisiert automatischen und manuellen Abruf mit persistiertem Cache und

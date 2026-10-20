@@ -37,6 +37,7 @@ type HighlightStation = {
 };
 
 export type NavigationProvider = "auto" | "apple" | "google" | "waze";
+export type CardDisplayMode = "compact" | "detailed";
 export type CardConfig = {
   type?: string;
   entity?: string;
@@ -44,6 +45,7 @@ export type CardConfig = {
   navigation_provider?: NavigationProvider;
   show_brand_logos?: boolean;
   logo_path?: string;
+  display_mode?: CardDisplayMode;
 };
 
 const unavailable = new Set(["unknown", "unavailable"]);
@@ -367,12 +369,35 @@ export class MobileFuelStationsCard extends LitElement {
     .highlight-name { font-weight: 600; margin-top: 3px; overflow-wrap: break-word; word-break: normal; hyphens: auto; min-width: 0; }
     .highlight-meta { color: var(--secondary-text-color); font-size: .9rem; margin-top: 3px; }
     .provider { color: var(--secondary-text-color); font-size: .8rem; margin-top: 3px; }
+    .station-badges { display: inline-flex; gap: 4px; flex-wrap: wrap; margin-left: 4px; vertical-align: middle; }
+    .station-badge { display: inline-flex; align-items: center; gap: 2px; color: var(--secondary-text-color); font-size: .72rem; white-space: nowrap; }
+    .station-badge ha-icon { --mdc-icon-size: 14px; }
+    .station-badge.cheapest { color: var(--primary-color); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .diagnostics { margin: 0 0 10px; border-top: 1px solid var(--divider-color); border-bottom: 1px solid var(--divider-color); }
+    .diagnostics summary { cursor: pointer; padding: 7px 0; color: var(--secondary-text-color); font-size: .85rem; }
+    .diagnostics .provider-status-list { padding: 0 0 7px; }
+    .compact-mode ha-card { padding: 10px 12px; }
+    .compact-mode .header { margin-bottom: 6px; }
+    .compact-mode .controls { margin-bottom: 6px; padding: 5px 0; }
+    .compact-mode .station { padding: 5px 0; gap: 6px; }
+    .compact-mode .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .compact-mode .address { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .compact-mode .provider { display: none; }
+    .compact-mode .prices { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .compact-mode .fuel-price { display: grid; justify-items: end; gap: 0; line-height: 1.1; }
+    .compact-mode .fuel-price strong { font-size: .95rem; }
+    .compact-mode .fuel-price > span { color: var(--secondary-text-color); font-size: .72rem; }
+    .compact-mode .meta { margin-left: 2px; }
+    .compact-mode .navigate { min-width: 36px; min-height: 36px; padding: 5px; }
+    .compact-mode .brand-logo, .compact-mode .icon { width: 36px; height: 36px; }
     .stations { grid-template-columns: minmax(0, 1fr); }
     @container (min-width: 600px) {
       .highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
       .summary { margin-top: 0; }
       .station { grid-template-columns: 32px minmax(12rem, 1fr) minmax(8rem, auto) auto; }
+      .compact-mode .station { grid-template-columns: 36px minmax(12rem, 1fr) auto auto; }
     }
     @container (max-width: 599px) {
       ha-card { padding: 12px; }
@@ -380,6 +405,8 @@ export class MobileFuelStationsCard extends LitElement {
       .station .prices { grid-column: 2; grid-row: 2; text-align: left; }
       .fuel-price { justify-content: flex-start; gap: 4px; }
       .station .navigate { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
+      .compact-mode .prices { grid-column: 2; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; }
+      .compact-mode .station .navigate { grid-column: 3; grid-row: 1 / span 2; }
       .highlight { grid-template-columns: 26px minmax(0, 1fr) auto auto; gap: 6px; }
       .highlight .navigate { grid-column: auto; }
     }
@@ -398,12 +425,12 @@ export class MobileFuelStationsCard extends LitElement {
 
   setConfig(config: Partial<CardConfig>): void {
     if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
-      this._config = { ...(config ?? {}), type: config?.type ?? "custom:mobile-fuel-stations-card", navigation: config?.navigation !== false, navigation_provider: config?.navigation_provider ?? "auto", show_brand_logos: config?.show_brand_logos !== false, logo_path: config?.logo_path ?? DEFAULT_LOGO_PATH };
+      this._config = { ...(config ?? {}), type: config?.type ?? "custom:mobile-fuel-stations-card", navigation: config?.navigation !== false, navigation_provider: config?.navigation_provider ?? "auto", show_brand_logos: config?.show_brand_logos !== false, logo_path: config?.logo_path ?? DEFAULT_LOGO_PATH, display_mode: config?.display_mode ?? "detailed" };
       this._configError = this._text("selectEntity");
       this.requestUpdate();
       return;
     }
-    this._config = { ...config, type: config.type ?? "custom:mobile-fuel-stations-card", entity: config.entity, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto", show_brand_logos: config.show_brand_logos !== false, logo_path: config.logo_path ?? DEFAULT_LOGO_PATH };
+    this._config = { ...config, type: config.type ?? "custom:mobile-fuel-stations-card", entity: config.entity, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto", show_brand_logos: config.show_brand_logos !== false, logo_path: config.logo_path ?? DEFAULT_LOGO_PATH, display_mode: config.display_mode ?? "detailed" };
     this._configError = undefined;
     this.requestUpdate();
   }
@@ -420,7 +447,7 @@ export class MobileFuelStationsCard extends LitElement {
   static getConfigElement(): HTMLElement { return document.createElement("mobile-fuel-stations-card-editor"); }
   static getStubConfig(hass?: Hass, entities: string[] = [], entitiesFallback: string[] = []): CardConfig {
     const entity = findOverviewEntity(hass, entities, entitiesFallback);
-    return entity ? { entity, navigation: true } : { navigation: true };
+    return entity ? { entity, navigation: true, display_mode: "compact" } : { navigation: true, display_mode: "compact" };
   }
 
   protected render() {
@@ -434,11 +461,13 @@ export class MobileFuelStationsCard extends LitElement {
     const stations = ids.map((id) => ({ id, state: this._hass!.states[id]! })).filter(({ state }) => isUsableStation(state));
     const isUnavailable = unavailable.has(overview.state);
     const cooldown = this._cooldownState(overview);
+    const compact = this._config.display_mode === "compact";
     return html`
+      <div class=${compact ? "compact-mode" : "detailed-mode"}>
       <ha-card>
         <div class="header"><h2>${this._text("title")}</h2><span class="summary">${this._summary(overview, stations)}</span></div>
         ${this._controls(overview, cooldown)}
-        ${this._providerStatus(overview)}
+        ${this._providerStatus(overview, compact)}
         ${this._controlError ? html`<div class="control-error" role="alert">${this._controlError}</div>` : nothing}
         ${isUnavailable ? html`<div class="message" role="status">${this._text("unavailable")}</div>` : nothing}
         ${!isUnavailable && this._hasRefreshError(overview) ? html`<div class="stale-warning" role="alert">${this._refreshError(overview, cooldown.display)}</div>` : nothing}
@@ -446,9 +475,10 @@ export class MobileFuelStationsCard extends LitElement {
         ${!isUnavailable && overview.attributes.data_stale === true ? html`<div class="stale-warning" role="status">${this._staleMessage(overview)}</div>` : nothing}
         ${!isUnavailable && overview.attributes.data_stale !== true && stations.some(({ state }) => state.attributes.price_stale === true) ? html`<div class="stale-warning" role="status">${this._text("providerPricesStale")}</div>` : nothing}
         ${this._hasNakordoni(overview, stations) ? html`<div class="secondary"><a href="https://nakordoni.eu" target="_blank" rel="noopener">Data by nakordoni.eu</a></div>` : nothing}
-        ${!isUnavailable ? this._highlights(overview, ids) : nothing}
-        ${!isUnavailable ? (stations.length ? html`<div class="stations">${stations.map(({ id, state }) => this._station(id, state))}</div>` : html`<div class="message">${this._text("none")}</div>`) : nothing}
+        ${!isUnavailable && !compact ? this._highlights(overview, ids) : nothing}
+        ${!isUnavailable ? (stations.length ? html`<div class="stations">${stations.map(({ id, state }) => this._station(id, state, overview, compact))}</div>` : html`<div class="message">${this._text("none")}</div>`) : nothing}
       </ha-card>
+      </div>
     `;
   }
 
@@ -472,7 +502,7 @@ export class MobileFuelStationsCard extends LitElement {
     </div>`;
   }
 
-  private _providerStatus(overview: HassState) {
+  private _providerStatus(overview: HassState, compact = false) {
     const cooldowns = overview.attributes.provider_cooldowns && typeof overview.attributes.provider_cooldowns === "object"
       ? overview.attributes.provider_cooldowns as Record<string, Record<string, unknown>> : {};
     const quotas = overview.attributes.provider_quotas && typeof overview.attributes.provider_quotas === "object"
@@ -517,7 +547,10 @@ export class MobileFuelStationsCard extends LitElement {
       window.clearInterval(this._cooldownTimer);
       this._cooldownTimer = undefined;
     }
-    return html`<div class="provider-status-list" aria-label="${this._text("providerStatus")}">${rows}</div>`;
+    const content = html`<div class="provider-status-list" aria-label="${this._text("providerStatus")}">${rows}</div>`;
+    return compact
+      ? html`<details class="diagnostics"><summary>${this._locale() === "en-US" ? "Diagnostics" : "Diagnose"}</summary>${content}</details>`
+      : content;
   }
 
   private _serverCooldownSeconds(status: Record<string, unknown>): number {
@@ -738,7 +771,7 @@ export class MobileFuelStationsCard extends LitElement {
     return `${this._text("retryIn")} ${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
   }
 
-  private _station(id: string, state: HassState) {
+  private _station(id: string, state: HassState, overview?: HassState, compact = false) {
     const a = state.attributes;
     const name = text(a.station_name) ?? text(a.name) ?? id;
     const brand = text(a.brand);
@@ -753,12 +786,27 @@ export class MobileFuelStationsCard extends LitElement {
     const freshness = a.price_stale === true ? this._text("stale") : a.price_age_hours != null ? `${this._text("priceAge")} ${a.price_age_hours}h` : null;
     const label = `${name}, ${priceRows.map((row) => `${row.fuel} ${row.value ?? this._text("noPrice")}`).join(", ")}`;
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
+    const badges = compact ? this._stationBadges(overview, a.station_id) : nothing;
     return html`<div class="station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       ${this._brandLogo(brand, name)}
-      <div><div class="name">${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address">${address}</div>` : nothing}<div class="provider">${this._text("source")}: ${provider}</div>${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
+      <div><div class="name" title=${name}>${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}${badges}</div>${address ? html`<div class="address" title=${address}>${address}</div>` : nothing}<div class="provider">${this._text("source")}: ${provider}</div>${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
       <div class="prices">${priceRows.map((row) => html`<div class="fuel-price"><span>${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}</span><strong>${row.value ?? this._text("noPrice")}</strong></div>`)}${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
       ${navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing}
     </div>`;
+  }
+
+  private _stationBadges(overview: HassState | undefined, stationId: unknown) {
+    const id = text(stationId);
+    if (!overview || !id) return nothing;
+    const nearest = overview.attributes.nearest_station && typeof overview.attributes.nearest_station === "object"
+      ? text((overview.attributes.nearest_station as HighlightStation).station_id) : null;
+    const cheapestIds = Object.values((overview.attributes.cheapest_stations_by_fuel as Record<string, HighlightStation> | undefined) ?? {})
+      .map((station) => station && typeof station === "object" ? text(station.station_id) : null).filter(Boolean);
+    if (!nearest && !cheapestIds.length) return nothing;
+    return html`<span class="station-badges" aria-label="${this._locale() === "en-US" ? "Station highlights" : "Tankstellenkennzeichnungen"}">
+      ${nearest === id ? html`<span class="station-badge" title="${this._text("nearest")}"><ha-icon icon="mdi:map-marker-radius" aria-hidden="true"></ha-icon><span class="sr-only">${this._text("nearest")}</span></span>` : nothing}
+      ${cheapestIds.includes(id) ? html`<span class="station-badge cheapest" title="${this._text("cheapest")}"><ha-icon icon="mdi:tag-heart" aria-hidden="true"></ha-icon><span class="sr-only">${this._text("cheapest")}</span></span>` : nothing}
+    </span>`;
   }
 
   private _message(message: string) { return html`<ha-card><div class="message">${message}</div></ha-card>`; }
@@ -787,18 +835,20 @@ class MobileFuelStationsCardEditor extends LitElement {
     select, input { box-sizing: border-box; width: 100%; padding: 8px; color: var(--primary-text-color); background: var(--card-background-color); border: 1px solid var(--divider-color); border-radius: 4px; }
     .row { margin-top: 16px; }
   `;
-  private _config: CardConfig = { navigation: true, navigation_provider: "auto", show_brand_logos: true, logo_path: DEFAULT_LOGO_PATH };
+  private _config: CardConfig = { navigation: true, navigation_provider: "auto", show_brand_logos: true, logo_path: DEFAULT_LOGO_PATH, display_mode: "compact" };
   private _hass?: Hass;
-  setConfig(config: CardConfig): void { this._config = { ...config, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto", show_brand_logos: config.show_brand_logos !== false, logo_path: config.logo_path ?? DEFAULT_LOGO_PATH }; this.requestUpdate(); }
+  setConfig(config: CardConfig): void { this._config = { ...config, navigation: config.navigation !== false, navigation_provider: config.navigation_provider ?? "auto", show_brand_logos: config.show_brand_logos !== false, logo_path: config.logo_path ?? DEFAULT_LOGO_PATH, display_mode: config.display_mode ?? "detailed" }; this.requestUpdate(); }
   set hass(value: Hass) { this._hass = value; this.requestUpdate(); }
   protected render() {
     const entities = Object.entries(this._hass?.states ?? {}).filter(([id, value]) => this._isOverview(id, value));
-    return html`<label>${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label><div class="row"><label><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}> ${this._text("navigation")}</label></div><div class="row"><label>${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option><option value="waze">${this._text("waze")}</option></select></label></div><div class="row"><label><input type="checkbox" .checked=${this._config.show_brand_logos !== false} @change=${(event: Event) => this._changeBrandLogos(event)}> ${this._text("brandLogos")}</label><label>${this._text("logoPath")}<input .value=${this._config.logo_path ?? DEFAULT_LOGO_PATH} @change=${(event: Event) => this._changeLogoPath(event)}></label></div>`;
+    const mode = html`<div class="row"><label>Darstellung<select .value=${this._config.display_mode ?? "detailed"} @change=${(event: Event) => this._changeDisplayMode(event)}><option value="compact">Kompakt</option><option value="detailed">Ausführlich</option></select></label></div>`;
+    return html`${mode}<label>${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label><div class="row"><label><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}> ${this._text("navigation")}</label></div><div class="row"><label>${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option><option value="waze">${this._text("waze")}</option></select></label></div><div class="row"><label><input type="checkbox" .checked=${this._config.show_brand_logos !== false} @change=${(event: Event) => this._changeBrandLogos(event)}> ${this._text("brandLogos")}</label><label>${this._text("logoPath")}<input .value=${this._config.logo_path ?? DEFAULT_LOGO_PATH} @change=${(event: Event) => this._changeLogoPath(event)}></label></div>`;
   }
   private _isOverview(id: string, value: HassState | undefined): boolean { return isOverviewEntity(id, value); }
   private _changeEntity(event: Event) { this._configChanged({ ...this._config, entity: (event.target as HTMLSelectElement).value }); }
   private _changeNavigation(event: Event) { this._configChanged({ ...this._config, navigation: (event.target as HTMLInputElement).checked }); }
   private _changeProvider(event: Event) { this._configChanged({ ...this._config, navigation_provider: (event.target as HTMLSelectElement).value as NavigationProvider }); }
+  private _changeDisplayMode(event: Event) { this._configChanged({ ...this._config, display_mode: (event.target as HTMLSelectElement).value as CardDisplayMode }); }
   private _changeBrandLogos(event: Event) { this._configChanged({ ...this._config, show_brand_logos: (event.target as HTMLInputElement).checked }); }
   private _changeLogoPath(event: Event) { this._configChanged({ ...this._config, logo_path: (event.target as HTMLInputElement).value }); }
   private _configChanged(config: CardConfig) { this._config = config; this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config } })); }
