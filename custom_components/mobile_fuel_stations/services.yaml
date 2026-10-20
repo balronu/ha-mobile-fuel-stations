@@ -58,3 +58,31 @@ probe_nakordoni:
           min: 1
           max: 20
           mode: box
+manual_refresh:
+  name: Refresh stations now
+  description: Perform one administrator-requested station refresh for one config entry. Provider cooldowns and rate limits still apply.
+  fields:
+    entry_id:
+      name: Config entry
+      description: The Mobile Fuel Stations config-entry ID to refresh.
+      required: true
+      selector:
+        text:
+set_fetch_mode:
+  name: Set station fetch mode
+  description: Change one config entry between automatic and manual station fetching. This does not trigger an immediate provider request.
+  fields:
+    entry_id:
+      name: Config entry
+      description: The Mobile Fuel Stations config-entry ID to change.
+      required: true
+      selector:
+        text:
+    fetch_mode:
+      name: Fetch mode
+      required: true
+      selector:
+        select:
+          options:
+            - automatic
+            - manual

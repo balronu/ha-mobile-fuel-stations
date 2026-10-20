@@ -8,6 +8,7 @@ type HassState = {
 type Hass = {
   states: Record<string, HassState | undefined>;
   locale?: { language?: string };
+  callService?: (domain: string, service: string, data: Record<string, unknown>) => Promise<unknown>;
 };
 
 type HighlightStation = {
@@ -349,6 +350,13 @@ export class MobileFuelStationsCard extends LitElement {
     .closed { color: var(--secondary-text-color); }
     .message { color: var(--secondary-text-color); }
     .stale-warning { color: var(--warning-color, var(--primary-color)); margin: 0 0 10px; font-size: .9rem; }
+    .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 0; border-top: 1px solid var(--divider-color); border-bottom: 1px solid var(--divider-color); }
+    .control-label { color: var(--secondary-text-color); font-size: .85rem; }
+    .mode-switch { display: inline-flex; border: 1px solid var(--divider-color); border-radius: 999px; overflow: hidden; }
+    .controls button { color: var(--primary-text-color); background: var(--card-background-color); border: 0; padding: 6px 10px; cursor: pointer; font: inherit; }
+    .controls button.selected { color: var(--text-primary-color, var(--primary-text-color)); background: var(--primary-color); }
+    .controls button:disabled { cursor: default; opacity: .65; }
+    .controls .refresh { margin-left: auto; border: 1px solid var(--primary-color); border-radius: 999px; }
     .highlights { display: grid; gap: 6px; margin-bottom: 10px; }
     .highlight { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; border: 1px solid var(--divider-color); border-radius: var(--ha-card-border-radius, 12px); padding: 8px 10px; min-width: 0; }
     .highlight.is-link { cursor: pointer; }
@@ -379,6 +387,8 @@ export class MobileFuelStationsCard extends LitElement {
   private _hass?: Hass;
   private _configError?: string;
   private _failedBrandLogos = new Set<string>();
+  private _manualRefreshInFlight = false;
+  private _modeChangeInFlight = false;
 
   setConfig(config: Partial<CardConfig>): void {
     if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
@@ -408,19 +418,63 @@ export class MobileFuelStationsCard extends LitElement {
     if (!entity) return this._message(this._text("notFound"));
     const overview = this._hass.states[entity];
     if (!overview) return this._message(this._text("notFound"));
-    if (unavailable.has(overview.state)) return this._message(this._text("unavailable"));
-
     const ids = discoverStationEntities(entity, overview, this._hass);
     const stations = ids.map((id) => ({ id, state: this._hass!.states[id]! })).filter(({ state }) => isUsableStation(state));
+    const isUnavailable = unavailable.has(overview.state);
     return html`
       <ha-card>
         <div class="header"><h2>${this._text("title")}</h2><span class="summary">${this._summary(overview, stations)}</span></div>
-        ${overview.attributes.data_stale === true ? html`<div class="stale-warning" role="status">${this._staleMessage(overview)}</div>` : nothing}
+        ${this._controls(overview)}
+        ${isUnavailable ? html`<div class="message" role="status">${this._text("unavailable")}</div>` : nothing}
+        ${!isUnavailable && this._hasRefreshError(overview) ? html`<div class="stale-warning" role="alert">${this._refreshError(overview)}</div>` : nothing}
+        ${!isUnavailable && overview.attributes.data_stale === true ? html`<div class="stale-warning" role="status">${this._staleMessage(overview)}</div>` : nothing}
         ${this._hasNakordoni(overview, stations) ? html`<div class="secondary"><a href="https://nakordoni.eu" target="_blank" rel="noopener">Data by nakordoni.eu</a></div>` : nothing}
-        ${this._highlights(overview, ids)}
-        ${stations.length ? html`<div class="stations">${stations.map(({ id, state }) => this._station(id, state))}</div>` : html`<div class="message">${this._text("none")}</div>`}
+        ${!isUnavailable ? this._highlights(overview, ids) : nothing}
+        ${!isUnavailable ? (stations.length ? html`<div class="stations">${stations.map(({ id, state }) => this._station(id, state))}</div>` : html`<div class="message">${this._text("none")}</div>`) : nothing}
       </ha-card>
     `;
+  }
+
+  private _controls(overview: HassState) {
+    const entryId = text(overview.attributes.config_entry_id);
+    if (!entryId || !this._hass?.callService) return nothing;
+    const mode = overview.attributes.fetch_mode === "manual" ? "manual" : "automatic";
+    const busy = this._manualRefreshInFlight || this._modeChangeInFlight;
+    return html`<div class="controls" aria-label="${this._text("fetchMode")}">
+      <span class="control-label">${this._text("fetchMode")}</span>
+      <div class="mode-switch" role="group" aria-label="${this._text("fetchMode")}">
+        <button class=${mode === "automatic" ? "selected" : ""} ?disabled=${busy || mode === "automatic"} @click=${() => this._setFetchMode(entryId, "automatic")}>${this._text("automatic")}</button>
+        <button class=${mode === "manual" ? "selected" : ""} ?disabled=${busy || mode === "manual"} @click=${() => this._setFetchMode(entryId, "manual")}>${this._text("manual")}</button>
+      </div>
+      ${mode === "manual" ? html`<button class="refresh" ?disabled=${busy} @click=${() => this._manualRefresh(entryId)}>${this._manualRefreshInFlight ? this._text("refreshing") : this._text("refreshNow")}</button>` : nothing}
+    </div>`;
+  }
+
+  private async _setFetchMode(entryId: string, mode: "automatic" | "manual") {
+    if (!this._hass?.callService || this._modeChangeInFlight) return;
+    this._modeChangeInFlight = true;
+    try {
+      await this._hass.callService("mobile_fuel_stations", "set_fetch_mode", { entry_id: entryId, fetch_mode: mode });
+    } catch (error) {
+      this._configError = error instanceof Error ? error.message : this._text("controlFailed");
+    } finally {
+      this._modeChangeInFlight = false;
+      this.requestUpdate();
+    }
+  }
+
+  private async _manualRefresh(entryId: string) {
+    if (!this._hass?.callService || this._manualRefreshInFlight) return;
+    this._manualRefreshInFlight = true;
+    this.requestUpdate();
+    try {
+      await this._hass.callService("mobile_fuel_stations", "manual_refresh", { entry_id: entryId });
+    } catch (error) {
+      this._configError = error instanceof Error ? error.message : this._text("controlFailed");
+    } finally {
+      this._manualRefreshInFlight = false;
+      this.requestUpdate();
+    }
   }
 
   private _highlights(overview: HassState, visibleIds: string[]) {
@@ -474,10 +528,21 @@ export class MobileFuelStationsCard extends LitElement {
     if (labels.length) parts.push(labels.join(", "));
     if (overview.attributes.last_successful_update) {
       const date = new Date(String(overview.attributes.last_successful_update));
-      if (!Number.isNaN(date.getTime())) parts.push(`${this._text("asOf")} ${new Intl.DateTimeFormat(this._locale(), { hour: "2-digit", minute: "2-digit" }).format(date)}`);
+      if (!Number.isNaN(date.getTime())) parts.push(`${this._text("asOf")} ${new Intl.DateTimeFormat(this._locale(), { hour: "2-digit", minute: "2-digit" }).format(date)} (${this._relativeTime(date)})`);
     }
     parts.push(`${this._text("source")}: ${this._providerSummary(stations.map(({ state }) => state.attributes.provider))}`);
     return parts.join(" · ");
+  }
+
+  private _relativeTime(date: Date): string {
+    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    if (seconds < 60) return this._locale() === "en-US" ? "just now" : "gerade eben";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return this._locale() === "en-US" ? `${minutes}m ago` : `vor ${minutes} Min.`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return this._locale() === "en-US" ? `${hours}h ago` : `vor ${hours} Std.`;
+    const days = Math.floor(hours / 24);
+    return this._locale() === "en-US" ? `${days}d ago` : `vor ${days} Tg.`;
   }
 
   private _providerId(value: unknown): string | null {
@@ -519,6 +584,20 @@ export class MobileFuelStationsCard extends LitElement {
     return `${this._text("stale")}${error}${at}`;
   }
 
+  private _hasRefreshError(overview: HassState): boolean {
+    const result = overview.attributes.last_update_result;
+    return typeof result === "string" && ["provider_failed", "provider_auth_failed", "provider_rate_limited", "provider_transient_failure", "provider_cooldown", "gps_unavailable"].includes(result);
+  }
+
+  private _refreshError(overview: HassState): string {
+    const error = text(overview.attributes.last_update_error_class);
+    const cooldown = Number(overview.attributes.provider_cooldown_remaining);
+    if (overview.attributes.last_update_result === "provider_cooldown" && Number.isFinite(cooldown) && cooldown > 0) {
+      return `${this._text("cooldownActive")} (${cooldown}s)`;
+    }
+    return `${this._text("refreshFailed")}${error ? ` (${error})` : ""}`;
+  }
+
   private _station(id: string, state: HassState) {
     const a = state.attributes;
     const name = text(a.station_name) ?? text(a.name) ?? id;
@@ -552,9 +631,9 @@ export class MobileFuelStationsCard extends LitElement {
     return html`<span class="brand-logo"><img src=${url} alt="${alt} ${this._text("brandLogo")}" @error=${() => { this._failedBrandLogos.add(cacheKey); this.requestUpdate(); }}></span>`;
   }
   private _locale(): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? "en-US" : "de-DE"; }
-  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "lastSuccessful" | "priceAge" | "fallback" | "source" | "unknownSource" | "multipleSources" | "unknownBrand" | "brandLogo"): string {
+  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "lastSuccessful" | "priceAge" | "fallback" | "source" | "unknownSource" | "multipleSources" | "unknownBrand" | "brandLogo" | "fetchMode" | "automatic" | "manual" | "refreshNow" | "refreshing" | "refreshFailed" | "cooldownActive" | "controlFailed"): string {
     const english = this._locale() === "en-US";
-    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Data stale", lastSuccessful: "last successful update", priceAge: "Confirmed", fallback: "E5 instead of E10", source: "Source", unknownSource: "Source unknown", multipleSources: "Multiple data sources", unknownBrand: "Unknown station brand", brandLogo: "logo" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigieren", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Daten veraltet", lastSuccessful: "letzte erfolgreiche Aktualisierung", priceAge: "Bestätigt", fallback: "E5 statt E10", source: "Quelle", unknownSource: "Quelle unbekannt", multipleSources: "Mehrere Datenquellen", unknownBrand: "Unbekannte Tankstellenmarke", brandLogo: "Logo" };
+    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Data stale", lastSuccessful: "last successful update", priceAge: "Confirmed", fallback: "E5 instead of E10", source: "Source", unknownSource: "Source unknown", multipleSources: "Multiple data sources", unknownBrand: "Unknown station brand", brandLogo: "logo", fetchMode: "Fetch mode", automatic: "Automatic", manual: "Manual", refreshNow: "Fetch now", refreshing: "Fetching…", refreshFailed: "Station refresh failed", cooldownActive: "Provider cooldown active", controlFailed: "Station control failed" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigieren", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Daten veraltet", lastSuccessful: "letzte erfolgreiche Aktualisierung", priceAge: "Bestätigt", fallback: "E5 statt E10", source: "Quelle", unknownSource: "Quelle unbekannt", multipleSources: "Mehrere Datenquellen", unknownBrand: "Unbekannte Tankstellenmarke", brandLogo: "Logo", fetchMode: "Abrufmodus", automatic: "Automatisch", manual: "Manuell", refreshNow: "Jetzt abrufen", refreshing: "Wird abgerufen…", refreshFailed: "Tankstellenabruf fehlgeschlagen", cooldownActive: "Provider-Cooldown aktiv", controlFailed: "Tankstellensteuerung fehlgeschlagen" };
     return values[key];
   }
   private _keyActivate(event: KeyboardEvent, id: string) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this._moreInfo(id); } }

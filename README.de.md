@@ -98,6 +98,14 @@ für das günstigste Highlight. Strukturierte und formatierte Provider-Adressen
 werden übernommen, sofern geliefert; fehlende Adressen bleiben leer. Explizit
 veraltete Preise werden nicht als aktueller Bestpreis ausgewählt.
 
+Der lokale Entwicklungsstand für `v0.8.0-beta.1` ergänzt einen pro Config Entry
+gespeicherten Abrufmodus: **Automatisch** nutzt weiterhin Zeitplan, GPS-Bewegung,
+Recovery und Provider-Cooldowns; **Manuell** führt keine automatischen
+Providerabfragen aus. Der Administrator kann in der Karte gezielt **Jetzt
+abrufen** wählen. Der letzte erfolgreiche Abruf und der persistierte Stations-
+Cache bleiben nach einem Neustart sichtbar. Dieser Stand ist noch nicht als
+Release veröffentlicht.
+
 Die Integration bietet unter anderem:
 
 - Tankstellen im konfigurierten Suchradius anhand einer Tracker-Entity
@@ -113,6 +121,8 @@ Die Integration bietet unter anderem:
   Provider
 - reguläres DataUpdateCoordinator-Polling und bewegungsabhängige Updates
 - optionale adaptive Aktualisierung anhand gültiger GPS-Geschwindigkeit
+- pro Config Entry wählbarer automatischer oder manueller Abrufmodus mit
+  admin-geschütztem Einzelabruf
 - persistierter, kontextgeprüfter Stations-Cache mit sichtbarer Stale-Markierung
 - responsive Lovelace-Karte mit Navigation und Markenlogo-Fallback
 

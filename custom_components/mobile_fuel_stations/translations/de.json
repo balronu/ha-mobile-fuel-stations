@@ -11,6 +11,7 @@
           "fuel_type": "Kraftstoffarten",
           "station_count": "Tankstellenplätze",
           "update_interval": "Aktualisierungsintervall (Minuten)",
+          "fetch_mode": "Abrufmodus",
           "movement_updates": "Bewegungsupdates aktivieren",
           "movement_threshold": "Bewegungsschwelle (km)",
           "cooldown": "Bewegungs-Cooldown (Minuten)",
@@ -27,6 +28,7 @@
           "movement_threshold": "Mindeststrecke seit der letzten Standortaktualisierung.",
           "cooldown": "Mindestwartezeit zwischen bewegungsbedingten Aktualisierungen.",
           "adaptive_updates": "Reguläre Aktualisierungsintervalle anhand plausibler GPS-Geschwindigkeit anpassen.",
+          "fetch_mode": "Automatisch folgt Zeitplan und Bewegungsereignissen. Manuell deaktiviert automatische Anbieterabfragen und wartet auf „Jetzt abrufen“.",
           "sort_mode": "Reihenfolge der angezeigten Tankstellen.",
           "sort_fuel": "Kraftstoffart für die Preissortierung."
         }
@@ -70,6 +72,7 @@
           "fuel_type": "Kraftstoffarten",
           "station_count": "Tankstellenplätze",
           "update_interval": "Aktualisierungsintervall (Minuten)",
+          "fetch_mode": "Abrufmodus",
           "movement_updates": "Bewegungsupdates aktivieren",
           "movement_threshold": "Bewegungsschwelle (km)",
           "cooldown": "Bewegungs-Cooldown (Minuten)",
@@ -86,6 +89,7 @@
           "movement_threshold": "Mindeststrecke seit der letzten Standortaktualisierung.",
           "cooldown": "Mindestwartezeit zwischen bewegungsbedingten Aktualisierungen.",
           "adaptive_updates": "Reguläre Aktualisierungsintervalle anhand plausibler GPS-Geschwindigkeit anpassen.",
+          "fetch_mode": "Automatisch folgt Zeitplan und Bewegungsereignissen. Manuell deaktiviert automatische Anbieterabfragen und wartet auf „Jetzt abrufen“.",
           "sort_mode": "Reihenfolge der angezeigten Tankstellen.",
           "sort_fuel": "Kraftstoffart für die Preissortierung."
         }
@@ -101,6 +105,7 @@
     "provider_mode": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni", "auto": "Automatisch (empfohlen)"}},
     "nakordoni_auth_method": {"options": {"oauth2": "Automatische OAuth2-Anmeldung", "api_key": "Manueller API-Key"}},
     "sort_mode": {"options": {"distance": "Entfernung – nächste zuerst", "price": "Kraftstoffpreis – günstigste zuerst"}},
-    "sort_fuel": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100"}}
+    "sort_fuel": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100"}},
+    "fetch_mode": {"options": {"automatic": "Automatisch", "manual": "Manuell"}}
   }
 }

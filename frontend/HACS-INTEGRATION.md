@@ -36,6 +36,13 @@ das günstigste Highlight normalisiert. Strukturierte und formatierte Adressen
 werden übernommen, sofern der Provider sie liefert; fehlende Adressen bleiben
 leer.
 
+Der lokale Entwicklungsstand `v0.8.0-beta.1` ergänzt einen pro Config Entry
+persistierten Abrufmodus. Im Modus **Manuell** bleiben Cache und letzter
+erfolgreicher Abruf sichtbar, während Zeitplan, GPS, Recovery und Reload keine
+Providerabfrage auslösen. **Jetzt abrufen** ist ein admin-geschützter Service,
+der genau den gewählten Config Entry anspricht und Provider-Cooldowns sowie
+Kontingente respektiert. Der Entwicklungsstand ist noch nicht veröffentlicht.
+
 Die öffentliche HA-API garantiert allerdings keinen sofortigen Cache-Flush in
 jedem Browser/Companion-Client. Bestehende v0.2.x-Installationen dürfen ihren
 alten manuellen Resource-Eintrag nach erfolgreichem Update, Neustart und
