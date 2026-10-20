@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0-beta.1 — Unreleased development candidate
+## 0.8.0-beta.1 — Beta release
 
 - Add a per-Config-Entry automatic/manual station-fetch mode; existing entries
   default to automatic.
@@ -9,8 +9,8 @@
 - Add an administrator-protected, single-entry manual refresh service and card
   controls with in-flight/double-request protection.
 - Expose fetch mode and safe refresh status in Overview attributes and diagnostics.
-- No beta tag or release has been published; live provider and OAuth tests remain
-  intentionally out of scope.
+- Published as a pre-release; no productive Home Assistant/browser practice test
+  or complete live provider/OAuth test is implied.
 
 ## 0.7.3 — Nakordoni fuel and address normalization
 
