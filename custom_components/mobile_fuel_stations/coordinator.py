@@ -720,9 +720,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             if cached is not None:
                 self._set_station_data(cached)
                 self._has_valid_provider_result = True
-                self.data_stale = True
-                # Data loaded from disk is immediately useful, but must be
-                # visibly marked stale until a provider refresh succeeds.
+                # Automatic mode refreshes restored data after its provider
+                # cooldown, so cached data is explicitly stale there. Manual
+                # mode has no automatic refresh; a recent successful result
+                # must not become stale merely because the entry reloaded.
+                self.data_stale = bool(self.data_stale or not self.is_manual)
                 self.data = self.stations
                 if not self.is_manual and not getattr(self, "_skip_initial_refresh_on_reload", False):
                     self._schedule_provider_cooldown_refresh()
@@ -1490,7 +1492,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             and now - provider_last_request < provider_minimum
         ):
             self.last_update_result = "provider_cooldown"
-            self.data_stale = bool(self.stations)
+            # A manual request deferred by the provider's rate window has not
+            # failed. Keep the last successful result fresh; transient
+            # provider failures below still mark retained data stale.
+            self.data_stale = bool(self.stations) and not self.is_manual
             if self._is_auto:
                 self._set_auto_runtime_state(
                     decision,

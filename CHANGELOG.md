@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.0-beta.2 — Practice-test hotfix
+
+- Fix the `set_fetch_mode` service handler so automatic/manual mode changes
+  persist through the actual Home Assistant service call.
+- Keep the confirmed backend mode in the Lovelace card while a change is in
+  flight; show control errors without hiding existing station data.
+- Keep manual-refresh errors local to the controls and clear them after a
+  successful action; fresh successful manual results are not stale merely
+  because manual mode is active.
+- Add regression coverage for both control services, permissions, multiple
+  Config Entries/cards, error recovery, station preservation, timestamps,
+  frontend tests, and generated bundle synchronization.
+- Prepared as a GitHub pre-release candidate; no productive HA, provider, or
+  OAuth calls are implied.
+
 ## 0.8.0-beta.1 — Beta release
 
 - Add a per-Config-Entry automatic/manual station-fetch mode; existing entries

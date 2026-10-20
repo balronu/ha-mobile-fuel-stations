@@ -193,7 +193,7 @@ async def _async_set_fetch_mode_service(call) -> None:
     if coordinator is not None:
         coordinator.prepare_fetch_mode_change(mode)
         if mode == FETCH_MODE_AUTOMATIC:
-            hass.data.setdefault(DOMAIN, {}).setdefault("skip_initial_refresh", set()).add(
+            call.hass.data.setdefault(DOMAIN, {}).setdefault("skip_initial_refresh", set()).add(
                 entry.entry_id
             )
     options = dict(entry.options)
