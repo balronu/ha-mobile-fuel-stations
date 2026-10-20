@@ -230,7 +230,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfig
     coordinator._skip_initial_refresh_on_reload = skip_initial_refresh
     await coordinator.async_setup()
     try:
-        if not getattr(coordinator, "is_manual", False) and not skip_initial_refresh:
+        startup_due = getattr(coordinator, "startup_refresh_due", lambda: True)()
+        if not getattr(coordinator, "is_manual", False) and not skip_initial_refresh and startup_due:
             await coordinator.async_config_entry_first_refresh()
     except ConfigEntryNotReady as err:
         cause = err.__cause__
@@ -245,6 +246,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileFuelStationsConfig
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    schedule_startup_refresh = getattr(coordinator, "async_schedule_startup_refresh", None)
+    if callable(schedule_startup_refresh):
+        schedule_startup_refresh()
     coordinator.async_schedule_startup_recovery()
     return True
 

@@ -1,6 +1,7 @@
 """Regression tests for automatic and administrator-controlled fetch modes."""
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -40,6 +41,24 @@ def _manual_coordinator() -> MobileFuelStationsCoordinator:
 
 def test_default_fetch_mode_is_automatic():
     assert DEFAULT_FETCH_MODE == FETCH_MODE_AUTOMATIC
+
+
+def test_automatic_startup_refresh_is_due_only_after_cache_interval():
+    coordinator = _manual_coordinator()
+    coordinator.fetch_mode = FETCH_MODE_AUTOMATIC
+    coordinator._has_valid_provider_result = True
+    coordinator.data_stale = False
+    coordinator.last_successful_update = datetime.now(timezone.utc)
+    coordinator.options["update_interval"] = 30
+
+    assert coordinator.startup_refresh_due() is False
+
+    coordinator.data_stale = True
+    assert coordinator.startup_refresh_due() is True
+
+    coordinator.last_successful_update = datetime.now(timezone.utc) - timedelta(minutes=31)
+    coordinator.data_stale = False
+    assert coordinator.startup_refresh_due() is True
 
 
 def test_manual_update_path_does_not_call_provider(monkeypatch):

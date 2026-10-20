@@ -231,6 +231,18 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "provider_cooldown_remaining": getattr(
                 self.coordinator, "diagnostic_provider_cooldown_remaining", 0
             ),
+            "provider_cooldowns": getattr(
+                self.coordinator, "diagnostic_provider_cooldowns", {}
+            ),
+            "provider_quotas": getattr(
+                self.coordinator, "diagnostic_provider_quotas", {}
+            ),
+            "manual_refresh_available": getattr(
+                self.coordinator, "diagnostic_manual_refresh_available", False
+            ),
+            "manual_refresh_blocked_reason": getattr(
+                self.coordinator, "diagnostic_manual_refresh_blocked_reason", None
+            ),
             "recovery_status": getattr(self.coordinator, "recovery_status", "never"),
             "consecutive_failures": getattr(self.coordinator, "consecutive_failures", 0),
             "reference_latitude": ref[0] if ref else None,

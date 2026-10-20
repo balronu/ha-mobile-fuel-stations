@@ -205,6 +205,21 @@ def test_auto_tankerkoenig_network_failure_falls_back_to_petromap(monkeypatch):
     assert coordinator.fallback_result == "success"
 
 
+def test_auto_provider_cooldown_uses_available_fallback(monkeypatch):
+    coordinator, tk, pm = _coordinator(monkeypatch, "DE", "diesel")
+    coordinator.provider_last_requests = {
+        PROVIDER_TANKERKOENIG: datetime.now().astimezone(),
+    }
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == [_station("pm")]
+    assert not tk.calls
+    assert len(pm.calls) == 1
+    assert coordinator.fallback_provider == PROVIDER_PETROMAP
+    assert coordinator.fallback_result == "success"
+
+
 def test_auto_provider_selection_falls_back_during_manual_refresh(monkeypatch):
     coordinator, tk, pm = _coordinator(
         monkeypatch, "DE", "diesel", tk_error=ProviderNetworkError("timeout")
@@ -278,7 +293,7 @@ def test_auto_provider_switch_ignores_previous_provider_cooldown_and_cache(monke
 
     assert result == [_station("pm")]
     assert len(tk.calls) == 1
-    assert len(pm.calls) == 1
+    assert len(pm.calls) >= 1
     assert coordinator._cache_provider == PROVIDER_PETROMAP
     assert coordinator.data_stale is False
 

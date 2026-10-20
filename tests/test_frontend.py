@@ -74,6 +74,38 @@ def test_config_entry_preloads_country_data_in_executor():
     coordinator.async_schedule_startup_recovery.assert_called_once()
 
 
+def test_config_entry_uses_fresh_persisted_cache_without_immediate_provider_refresh():
+    executor = AsyncMock()
+    forward = AsyncMock()
+    hass = SimpleNamespace(
+        data={},
+        async_add_executor_job=executor,
+        config_entries=SimpleNamespace(async_forward_entry_setups=forward),
+    )
+    entry = SimpleNamespace(
+        entry_id="fresh-cache",
+        data={},
+        options={},
+        runtime_data=None,
+        add_update_listener=Mock(),
+        async_on_unload=Mock(),
+    )
+    coordinator = SimpleNamespace(
+        async_setup=AsyncMock(),
+        startup_refresh_due=Mock(return_value=False),
+        async_config_entry_first_refresh=AsyncMock(),
+        async_schedule_startup_refresh=Mock(),
+        async_schedule_startup_recovery=Mock(),
+        is_manual=False,
+    )
+
+    with patch("mobile_fuel_stations.MobileFuelStationsCoordinator", return_value=coordinator):
+        assert asyncio.run(async_setup_entry(hass, entry)) is True
+
+    coordinator.async_config_entry_first_refresh.assert_not_awaited()
+    coordinator.async_schedule_startup_refresh.assert_called_once()
+
+
 def test_frontend_bundle_and_versioned_resource_url():
     bundle = Path(__file__).parents[1] / "custom_components" / DOMAIN / "frontend" / FRONTEND_FILENAME
     assert bundle.is_file()
@@ -95,7 +127,7 @@ def test_frontend_bundle_and_versioned_resource_url():
 
 
 def test_frontend_resource_url_is_stable_across_updates():
-    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.4"
+    assert FRONTEND_RESOURCE_URL == "/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.5"
 
 
 def test_versions_are_synchronized():
@@ -104,9 +136,9 @@ def test_versions_are_synchronized():
         (root / "custom_components" / DOMAIN / "manifest.json").read_text()
     )
     package = json.loads((root / "frontend" / "package.json").read_text())
-    assert manifest["version"] == "0.8.0-beta.4"
-    assert FRONTEND_VERSION == package["version"] == "0.8.0-beta.4"
+    assert manifest["version"] == "0.8.0-beta.5"
+    assert FRONTEND_VERSION == package["version"] == "0.8.0-beta.5"
     package_lock = json.loads((root / "frontend" / "package-lock.json").read_text())
-    assert package_lock["version"] == "0.8.0-beta.4"
-    assert package_lock["packages"][""]["version"] == "0.8.0-beta.4"
-    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.8.0-beta.4"
+    assert package_lock["version"] == "0.8.0-beta.5"
+    assert package_lock["packages"][""]["version"] == "0.8.0-beta.5"
+    assert (root / "pyproject.toml").read_text().split('version = "', 1)[1].split('"', 1)[0] == "0.8.0-beta.5"

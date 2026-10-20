@@ -438,6 +438,7 @@ export class MobileFuelStationsCard extends LitElement {
       <ha-card>
         <div class="header"><h2>${this._text("title")}</h2><span class="summary">${this._summary(overview, stations)}</span></div>
         ${this._controls(overview, cooldown)}
+        ${this._providerStatus(overview)}
         ${this._controlError ? html`<div class="control-error" role="alert">${this._controlError}</div>` : nothing}
         ${isUnavailable ? html`<div class="message" role="status">${this._text("unavailable")}</div>` : nothing}
         ${!isUnavailable && this._hasRefreshError(overview) ? html`<div class="stale-warning" role="alert">${this._refreshError(overview, cooldown.display)}</div>` : nothing}
@@ -457,14 +458,59 @@ export class MobileFuelStationsCard extends LitElement {
     const mode = overview.attributes.fetch_mode === "manual" ? "manual" : "automatic";
     const busy = this._manualRefreshInFlight || this._modeChangeInFlight;
     const cooldownActive = cooldown.backend > 0;
+    const backendAllowsRefresh = typeof overview.attributes.manual_refresh_available === "boolean"
+      ? overview.attributes.manual_refresh_available
+      : !cooldownActive;
+    const blocked = !backendAllowsRefresh;
     return html`<div class="controls" aria-label="${this._text("fetchMode")}">
       <span class="control-label">${this._text("fetchMode")}</span>
       <div class="mode-switch" role="group" aria-label="${this._text("fetchMode")}">
         <button class=${mode === "automatic" ? "selected" : ""} ?disabled=${busy || mode === "automatic"} @click=${() => this._setFetchMode(entryId, "automatic")}>${this._text("automatic")}</button>
         <button class=${mode === "manual" ? "selected" : ""} ?disabled=${busy || mode === "manual"} @click=${() => this._setFetchMode(entryId, "manual")}>${this._text("manual")}</button>
       </div>
-      ${mode === "manual" ? html`<button class="refresh" ?disabled=${busy || cooldownActive} @click=${() => this._manualRefresh(entryId)}>${this._manualRefreshInFlight ? this._text("refreshing") : cooldownActive ? this._cooldownLabel(cooldown.display) : this._text("refreshNow")}</button>` : nothing}
+      ${mode === "manual" ? html`<button class="refresh" ?disabled=${busy || blocked} @click=${() => this._manualRefresh(entryId)}>${this._manualRefreshInFlight ? this._text("refreshing") : cooldownActive && blocked ? this._cooldownLabel(cooldown.display) : blocked ? this._text("noProviderAvailable") : this._text("refreshNow")}</button>` : nothing}
     </div>`;
+  }
+
+  private _providerStatus(overview: HassState) {
+    const cooldowns = overview.attributes.provider_cooldowns && typeof overview.attributes.provider_cooldowns === "object"
+      ? overview.attributes.provider_cooldowns as Record<string, Record<string, unknown>> : {};
+    const quotas = overview.attributes.provider_quotas && typeof overview.attributes.provider_quotas === "object"
+      ? overview.attributes.provider_quotas as Record<string, Record<string, unknown>> : {};
+    const providers = Array.from(new Set([...Object.keys(cooldowns), ...Object.keys(quotas)]));
+    if (!providers.length) return nothing;
+    let activeCooldown = false;
+    const rows = providers.map((provider) => {
+      const cooldown = cooldowns[provider] ?? {};
+      const quota = quotas[provider] ?? {};
+      const cooldownSeconds = this._serverCooldownSeconds(cooldown);
+      activeCooldown ||= cooldownSeconds > 0;
+      const rawQuotas = quota.quotas && typeof quota.quotas === "object" ? quota.quotas as Record<string, Record<string, unknown>> : {};
+      const cheap = rawQuotas.cheap;
+      const remaining = cheap && Number.isInteger(cheap.remaining) ? Number(cheap.remaining) : undefined;
+      const limit = cheap && Number.isInteger(cheap.limit) ? Number(cheap.limit) : undefined;
+      const quotaText = quota.available === true && remaining !== undefined && limit !== undefined
+        ? `${this._providerLabel(provider)} · ${remaining}/${limit} ${this._text("callsRemaining")}${quota.stale === true ? ` · ${this._text("quotaStale")}` : ""}`
+        : `${this._providerLabel(provider)} · ${this._text("quotaUnavailable")}`;
+      return html`<div class="secondary provider-status" role="status">
+        ${cooldownSeconds > 0 ? html`${this._providerLabel(provider)} · ${this._text("cooldownActive")} · ${this._cooldownLabel(cooldownSeconds)}` : quotaText}
+      </div>`;
+    });
+    if (!activeCooldown && Number(overview.attributes.provider_cooldown_remaining) <= 0 && this._cooldownTimer !== undefined) {
+      window.clearInterval(this._cooldownTimer);
+      this._cooldownTimer = undefined;
+    }
+    return html`<div class="provider-status-list" aria-label="${this._text("providerStatus")}">${rows}</div>`;
+  }
+
+  private _serverCooldownSeconds(status: Record<string, unknown>): number {
+    const until = typeof status.cooldown_until === "string" ? Date.parse(status.cooldown_until) : Number.NaN;
+    const seconds = Number.isFinite(until)
+      ? Math.max(0, Math.ceil((until - Date.now()) / 1000))
+      : Number(status.remaining_seconds);
+    const safe = Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 0;
+    if (safe > 0 && this._cooldownTimer === undefined) this._cooldownTimer = window.setInterval(() => this.requestUpdate(), 1000);
+    return safe;
   }
 
   private async _setFetchMode(entryId: string, mode: "automatic" | "manual") {
@@ -695,9 +741,9 @@ export class MobileFuelStationsCard extends LitElement {
     return html`<span class="brand-logo"><img src=${url} alt="${alt} ${this._text("brandLogo")}" @error=${() => { this._failedBrandLogos.add(cacheKey); this.requestUpdate(); }}></span>`;
   }
   private _locale(): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? "en-US" : "de-DE"; }
-  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "lastSuccessful" | "priceAge" | "fallback" | "fallbackUsed" | "fallbackUnavailable" | "source" | "unknownSource" | "multipleSources" | "unknownBrand" | "brandLogo" | "fetchMode" | "automatic" | "manual" | "refreshNow" | "refreshing" | "refreshFailed" | "cooldownActive" | "retryIn" | "providerPricesStale" | "locationMissing" | "providerAuthFailed" | "providerRateLimited" | "providerQuotaExhausted" | "providerResponseError" | "networkTimeout" | "networkError" | "providerUnavailable" | "controlFailed"): string {
+  private _text(key: "title" | "open" | "closed" | "noPrice" | "none" | "asOf" | "navigate" | "unavailable" | "notFound" | "selectEntity" | "nearest" | "cheapest" | "stale" | "lastSuccessful" | "priceAge" | "fallback" | "fallbackUsed" | "fallbackUnavailable" | "source" | "unknownSource" | "multipleSources" | "unknownBrand" | "brandLogo" | "fetchMode" | "automatic" | "manual" | "refreshNow" | "refreshing" | "refreshFailed" | "cooldownActive" | "retryIn" | "providerPricesStale" | "locationMissing" | "providerAuthFailed" | "providerRateLimited" | "providerQuotaExhausted" | "providerResponseError" | "networkTimeout" | "networkError" | "providerUnavailable" | "controlFailed" | "noProviderAvailable" | "providerStatus" | "callsRemaining" | "quotaStale" | "quotaUnavailable"): string {
     const english = this._locale() === "en-US";
-    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Data stale", lastSuccessful: "last successful update", priceAge: "Confirmed", fallback: "E5 instead of E10", fallbackUsed: "Fallback provider used", fallbackUnavailable: "Fallback provider unavailable: market permission missing", source: "Source", unknownSource: "Source unknown", multipleSources: "Multiple data sources", unknownBrand: "Unknown station brand", brandLogo: "logo", fetchMode: "Fetch mode", automatic: "Automatic", manual: "Manual", refreshNow: "Fetch now", refreshing: "Fetching…", refreshFailed: "Station refresh failed", cooldownActive: "Provider cooldown active", retryIn: "Retry in", providerPricesStale: "Provider prices are stale", locationMissing: "Location data unavailable", providerAuthFailed: "Provider authentication failed", providerRateLimited: "Provider rate limit reached", providerQuotaExhausted: "Provider quota exhausted", providerResponseError: "Provider returned an invalid response", networkTimeout: "Provider request timed out", networkError: "Provider network error", providerUnavailable: "Provider temporarily unavailable", controlFailed: "Station control failed" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigieren", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Daten veraltet", lastSuccessful: "letzte erfolgreiche Aktualisierung", priceAge: "Bestätigt", fallback: "E5 statt E10", fallbackUsed: "Ersatzanbieter verwendet", fallbackUnavailable: "Ersatzanbieter nicht verfügbar: Marktberechtigung fehlt", source: "Quelle", unknownSource: "Quelle unbekannt", multipleSources: "Mehrere Datenquellen", unknownBrand: "Unbekannte Tankstellenmarke", brandLogo: "Logo", fetchMode: "Abrufmodus", automatic: "Automatisch", manual: "Manuell", refreshNow: "Jetzt abrufen", refreshing: "Wird abgerufen…", refreshFailed: "Tankstellenabruf fehlgeschlagen", cooldownActive: "Provider-Cooldown aktiv", retryIn: "Erneut abrufen in", providerPricesStale: "Providerpreise sind veraltet", locationMissing: "Standortdaten fehlen", providerAuthFailed: "Provider-Authentifizierung fehlgeschlagen", providerRateLimited: "Provider-Limit erreicht", providerQuotaExhausted: "API-Kontingent erschöpft", providerResponseError: "Provider-Antwort konnte nicht verarbeitet werden", networkTimeout: "Netzwerk-/Timeout-Fehler beim Provider", networkError: "Netzwerkfehler beim Provider", providerUnavailable: "Provider ist vorübergehend nicht verfügbar", controlFailed: "Tankstellensteuerung fehlgeschlagen" };
+    const values = english ? { title: "Nearby fuel stations", open: "Open", closed: "Closed", noPrice: "Price unavailable", none: "No fuel stations found", asOf: "As of", navigate: "Navigate", unavailable: "Fuel stations currently unavailable", notFound: "Overview entity not found", selectEntity: "Select an overview entity", nearest: "Nearest", cheapest: "Cheapest", stale: "Data stale", lastSuccessful: "last successful update", priceAge: "Confirmed", fallback: "E5 instead of E10", fallbackUsed: "Fallback provider used", fallbackUnavailable: "Fallback provider unavailable: market permission missing", source: "Source", unknownSource: "Source unknown", multipleSources: "Multiple data sources", unknownBrand: "Unknown station brand", brandLogo: "logo", fetchMode: "Fetch mode", automatic: "Automatic", manual: "Manual", refreshNow: "Fetch now", refreshing: "Fetching…", refreshFailed: "Station refresh failed", cooldownActive: "Provider cooldown active", retryIn: "Retry in", providerPricesStale: "Provider prices are stale", locationMissing: "Location data unavailable", providerAuthFailed: "Provider authentication failed", providerRateLimited: "Provider rate limit reached", providerQuotaExhausted: "Provider quota exhausted", providerResponseError: "Provider returned an invalid response", networkTimeout: "Provider request timed out", networkError: "Provider network error", providerUnavailable: "Provider temporarily unavailable", controlFailed: "Station control failed", noProviderAvailable: "No provider available", providerStatus: "Provider status", callsRemaining: "calls remaining", quotaStale: "quota data stale", quotaUnavailable: "quota unavailable" } : { title: "Tankstellen in der Nähe", open: "Geöffnet", closed: "Geschlossen", noPrice: "Preis nicht verfügbar", none: "Keine Tankstellen gefunden", asOf: "Stand", navigate: "Navigieren", unavailable: "Tankstellen derzeit nicht verfügbar", notFound: "Overview entity not found", selectEntity: "Bitte eine Overview-Entity auswählen", nearest: "Nächste", cheapest: "Günstigste", stale: "Daten veraltet", lastSuccessful: "letzte erfolgreiche Aktualisierung", priceAge: "Bestätigt", fallback: "E5 statt E10", fallbackUsed: "Ersatzanbieter verwendet", fallbackUnavailable: "Ersatzanbieter nicht verfügbar: Marktberechtigung fehlt", source: "Quelle", unknownSource: "Quelle unbekannt", multipleSources: "Mehrere Datenquellen", unknownBrand: "Unbekannte Tankstellenmarke", brandLogo: "Logo", fetchMode: "Abrufmodus", automatic: "Automatisch", manual: "Manuell", refreshNow: "Jetzt abrufen", refreshing: "Wird abgerufen…", refreshFailed: "Tankstellenabruf fehlgeschlagen", cooldownActive: "Provider-Cooldown aktiv", retryIn: "Erneut abrufen in", providerPricesStale: "Providerpreise sind veraltet", locationMissing: "Standortdaten fehlen", providerAuthFailed: "Provider-Authentifizierung fehlgeschlagen", providerRateLimited: "Provider-Limit erreicht", providerQuotaExhausted: "API-Kontingent erschöpft", providerResponseError: "Provider-Antwort konnte nicht verarbeitet werden", networkTimeout: "Netzwerk-/Timeout-Fehler beim Provider", networkError: "Netzwerkfehler beim Provider", providerUnavailable: "Provider ist vorübergehend nicht verfügbar", controlFailed: "Tankstellensteuerung fehlgeschlagen", noProviderAvailable: "Kein Provider verfügbar", providerStatus: "Providerstatus", callsRemaining: "Aufrufe verbleibend", quotaStale: "Kontingentdaten veraltet", quotaUnavailable: "Kontingent nicht verfügbar" };
     return values[key];
   }
   private _keyActivate(event: KeyboardEvent, id: string) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this._moreInfo(id); } }

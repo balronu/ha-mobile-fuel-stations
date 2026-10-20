@@ -203,6 +203,41 @@ describe("card", () => {
     card.hass = hass; await card.updateComplete;
     expect((card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement).disabled).toBe(false);
   });
+  it("keeps manual refresh enabled when a permitted fallback provider is available", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn().mockResolvedValue(undefined);
+    const hass = { ...hassFor(1, {
+      config_entry_id: "entry-womo",
+      fetch_mode: "manual",
+      manual_refresh_available: true,
+      provider_cooldowns: {
+        tankerkoenig: { active: true, cooldown_until: new Date(Date.now() + 240000).toISOString(), remaining_seconds: 240 },
+        nakordoni: { active: false, cooldown_until: null, remaining_seconds: 0 },
+      },
+      provider_quotas: {
+        tankerkoenig: { available: false },
+        nakordoni: { available: false },
+      },
+    }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect((card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement).disabled).toBe(false);
+    expect(card.shadowRoot?.querySelector("button.refresh")?.textContent).toContain("Jetzt abrufen");
+    expect(card.shadowRoot?.textContent).toContain("Tankerkönig");
+    expect(card.shadowRoot?.textContent).toContain("Provider-Cooldown aktiv");
+  });
+  it("renders verified quota data and marks unsupported provider quotas unavailable", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, {
+      provider_cooldowns: { nakordoni: { active: false, cooldown_until: null, remaining_seconds: 0 } },
+      provider_quotas: {
+        nakordoni: { available: true, stale: false, quotas: { cheap: { remaining: 7, limit: 10 } } },
+        tankerkoenig: { available: false },
+      },
+    });
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("7/10 Aufrufe verbleibend");
+    expect(card.shadowRoot?.textContent).toContain("Tankerkönig · Kontingent nicht verfügbar");
+  });
   it("keeps the confirmed backend mode while a mode change is pending", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     let resolveService: (() => void) | undefined;
