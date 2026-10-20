@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.7.3"><img src="https://img.shields.io/badge/Stable-v0.7.3-16a34a" alt="Stable v0.7.3"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.0"><img src="https://img.shields.io/badge/Stable-v0.8.0-16a34a" alt="Stable v0.8.0"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -67,16 +67,16 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.7.3` | Aktuelle stabile Version |
-| Beta | `v0.8.0-beta.8` | Aktuelle Beta-Version |
-| Vorherige Stable | `v0.7.2` | Verfügbare Rollback-Version |
-| Frontend-Komponente | `v0.8.0-beta.8` | Unabhängig versionierte Lovelace-Komponente |
+| Stable | `v0.8.0` | Aktuelle stabile Version |
+| Vorherige Stable | `v0.7.3` | Verfügbare Rollback-Version |
+| Historische Beta | `v0.8.0-beta.8` | Vorangegangene Pre-release |
+| Frontend-Komponente | `v0.8.0` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.7.3` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
+`v0.8.0` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
 marktberechtigtem Fallback, Quota-/Trip-Pass-Diagnose, OAuth2-PKCE und manuellen
 API-Keys. Die 60 lokalen PNG-Logos stammen aus der bereitgestellten ZIP; die
-Ressource wird mit dem Cache-Key `v=0.8.0-beta.8` automatisch registriert. Die
+Ressource wird mit dem Cache-Key `v=0.8.0` automatisch registriert. Die
 experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 über einen Live-Callback bestätigt. Herkunft, fehlende Einzelbildlizenz und
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
@@ -99,11 +99,11 @@ für das günstigste Highlight. Strukturierte und formatierte Provider-Adressen
 werden übernommen, sofern geliefert; fehlende Adressen bleiben leer. Explizit
 veraltete Preise werden nicht als aktueller Bestpreis ausgewählt.
 
-Die Beta `v0.8.0-beta.8` ergänzt die lokale Ländererkennung bei später
+Die Version `v0.8.0` ergänzt die lokale Ländererkennung bei später
 eintreffenden GPS-Positionen im manuellen Modus. Gültige Positionen aktualisieren
 den Länder-Kontext und die Providerstatus ohne Provider- oder Usage-Abfrage.
-Die Beta.7-Erweiterungen bleiben enthalten: Die Beta `v0.8.0-beta.7` ergänzt einen pro Config Entry
-gespeicherten Abrufmodus: **Automatisch** nutzt weiterhin Zeitplan, GPS-Bewegung,
+Die Erweiterungen der v0.8.0-Betas bleiben enthalten: ein pro Config Entry
+gespeicherter Abrufmodus. **Automatisch** nutzt weiterhin Zeitplan, GPS-Bewegung,
 Recovery und Provider-Cooldowns; **Manuell** führt keine automatischen
 Providerabfragen aus. Der Administrator kann in der Karte gezielt **Jetzt
 abrufen** wählen. Benutzer ohne Home-Assistant-Adminrechte sehen die Karte
@@ -114,10 +114,9 @@ Tankerkönig und Petromap werden ohne belastbare Kontingentdaten als unbekannt
 ausgewiesen. Ein frischer automatischer Cache löst beim Start keinen vorzeitigen
 Abruf aus. Beta.7 vereinheitlicht zusätzlich Länder-Kontext, Provider-
 Verfügbarkeit und manuelle Abrufsperre; unbekannte Länder werden als eigener
-Status diagnostiziert. Beta.8 ist als GitHub-Pre-Release-Kandidat vorbereitet;
-produktive
-HA-/Browser- und vollständige Live-Provider-/OAuth-Tests bleiben außerhalb
-dieses Beta-Scope.
+Status diagnostiziert. Die Release-Prüfung verwendet Tests und CI mit Mocks und
+Fixtures; ein Live-Provider- oder OAuth-Aufruf ist nicht Bestandteil der
+Veröffentlichung.
 
 Im automatischen Provider-Auswahlmodus erfolgt ein Fallback nur für DNS-/Netzwerk-,
 Timeout-, HTTP-5xx- und HTTP-429-Fehler. Authentifizierungs-, Berechtigungs-,
@@ -156,9 +155,9 @@ Die Integration bietet unter anderem:
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.7.3` bleibt die aktuelle stabile HACS-Version; `v0.8.0-beta.8` ist als
-Pre-Release-Kandidat vorbereitet. Für einen Rücksprung steht
-`v0.7.2` als vorherige Stable-Version zur Verfügung.
+`v0.8.0` ist die aktuelle stabile HACS-Version; `v0.7.3` bleibt als
+vorherige Stable-Rollback-Version verfügbar. Historische Betas bleiben im
+GitHub-Archiv erhalten.
 
 Die adaptive Aktualisierung ist standardmäßig deaktiviert und wird nur über
 den Optionsdialog aktiviert. Sie verwendet ausschließlich gültige, aktuelle
@@ -168,7 +167,7 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und automatisch
 registriert. Die Frontend-Ressource lautet:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0-beta.8
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.0
 ```
 
 Bei einer bestehenden Installation können alte Ressourcen im Browser- oder
@@ -501,6 +500,7 @@ Historische Release Notes liegen unverändert im
 [Release-Archiv auf GitHub](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/).
 Die Stable-Release Notes stehen in
 [`docs/releases/RELEASE_NOTES_v0.7.3.md`](docs/releases/RELEASE_NOTES_v0.7.3.md)
+und [`docs/releases/RELEASE_NOTES_v0.8.0.md`](docs/releases/RELEASE_NOTES_v0.8.0.md).
 Die Beta-Release-Notes stehen in
 [`docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md).
 Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
