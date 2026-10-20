@@ -12,7 +12,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api import Station, station_attributes
 from .const import (
     CONF_PROVIDER_MODE,
+    CONF_SORT_FUEL,
+    CONF_SORT_MODE,
     CONF_STATION_COUNT,
+    DEFAULT_SORT_FUEL,
+    DEFAULT_SORT_MODE,
     DOMAIN,
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
@@ -187,10 +191,19 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
     @property
     def extra_state_attributes(self):
         ref = self.coordinator.reference_position
+        options = getattr(self.coordinator, "options", {}) or {}
+        configured_fuels = getattr(self.coordinator, "fuel_types", None)
         return {
             "radius": self.coordinator.config["radius"],
             "fuel_type": self.coordinator.config["fuel_type"],
             "fuel_types": getattr(self.coordinator, "fuel_types", [self.coordinator.config["fuel_type"]]),
+            "sort_mode": options.get(CONF_SORT_MODE, DEFAULT_SORT_MODE),
+            "sort_fuel": options.get(
+                CONF_SORT_FUEL,
+                configured_fuels[0]
+                if configured_fuels
+                else DEFAULT_SORT_FUEL,
+            ),
             "location_entity": self.coordinator.config["location_entity"],
             "station_count": len(self.coordinator.data or []),
             "station_entities": _registered_station_entity_ids(

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.3 — Unified station prioritization
+
+- Priorisiert in Kompakt- und Ausführlich-Ansicht dieselbe Tankstellenliste: Nächste zuerst, danach die günstigste unterschiedliche Tankstelle für den konfigurierten Kraftstoff.
+- Bei identischer Tankstelle werden beide Kennzeichnungen gemeinsam dargestellt; doppelte Sonderkarten entfallen vollständig.
+- Die restlichen Tankstellen behalten die konfigurierte Entfernungs- oder Preissortierung mit deterministischen Tie-Breakern.
+- Fehlende Preise und Entfernungen werden nicht als null interpretiert; Provider, Abrufmodus, Navigation und bestehende YAML-Karten bleiben unverändert.
+- Ergänzt gemeinsame Frontend-Regressionstests und 390px-/Desktop-/Dark-Mode-Abnahme.
+
 ## 0.8.2 — Compact station rows
 
 - Korrigiert den Kompaktmodus für die vollständige normale Tankstellenliste.

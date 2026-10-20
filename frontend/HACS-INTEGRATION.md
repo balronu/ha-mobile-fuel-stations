@@ -8,7 +8,7 @@
 - Home Assistant registriert beim Integrations-Setup den statischen Pfad
   `/mobile_fuel_stations` über `async_register_static_paths`.
 - Die automatisch registrierte JavaScript-URL enthält die Integrationsversion,
-  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.2`.
+  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.3`.
 - Der physische StaticPath und die ausgelieferte Datei bleiben
   `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
 
@@ -36,7 +36,7 @@ das günstigste Highlight normalisiert. Strukturierte und formatierte Adressen
 werden übernommen, sofern der Provider sie liefert; fehlende Adressen bleiben
 leer.
 
-Die Stable-Version `v0.8.2` korrigiert die kompakte Lovelace-Darstellung für die vollständige Tankstellenliste; die
+Die Stable-Version `v0.8.3` priorisiert die vollständige Tankstellenliste in beiden Ansichten; die
 lokale Ländererkennung aus `v0.8.0` bleibt enthalten. Bei später
 eintreffenden GPS-Positionen im manuellen Modus, ohne Provider- oder
 Usage-Abfragen auszulösen. Die v0.8.0-Erweiterungen umfassen außerdem einen pro
