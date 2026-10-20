@@ -7,6 +7,7 @@ type HassState = {
 
 type Hass = {
   states: Record<string, HassState | undefined>;
+  user?: { is_admin?: boolean };
   locale?: { language?: string };
   callService?: (domain: string, service: string, data: Record<string, unknown>) => Promise<unknown>;
 };
@@ -437,7 +438,7 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _controls(overview: HassState) {
     const entryId = text(overview.attributes.config_entry_id);
-    if (!entryId || !this._hass?.callService) return nothing;
+    if (!entryId || !this._hass?.callService || this._hass.user?.is_admin === false) return nothing;
     const mode = overview.attributes.fetch_mode === "manual" ? "manual" : "automatic";
     const busy = this._manualRefreshInFlight || this._modeChangeInFlight;
     return html`<div class="controls" aria-label="${this._text("fetchMode")}">

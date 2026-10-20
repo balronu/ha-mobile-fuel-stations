@@ -188,6 +188,15 @@ describe("card", () => {
     (card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement)?.click();
     expect(callService).toHaveBeenCalledWith("mobile_fuel_stations", "manual_refresh", { entry_id: "entry-opel" });
   });
+  it("keeps the card read-only for a non-admin dashboard user", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn().mockResolvedValue(undefined);
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual" }), user: { is_admin: false }, callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".controls")).toBeNull();
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+    expect(callService).not.toHaveBeenCalled();
+  });
   it("shows logos by default and respects an explicit opt-out", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     card.setConfig({ entity: overviewId }); card.hass = hassFor(1, {}, { brand: "Shell", provider: "petromap" }); await card.updateComplete;

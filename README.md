@@ -102,9 +102,10 @@ Der lokale Entwicklungsstand für `v0.8.0-beta.1` ergänzt einen pro Config Entr
 gespeicherten Abrufmodus: **Automatisch** nutzt weiterhin Zeitplan, GPS-Bewegung,
 Recovery und Provider-Cooldowns; **Manuell** führt keine automatischen
 Providerabfragen aus. Der Administrator kann in der Karte gezielt **Jetzt
-abrufen** wählen. Der letzte erfolgreiche Abruf und der persistierte Stations-
-Cache bleiben nach einem Neustart sichtbar. Dieser Stand ist noch nicht als
-Release veröffentlicht.
+abrufen** wählen. Benutzer ohne Home-Assistant-Adminrechte sehen die Karte
+weiterhin lesend, aber keine Steuerung. Der letzte erfolgreiche Abruf und der
+persistierte Stations-Cache bleiben nach einem Neustart sichtbar. Dieser Stand
+ist noch nicht als Release veröffentlicht.
 
 Die Integration bietet unter anderem:
 

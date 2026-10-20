@@ -392,6 +392,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._provider_lock: asyncio.Lock | None = None
         self._manual_refresh_lock = asyncio.Lock()
         self._manual_refresh_in_progress = False
+        self._lifecycle_generation = 0
+        self._shutdown_started = False
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
         self._provider_status_store = Store(hass, 1, f"{DOMAIN}.provider_status.{entry.entry_id}")
         # Keep the status in the runtime object as well as hass.data.  The
@@ -682,18 +684,33 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.last_update_error_at = self._parse_time(stored.get("last_update_error_at"))
             self.last_update_error_class = stored.get("last_update_error_class")
             self.last_update_error_provider = stored.get("last_update_error_provider")
-            self.last_retry_after = stored.get("last_retry_after")
+            retry_after = stored.get("last_retry_after")
+            self.last_retry_after = (
+                retry_after if isinstance(retry_after, int) and retry_after >= 0 else None
+            )
             self.data_stale = bool(stored.get("data_stale", False))
             self.recovery_status = str(stored.get("recovery_status", "never"))
-            self.consecutive_failures = int(stored.get("consecutive_failures", 0))
+            failures = stored.get("consecutive_failures", 0)
+            self.consecutive_failures = failures if isinstance(failures, int) and failures >= 0 else 0
             lat, lon = stored.get("reference_latitude"), stored.get("reference_longitude")
-            if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+            if (
+                isinstance(lat, (int, float))
+                and isinstance(lon, (int, float))
+                and isfinite(float(lat))
+                and isfinite(float(lon))
+                and -90 <= float(lat) <= 90
+                and -180 <= float(lon) <= 180
+            ):
                 self.reference_position = (float(lat), float(lon))
             gps_lat, gps_lon = stored.get("last_gps_latitude"), stored.get("last_gps_longitude")
             gps_at = self._parse_time(stored.get("last_gps_at"))
             if (
                 isinstance(gps_lat, (int, float))
                 and isinstance(gps_lon, (int, float))
+                and isfinite(float(gps_lat))
+                and isfinite(float(gps_lon))
+                and -90 <= float(gps_lat) <= 90
+                and -180 <= float(gps_lon) <= 180
                 and gps_at is not None
             ):
                 self.last_gps_sample = GpsSample(
@@ -785,7 +802,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 if station is None:
                     return None
                 stations.append(station)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return None
         reference = self.reference_position
         current = None
@@ -871,9 +888,32 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         fuel_prices = raw.get("fuel_prices")
         if fuel_prices is not None and not isinstance(fuel_prices, dict):
             return None
+        if fuel_prices is not None and any(
+            not isinstance(key, str)
+            or value is not None
+            and (not isinstance(value, (int, float)) or not isfinite(float(value)))
+            for key, value in fuel_prices.items()
+        ):
+            return None
         fuel_fallbacks = raw.get("fuel_fallbacks")
         if fuel_fallbacks is not None and not isinstance(fuel_fallbacks, dict):
             return None
+        if fuel_fallbacks is not None and any(
+            not isinstance(key, str) or not isinstance(value, bool)
+            for key, value in fuel_fallbacks.items()
+        ):
+            return None
+        optional_strings = (
+            "currency", "country_code", "provider", "fuel_type", "requested_fuel"
+        )
+        if any(
+            raw.get(key) is not None and not isinstance(raw.get(key), str)
+            for key in optional_strings
+        ):
+            return None
+        for key in ("price_stale", "fallback_used"):
+            if raw.get(key) is not None and not isinstance(raw.get(key), bool):
+                return None
         return Station(
             station_id=raw["station_id"], name=raw["name"], brand=raw["brand"],
             price=number("price"), distance=number("distance"), is_open=is_open,
@@ -985,6 +1025,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         await self._provider_status_store.async_save(all_status)
 
     async def async_shutdown(self) -> None:
+        self._shutdown_started = True
+        self._lifecycle_generation = getattr(self, "_lifecycle_generation", 0) + 1
         if self._unsub_position:
             self._unsub_position()
             self._unsub_position = None
@@ -1011,6 +1053,27 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if recovery_task and not recovery_task.done() and recovery_task is not task:
             recovery_task.cancel()
         await super().async_shutdown()
+
+    def prepare_fetch_mode_change(self, mode: str) -> None:
+        """Make an in-flight coordinator stop producing results for old mode."""
+
+        if mode not in (FETCH_MODE_AUTOMATIC, FETCH_MODE_MANUAL):
+            return
+        self._lifecycle_generation = getattr(self, "_lifecycle_generation", 0) + 1
+        self.fetch_mode = mode
+        self.options[CONF_FETCH_MODE] = mode
+        if mode == FETCH_MODE_MANUAL:
+            self.update_interval = None
+            unschedule = getattr(self, "_unschedule_refresh", None)
+            if callable(unschedule) and hasattr(self, "_unsub_refresh"):
+                unschedule()
+            self._cancel_provider_cooldown_timer()
+            self._cancel_recovery_timer()
+            self._recovery_active = False
+        else:
+            self.update_interval = timedelta(
+                minutes=int(self.options["update_interval"])
+            )
 
     async def async_manual_refresh(self) -> None:
         """Perform one administrator-requested refresh for this entry only."""
@@ -1296,6 +1359,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             return None
 
     async def _async_update_data(self) -> list[Station]:
+        generation = getattr(self, "_lifecycle_generation", 0)
         now = datetime.now().astimezone()
         self.last_update_attempt = now
         self.last_update_result = "started"
@@ -1580,6 +1644,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.recovery_provider_in_flight = False
             provider_lock.release()
         result = merge_stations(result)
+        if getattr(self, "_shutdown_started", False) or generation != getattr(
+            self, "_lifecycle_generation", 0
+        ):
+            self.last_update_result = "discarded_after_lifecycle_change"
+            return self._previous_result() or []
         self._cancel_provider_cooldown_timer()
         self._set_station_data(result)
         self._cache_provider = provider_mode

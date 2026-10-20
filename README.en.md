@@ -100,9 +100,10 @@ selected as the current cheapest result.
 The local `v0.8.0-beta.1` development candidate adds a per-Config-Entry fetch
 mode: **Automatic** keeps the schedule, GPS movement, recovery and provider
 cooldowns; **Manual** performs no automatic provider requests. An administrator
-can use **Fetch now** in the card for one targeted attempt. The last successful
-fetch and persisted station cache remain visible after a restart. This candidate
-has not been released.
+can use **Fetch now** in the card for one targeted attempt. Non-administrator
+Home Assistant users retain read-only station access and do not see the control.
+The last successful fetch and persisted station cache remain visible after a
+restart. This candidate has not been released.
 
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price

@@ -69,7 +69,7 @@ var MobileFuelStationsCard=(function(f){"use strict";const R=globalThis,q=R.Shad
         ${o?c:this._highlights(e,i)}
         ${o?c:s.length?d`<div class="stations">${s.map(({id:r,state:l})=>this._station(r,l))}</div>`:d`<div class="message">${this._text("none")}</div>`}
       </ha-card>
-    `}_controls(t){const e=m(t.attributes.config_entry_id);if(!e||!this._hass?.callService)return c;const i=t.attributes.fetch_mode==="manual"?"manual":"automatic",s=this._manualRefreshInFlight||this._modeChangeInFlight;return d`<div class="controls" aria-label="${this._text("fetchMode")}">
+    `}_controls(t){const e=m(t.attributes.config_entry_id);if(!e||!this._hass?.callService||this._hass.user?.is_admin===!1)return c;const i=t.attributes.fetch_mode==="manual"?"manual":"automatic",s=this._manualRefreshInFlight||this._modeChangeInFlight;return d`<div class="controls" aria-label="${this._text("fetchMode")}">
       <span class="control-label">${this._text("fetchMode")}</span>
       <div class="mode-switch" role="group" aria-label="${this._text("fetchMode")}">
         <button class=${i==="automatic"?"selected":""} ?disabled=${s||i==="automatic"} @click=${()=>this._setFetchMode(e,"automatic")}>${this._text("automatic")}</button>

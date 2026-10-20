@@ -39,7 +39,8 @@ leer.
 Der lokale Entwicklungsstand `v0.8.0-beta.1` ergänzt einen pro Config Entry
 persistierten Abrufmodus. Im Modus **Manuell** bleiben Cache und letzter
 erfolgreicher Abruf sichtbar, während Zeitplan, GPS, Recovery und Reload keine
-Providerabfrage auslösen. **Jetzt abrufen** ist ein admin-geschützter Service,
+Providerabfrage auslösen. **Jetzt abrufen** ist ein admin-geschützter Service;
+Benutzer ohne Adminrechte behalten lesenden Zugriff ohne Steuerung.
 der genau den gewählten Config Entry anspricht und Provider-Cooldowns sowie
 Kontingente respektiert. Der Entwicklungsstand ist noch nicht veröffentlicht.
 

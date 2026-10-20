@@ -17,6 +17,7 @@ from mobile_fuel_stations.const import (
     CONF_PROVIDER_MODE,
     CONF_RADIUS,
     CONF_STATION_COUNT,
+    CONF_UPDATE_INTERVAL,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
 )
@@ -76,6 +77,7 @@ def _coordinator(provider, fuel="diesel"):
         CONF_MOVEMENT_THRESHOLD: 2.0,
         CONF_COOLDOWN: 5,
         CONF_ADAPTIVE_UPDATES: False,
+        CONF_UPDATE_INTERVAL: 30,
     }
     coordinator.fuel_types = [fuel]
     coordinator.provider_modes = frozenset({PROVIDER_PETROMAP})
@@ -779,6 +781,62 @@ def test_station_cache_round_trip_is_secret_free_and_validated():
     assert coordinator._station_from_store(stored) == _station()
     invalid = dict(stored, latitude=91)
     assert coordinator._station_from_store(invalid) is None
+    assert coordinator._station_from_store(dict(stored, price_stale="yes")) is None
+    assert coordinator._station_from_store(dict(stored, fuel_prices={"diesel": "secret"})) is None
+    assert coordinator._station_from_store(dict(stored, fuel_fallbacks={"diesel": "yes"})) is None
+    assert coordinator._station_from_store(dict(stored, provider={"api_key": "secret"})) is None
+
+
+def test_cache_load_does_not_change_success_timestamp(monkeypatch):
+    coordinator = _coordinator(_Provider())
+    successful = datetime.now().astimezone() - timedelta(hours=2)
+    coordinator.last_successful_update = successful
+    coordinator.provider_modes = frozenset({PROVIDER_TANKERKOENIG})
+    coordinator.options[CONF_PROVIDER_MODE] = PROVIDER_TANKERKOENIG
+    coordinator.reference_position = (49.2, 7.0)
+    coordinator.hass.states = SimpleNamespace(
+        get=lambda _entity: SimpleNamespace(
+            state="home", attributes={"latitude": 49.2, "longitude": 7.0}
+        )
+    )
+    stored = {
+        "station_cache_context": coordinator._cache_context(),
+        "station_cache_provider": PROVIDER_TANKERKOENIG,
+        "stations": [coordinator._station_to_store(_station())],
+    }
+
+    assert coordinator._load_cached_stations(stored)
+    assert coordinator.last_successful_update == successful
+
+
+def test_inflight_provider_result_is_discarded_after_mode_change(monkeypatch):
+    provider = _Provider([_station()])
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def delayed_search(query):
+        provider.calls.append(query)
+        started.set()
+        await release.wait()
+        return [_station()]
+
+    provider.async_search = delayed_search
+    coordinator = _coordinator(provider)
+    monkeypatch.setattr(coordinator_module, "_valid_position", lambda *_: (49.2, 7.0))
+
+    async def exercise():
+        task = asyncio.create_task(coordinator._async_update_data())
+        await started.wait()
+        coordinator.prepare_fetch_mode_change("manual")
+        release.set()
+        result = await task
+        return result
+
+    result = asyncio.run(exercise())
+
+    assert result == []
+    assert coordinator._store.saved is None
+    assert coordinator.last_successful_update is None
 
 
 def test_reload_restores_matching_station_cache_as_stale_and_schedules_cooldown(

@@ -191,7 +191,11 @@ async def _async_set_fetch_mode_service(call) -> None:
         return
     coordinator = getattr(entry, "runtime_data", None)
     if coordinator is not None:
-        coordinator._skip_initial_refresh_on_reload = mode == FETCH_MODE_AUTOMATIC
+        coordinator.prepare_fetch_mode_change(mode)
+        if mode == FETCH_MODE_AUTOMATIC:
+            hass.data.setdefault(DOMAIN, {}).setdefault("skip_initial_refresh", set()).add(
+                entry.entry_id
+            )
     options = dict(entry.options)
     options[CONF_FETCH_MODE] = mode
     call.hass.config_entries.async_update_entry(entry, options=options)
