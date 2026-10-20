@@ -16,6 +16,8 @@ from .base import (
     ProviderRateLimitError,
     ProviderResponseError,
     ProviderTimeoutError,
+    ProviderUnavailableError,
+    ProviderRequestDiagnostics,
     Station,
     StationSearchQuery,
 )
@@ -55,29 +57,96 @@ class TankerkoenigProvider:
                         retry_after = None
                     if retry_after is not None and retry_after >= 0:
                         error.retry_after = retry_after
+                    error.diagnostics = ProviderRequestDiagnostics(
+                        provider="tankerkoenig", http_status=429,
+                        error_code="rate_limited", retry_after=retry_after,
+                        quota_limit=None, quota_remaining=None,
+                        request_success=False, response_ok=None,
+                    )
+                    raise error
+                if response.status in (401, 403):
+                    error = ProviderAuthError("authentication_failed")
+                    error.diagnostics = ProviderRequestDiagnostics(
+                        provider="tankerkoenig", http_status=response.status,
+                        error_code="authentication_failed", retry_after=None,
+                        quota_limit=None, quota_remaining=None,
+                        request_success=False, response_ok=None,
+                    )
+                    raise error
+                if response.status >= 500:
+                    error = ProviderUnavailableError(f"http_{response.status}")
+                    error.diagnostics = ProviderRequestDiagnostics(
+                        provider="tankerkoenig", http_status=response.status,
+                        error_code="provider_unavailable", retry_after=None,
+                        quota_limit=None, quota_remaining=None,
+                        request_success=False, response_ok=None,
+                    )
                     raise error
                 response.raise_for_status()
-                payload: dict[str, Any] = await response.json(content_type=None)
+                raw_payload = await response.json(content_type=None)
+                if not isinstance(raw_payload, dict):
+                    error = ProviderResponseError("invalid_json_shape")
+                    error.diagnostics = ProviderRequestDiagnostics(
+                        provider="tankerkoenig", http_status=200,
+                        error_code="invalid_json_shape", retry_after=None,
+                        quota_limit=None, quota_remaining=None,
+                        request_success=False, response_ok=None,
+                    )
+                    raise error
+                payload: dict[str, Any] = raw_payload
         except ClientResponseError as err:
-            raise ProviderResponseError(f"HTTP {err.status}") from err
+            error = ProviderResponseError(f"http_{err.status}")
+            error.diagnostics = ProviderRequestDiagnostics(
+                provider="tankerkoenig", http_status=err.status,
+                error_code="http_error", retry_after=None,
+                quota_limit=None, quota_remaining=None,
+                request_success=False, response_ok=None,
+            )
+            raise error from err
         except TimeoutError as err:
             raise ProviderTimeoutError("Provider request timed out") from err
         except ClientError as err:
             raise ProviderNetworkError("Provider request failed") from err
         except ValueError as err:
-            raise ProviderResponseError("Provider returned invalid JSON") from err
+            error = ProviderResponseError("invalid_json")
+            error.diagnostics = ProviderRequestDiagnostics(
+                provider="tankerkoenig", http_status=200,
+                error_code="invalid_json", retry_after=None,
+                quota_limit=None, quota_remaining=None,
+                request_success=False, response_ok=None,
+            )
+            raise error from err
 
         if payload.get("ok") is not True:
             status = str(payload.get("status", "provider_error"))
             if "key" in status.lower() or "auth" in status.lower():
-                raise ProviderAuthError
-            if "limit" in status.lower():
-                raise ProviderRateLimitError
-            raise ProviderResponseError("Provider returned ok=false")
+                error = ProviderAuthError("authentication_failed")
+            elif any(token in status.lower() for token in ("limit", "rate", "quota")):
+                error = ProviderRateLimitError("rate_limited")
+            else:
+                error = ProviderResponseError("provider_response_rejected")
+            error.diagnostics = ProviderRequestDiagnostics(
+                provider="tankerkoenig", http_status=200,
+                error_code=status[:80], retry_after=None,
+                quota_limit=None, quota_remaining=None,
+                request_success=False, response_ok=False,
+            )
+            raise error
+
+        stations = payload.get("stations")
+        if not isinstance(stations, list):
+            error = ProviderResponseError("invalid_stations_payload")
+            error.diagnostics = ProviderRequestDiagnostics(
+                provider="tankerkoenig", http_status=200,
+                error_code="invalid_stations_payload", retry_after=None,
+                quota_limit=None, quota_remaining=None,
+                request_success=False, response_ok=True,
+            )
+            raise error
 
         return [
             replace(self._normalize(item), fuel_type=query.fuel_type, requested_fuel=query.fuel_type, provider="tankerkoenig")
-            for item in payload.get("stations", []) if isinstance(item, dict)
+            for item in stations if isinstance(item, dict)
         ]
 
     @staticmethod

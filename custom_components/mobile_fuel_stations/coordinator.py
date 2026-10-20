@@ -66,10 +66,12 @@ from .providers.base import (
     FuelFallbackBlockedError,
     NoSuitableProviderError,
     ProviderAuthError,
+    ProviderCreditError,
     ProviderError,
     ProviderNetworkError,
     ProviderRateLimitError,
     ProviderRequestDiagnostics,
+    ProviderPermissionError,
     ProviderCapabilities,
     ProviderResponseError,
     ProviderReauthContext,
@@ -361,6 +363,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._cache_provider: str | None = None
         self.last_update_error_at: datetime | None = None
         self.last_update_error_class: str | None = None
+        self.last_update_error_code: str | None = None
         self.last_update_error_provider: str | None = None
         self.last_retry_after: int | None = None
         self.data_stale = False
@@ -683,6 +686,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.last_update_attempt = self._parse_time(stored.get("last_update_attempt"))
             self.last_update_error_at = self._parse_time(stored.get("last_update_error_at"))
             self.last_update_error_class = stored.get("last_update_error_class")
+            self.last_update_error_code = stored.get("last_update_error_code")
             self.last_update_error_provider = stored.get("last_update_error_provider")
             retry_after = stored.get("last_retry_after")
             self.last_retry_after = (
@@ -962,8 +966,6 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             cancel()
 
     def _schedule_provider_cooldown_refresh(self, provider: str | None = None) -> None:
-        if self.is_manual:
-            return
         provider = provider or self._cache_provider or self.options.get(CONF_PROVIDER_MODE)
         request_at = getattr(self, "provider_last_requests", {}).get(provider or "")
         if request_at is None and not hasattr(self, "provider_last_requests"):
@@ -1093,7 +1095,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if self.last_update_result != "provider_success":
             if self.last_update_result == "provider_cooldown":
                 raise UpdateFailed(
-                    f"Provider cooldown active ({self.diagnostic_provider_cooldown_remaining}s remaining)"
+                    f"Provider-Cooldown aktiv ({self.diagnostic_provider_cooldown_remaining}s verbleibend)"
                 )
             raise UpdateFailed(
                 self.last_update_error_class or self.last_update_result or "Refresh failed"
@@ -1324,7 +1326,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.recovery_error_class = None
             self.recovery_task_status = "completed"
             self._finish_recovery()
-        elif result == "provider_transient_failure":
+        elif result in {
+            "provider_transient_failure", "provider_rate_limited", "provider_response_error",
+            "network_timeout", "network_error", "provider_unavailable",
+        }:
             self.recovery_error_class = self.last_update_error_class
             self.recovery_task_status = "retry_scheduled"
             self._schedule_transient_recovery()
@@ -1617,6 +1622,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 self._nakordoni_error_message(err)
                 if active_provider_mode == PROVIDER_NAKORDONI
                 else "API rate limit reached",
+                result="provider_rate_limited",
             )
         except ProviderError as err:
             diagnostics = getattr(err, "diagnostics", None)
@@ -1637,10 +1643,33 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 message = self._nakordoni_error_message(err)
             else:
                 provider_label = active_provider_mode or "provider"
-                message = f"{provider_label} request failed"
-            if isinstance(err, _TRANSIENT_PROVIDER_ERRORS):
+                if isinstance(err, ProviderCreditError):
+                    self.last_update_result = "provider_quota_exhausted"
+                    message = f"{provider_label} quota exhausted"
+                elif isinstance(err, ProviderPermissionError):
+                    self.last_update_result = "provider_permission_denied"
+                    message = f"{provider_label} permission denied"
+                elif isinstance(err, ProviderResponseError):
+                    self.last_update_result = "provider_response_error"
+                    message = f"{provider_label} returned an invalid response"
+                elif isinstance(err, ProviderTimeoutError):
+                    self.last_update_result = "network_timeout"
+                    message = f"{provider_label} request timed out"
+                elif isinstance(err, ProviderNetworkError):
+                    self.last_update_result = "network_error"
+                    message = f"{provider_label} network error"
+                elif isinstance(err, ProviderUnavailableError):
+                    self.last_update_result = "provider_unavailable"
+                    message = f"{provider_label} is temporarily unavailable"
+                else:
+                    self.last_update_result = "provider_failed"
+                    message = f"{provider_label} request failed"
+            if isinstance(err, _TRANSIENT_PROVIDER_ERRORS) or isinstance(
+                err, (ProviderCreditError, ProviderPermissionError)
+            ):
                 return await self._handle_transient_failure(
                     err, active_provider_mode, position, message,
+                    result=self.last_update_result,
                 )
             if getattr(self, "_recovery_active", False):
                 self._finish_recovery()
@@ -1676,6 +1705,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.data_stale = False
         self.last_update_error_at = None
         self.last_update_error_class = None
+        self.last_update_error_code = None
         self.last_update_error_provider = None
         self.last_retry_after = None
         self._retry_not_before = None
@@ -1693,6 +1723,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "last_update_attempt": now.isoformat(),
             "last_update_error_at": None,
             "last_update_error_class": None,
+            "last_update_error_code": None,
             "last_update_error_provider": None,
             "last_retry_after": None,
             "data_stale": False,
@@ -1718,6 +1749,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         provider: str,
         position: tuple[float, float] | None,
         message: str,
+        result: str = "provider_transient_failure",
     ) -> list[Station]:
         """Keep valid data visible while allowing the next scheduled poll to recover."""
 
@@ -1725,8 +1757,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         retry_after = _retry_after_seconds(error)
         self.last_update_error_at = now
         self.last_update_error_class = type(error).__name__
+        self.last_update_error_code = getattr(
+            getattr(error, "diagnostics", None), "error_code", None
+        )
         self.last_update_error_provider = provider
-        self.last_update_result = "provider_transient_failure"
+        self.last_update_result = result
         self.last_retry_after = retry_after
         self.consecutive_failures += 1
         has_previous_result = self._previous_result() is not None
@@ -1755,6 +1790,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             if self.last_update_attempt else None,
             "last_update_error_at": now.isoformat(),
             "last_update_error_class": type(error).__name__,
+            "last_update_error_code": self.last_update_error_code,
             "last_update_error_provider": provider,
             "last_retry_after": retry_after,
             "data_stale": self.data_stale,
