@@ -249,6 +249,12 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "manual_refresh_blocked_reason": getattr(
                 self.coordinator, "diagnostic_manual_refresh_blocked_reason", None
             ),
+            "country_context": getattr(
+                self.coordinator, "diagnostic_country_context", {}
+            ),
+            "next_provider": getattr(
+                self.coordinator, "diagnostic_next_provider", None
+            ),
             "recovery_status": getattr(self.coordinator, "recovery_status", "never"),
             "consecutive_failures": getattr(self.coordinator, "consecutive_failures", 0),
             "reference_latitude": ref[0] if ref else None,
