@@ -88,6 +88,8 @@ def test_overview_attributes_keep_existing_fields_and_add_station_entities(monke
 
     assert attributes["radius"] == 20
     assert attributes["fuel_type"] == "diesel"
+    assert attributes["sort_mode"] == "distance"
+    assert attributes["sort_fuel"] == "diesel"
     assert attributes["location_entity"] == "device_tracker.my_vehicle"
     assert attributes["station_count"] == 1
     assert attributes["station_entities"] == [

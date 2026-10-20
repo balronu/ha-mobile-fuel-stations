@@ -12,6 +12,10 @@ type Hass = {
   callService?: (domain: string, service: string, data: Record<string, unknown>) => Promise<unknown>;
 };
 
+export type StationRow = { id: string; state: HassState };
+export type StationPriority = StationRow & { isNearest: boolean; isCheapest: boolean };
+export type StationSortMode = "distance" | "price";
+
 type HighlightStation = {
   station_id?: string;
   station_name?: string;
@@ -325,6 +329,84 @@ function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function finiteNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function finitePositiveNumber(value: unknown): number | null {
+  const number = finiteNumber(value);
+  return number !== null && number > 0 ? number : null;
+}
+
+function stableCompare(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function stationIdentity(row: StationRow): string {
+  return text(row.state.attributes.station_id) ?? row.id;
+}
+
+function stationDistance(row: StationRow): number | null {
+  const distance = finiteNumber(row.state.attributes.distance);
+  return distance !== null && distance >= 0 ? distance : null;
+}
+
+function stationPrice(row: StationRow, fuel: string): number | null {
+  const attributes = row.state.attributes;
+  if (attributes.price_stale === true || !fuel) return null;
+  const prices = attributes.fuel_prices;
+  if (prices && typeof prices === "object") {
+    return finitePositiveNumber((prices as Record<string, unknown>)[fuel]);
+  }
+  const stationFuel = text(attributes.requested_fuel) ?? text(attributes.fuel_type);
+  return stationFuel?.toLowerCase() === fuel.toLowerCase()
+    ? finitePositiveNumber(row.state.state)
+    : null;
+}
+
+export function prioritizeStations(
+  stations: StationRow[],
+  sortMode: StationSortMode = "distance",
+  sortFuelType = "diesel",
+): StationPriority[] {
+  const unique = new Map<string, StationRow>();
+  for (const row of stations) {
+    const identity = stationIdentity(row);
+    if (!unique.has(identity)) unique.set(identity, row);
+  }
+  const rows = [...unique.values()];
+  const nearest = rows
+    .filter((row) => stationDistance(row) !== null)
+    .sort((left, right) => (stationDistance(left)! - stationDistance(right)!) || stableCompare(stationIdentity(left), stationIdentity(right)))[0];
+  const cheapest = rows
+    .filter((row) => stationPrice(row, sortFuelType) !== null)
+    .sort((left, right) => (
+      stationPrice(left, sortFuelType)! - stationPrice(right, sortFuelType)!
+      || (stationDistance(left) ?? Number.POSITIVE_INFINITY) - (stationDistance(right) ?? Number.POSITIVE_INFINITY)
+      || stableCompare(stationIdentity(left), stationIdentity(right))
+    ))[0];
+  const ordered = rows
+    .filter((row) => row !== nearest && row !== cheapest)
+    .sort((left, right) => {
+      const leftDistance = stationDistance(left) ?? Number.POSITIVE_INFINITY;
+      const rightDistance = stationDistance(right) ?? Number.POSITIVE_INFINITY;
+      if (sortMode === "price") {
+        const leftPrice = stationPrice(left, sortFuelType) ?? Number.POSITIVE_INFINITY;
+        const rightPrice = stationPrice(right, sortFuelType) ?? Number.POSITIVE_INFINITY;
+        return leftPrice - rightPrice || leftDistance - rightDistance || stableCompare(stationIdentity(left), stationIdentity(right));
+      }
+      return leftDistance - rightDistance || stableCompare(stationIdentity(left), stationIdentity(right));
+    });
+  const prioritized = [nearest, cheapest, ...ordered].filter((row, index, all): row is StationRow => Boolean(row) && all.indexOf(row) === index);
+  return prioritized.map((row) => ({
+    ...row,
+    isNearest: row === nearest,
+    isCheapest: row === cheapest,
+  }));
+}
+
 export class MobileFuelStationsCard extends LitElement {
   static styles = css`
     :host { display: block; container-type: inline-size; }
@@ -373,6 +455,7 @@ export class MobileFuelStationsCard extends LitElement {
     .station-badge { display: inline-flex; align-items: center; gap: 2px; color: var(--secondary-text-color); font-size: .72rem; white-space: nowrap; }
     .station-badge ha-icon { --mdc-icon-size: 14px; }
     .station-badge.cheapest { color: var(--primary-color); }
+    .detailed-mode .station-badge { border: 1px solid currentColor; border-radius: 999px; padding: 1px 5px; font-size: .72rem; font-weight: 600; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .diagnostics { margin: 0 0 10px; border-top: 1px solid var(--divider-color); border-bottom: 1px solid var(--divider-color); }
     .diagnostics summary { cursor: pointer; padding: 7px 0; color: var(--secondary-text-color); font-size: .85rem; }
@@ -470,10 +553,13 @@ export class MobileFuelStationsCard extends LitElement {
     const overview = this._hass.states[entity];
     if (!overview) return this._message(this._text("notFound"));
     const ids = discoverStationEntities(entity, overview, this._hass);
-    const stations = ids.map((id) => ({ id, state: this._hass!.states[id]! })).filter(({ state }) => isUsableStation(state));
+    const discoveredStations = ids.map((id) => ({ id, state: this._hass!.states[id]! })).filter(({ state }) => isUsableStation(state));
     const isUnavailable = unavailable.has(overview.state);
     const cooldown = this._cooldownState(overview);
     const compact = this._config.display_mode === "compact";
+    const sortMode = overview.attributes.sort_mode === "price" ? "price" : "distance";
+    const sortFuel = text(overview.attributes.sort_fuel) ?? text(overview.attributes.fuel_type) ?? "diesel";
+    const stations = prioritizeStations(discoveredStations, sortMode, sortFuel);
     return html`
       <div class=${compact ? "compact-mode" : "detailed-mode"}>
       <ha-card>
@@ -486,9 +572,8 @@ export class MobileFuelStationsCard extends LitElement {
         ${!isUnavailable && this._fallbackMessage(overview) ? html`<div class="secondary" role="status">${this._fallbackMessage(overview)}</div>` : nothing}
         ${!isUnavailable && overview.attributes.data_stale === true ? html`<div class="stale-warning" role="status">${this._staleMessage(overview)}</div>` : nothing}
         ${!isUnavailable && overview.attributes.data_stale !== true && stations.some(({ state }) => state.attributes.price_stale === true) ? html`<div class="stale-warning" role="status">${this._text("providerPricesStale")}</div>` : nothing}
-        ${this._hasNakordoni(overview, stations) ? html`<div class="secondary"><a href="https://nakordoni.eu" target="_blank" rel="noopener">Data by nakordoni.eu</a></div>` : nothing}
-        ${!isUnavailable && !compact ? this._highlights(overview, ids) : nothing}
-        ${!isUnavailable ? (stations.length ? html`<div class="stations">${stations.map(({ id, state }) => this._station(id, state, overview, compact))}</div>` : html`<div class="message">${this._text("none")}</div>`) : nothing}
+        ${this._hasNakordoni(overview, discoveredStations) ? html`<div class="secondary"><a href="https://nakordoni.eu" target="_blank" rel="noopener">Data by nakordoni.eu</a></div>` : nothing}
+        ${!isUnavailable ? (stations.length ? html`<div class="stations">${stations.map((station) => this._station(station, compact))}</div>` : html`<div class="message">${this._text("none")}</div>`) : nothing}
       </ha-card>
       </div>
     `;
@@ -783,7 +868,8 @@ export class MobileFuelStationsCard extends LitElement {
     return `${this._text("retryIn")} ${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
   }
 
-  private _station(id: string, state: HassState, overview?: HassState, compact = false) {
+  private _station(station: StationPriority, compact = false) {
+    const { id, state, isNearest, isCheapest } = station;
     const a = state.attributes;
     const name = text(a.station_name) ?? text(a.name) ?? id;
     const brand = text(a.brand);
@@ -798,7 +884,7 @@ export class MobileFuelStationsCard extends LitElement {
     const freshness = a.price_stale === true ? this._text("stale") : a.price_age_hours != null ? `${this._text("priceAge")} ${a.price_age_hours}h` : null;
     const label = `${name}, ${priceRows.map((row) => `${row.fuel} ${row.value ?? this._text("noPrice")}`).join(", ")}`;
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
-    const badges = compact ? this._stationBadges(overview, a.station_id) : nothing;
+    const badges = this._stationBadges(isNearest, isCheapest, compact);
     const fuelMarkup = priceRows.map((row) => html`<div class="fuel-price"><span>${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}</span><strong>${row.value ?? this._text("noPrice")}</strong></div>`);
     const navigation = navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing;
     if (compact) {
@@ -818,23 +904,17 @@ export class MobileFuelStationsCard extends LitElement {
     }
     return html`<div class="station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       ${this._brandLogo(brand, name)}
-      <div><div class="name" title=${name}>${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}</div>${address ? html`<div class="address" title=${address}>${address}</div>` : nothing}<div class="provider">${this._text("source")}: ${provider}</div>${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
+      <div><div class="name" title=${name}>${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}${badges}</div>${address ? html`<div class="address" title=${address}>${address}</div>` : nothing}<div class="provider">${this._text("source")}: ${provider}</div>${status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
       <div class="prices">${fuelMarkup}${distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
       ${navigation}
     </div>`;
   }
 
-  private _stationBadges(overview: HassState | undefined, stationId: unknown) {
-    const id = text(stationId);
-    if (!overview || !id) return nothing;
-    const nearest = overview.attributes.nearest_station && typeof overview.attributes.nearest_station === "object"
-      ? text((overview.attributes.nearest_station as HighlightStation).station_id) : null;
-    const cheapestIds = Object.values((overview.attributes.cheapest_stations_by_fuel as Record<string, HighlightStation> | undefined) ?? {})
-      .map((station) => station && typeof station === "object" ? text(station.station_id) : null).filter(Boolean);
-    if (!nearest && !cheapestIds.length) return nothing;
+  private _stationBadges(isNearest: boolean, isCheapest: boolean, compact: boolean) {
+    if (!isNearest && !isCheapest) return nothing;
     return html`<span class="station-badges" aria-label="${this._locale() === "en-US" ? "Station highlights" : "Tankstellenkennzeichnungen"}">
-      ${nearest === id ? html`<span class="station-badge" title="${this._text("nearest")}"><ha-icon icon="mdi:map-marker-radius" aria-hidden="true"></ha-icon><span class="sr-only">${this._text("nearest")}</span></span>` : nothing}
-      ${cheapestIds.includes(id) ? html`<span class="station-badge cheapest" title="${this._text("cheapest")}"><ha-icon icon="mdi:tag-heart" aria-hidden="true"></ha-icon><span class="sr-only">${this._text("cheapest")}</span></span>` : nothing}
+      ${isNearest ? html`<span class="station-badge" title="${this._text("nearest")}"><ha-icon icon="mdi:map-marker-radius" aria-hidden="true"></ha-icon>${compact ? html`<span class="sr-only">${this._text("nearest")}</span>` : this._text("nearest")}</span>` : nothing}
+      ${isCheapest ? html`<span class="station-badge cheapest" title="${this._text("cheapest")}"><ha-icon icon="mdi:tag-heart" aria-hidden="true"></ha-icon>${compact ? html`<span class="sr-only">${this._text("cheapest")}</span>` : this._text("cheapest")}</span>` : nothing}
     </span>`;
   }
 

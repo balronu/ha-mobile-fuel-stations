@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildBrandLogoUrl, buildNavigationUrl, detectNavigationProvider, discoverStationEntities, findOverviewEntity, formatDistance, formatPrice, fuelLabel, isOverviewEntity, MobileFuelStationsCard, normalizeLogoPath, resolveBrandLogoKey, shouldShowBrand } from "../src/mobile-fuel-stations-card";
+import { buildBrandLogoUrl, buildNavigationUrl, detectNavigationProvider, discoverStationEntities, findOverviewEntity, formatDistance, formatPrice, fuelLabel, isOverviewEntity, MobileFuelStationsCard, normalizeLogoPath, prioritizeStations, resolveBrandLogoKey, shouldShowBrand } from "../src/mobile-fuel-stations-card";
 
 const overviewId = "sensor.vehicle_nearby_stations";
 const state = (value: string, attributes: Record<string, unknown> = {}) => ({ state: value, attributes });
@@ -148,6 +148,63 @@ describe("formatting and discovery", () => {
     expect(detectNavigationProvider("auto", "Mozilla/5.0 (X11; Linux x86_64)")).toBe("google");
     expect(buildNavigationUrl(91, 8)).toBeNull();
     expect(buildNavigationUrl(49, -181)).toBeNull();
+  });
+});
+
+describe("shared station prioritization", () => {
+  const row = (id: string, distance: unknown, prices: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) => ({
+    id,
+    state: state("1.500", { station_id: id, distance, fuel_prices: prices, ...extra }),
+  });
+
+  it("always puts nearest first and cheapest second for distance and price modes", () => {
+    const stations = [row("far-expensive", 5, { diesel: 1.8 }), row("near", 1, { diesel: 1.7 }), row("cheap", 3, { diesel: 1.4 })];
+    for (const mode of ["distance", "price"] as const) {
+      const result = prioritizeStations(stations, mode, "diesel");
+      expect(result.map((item) => item.id)).toEqual(["near", "cheap", "far-expensive"]);
+      expect(result.map((item) => [item.isNearest, item.isCheapest])).toEqual([[true, false], [false, true], [false, false]]);
+    }
+  });
+
+  it("keeps both labels on one row when the same station wins both", () => {
+    const result = prioritizeStations([row("same", 1, { diesel: 1.4 }), row("other", 2, { diesel: 1.6 })], "price", "diesel");
+    expect(result.map((item) => item.id)).toEqual(["same", "other"]);
+    expect(result[0]).toMatchObject({ isNearest: true, isCheapest: true });
+  });
+
+  it("uses distance and then identity for equal prices", () => {
+    const result = prioritizeStations([row("z", 4, { diesel: 1.5 }), row("a", 2, { diesel: 1.5 }), row("b", 2, { diesel: 1.5 })], "price", "diesel");
+    expect(result[0].id).toBe("a");
+    expect(result[1].id).toBe("b");
+  });
+
+  it("does not treat missing or invalid prices/distances as zero", () => {
+    const result = prioritizeStations([row("missing", null, { diesel: null }), row("invalid", "nope", { diesel: "nope" }), row("valid", 2, { diesel: 1.6 })], "price", "diesel");
+    expect(result.map((item) => item.id)).toEqual(["valid", "invalid", "missing"]);
+    expect(result[0].isNearest).toBe(true);
+    expect(result[0].isCheapest).toBe(true);
+    expect(result.slice(1).some((item) => item.isNearest || item.isCheapest)).toBe(false);
+  });
+
+  it("accepts an actual zero distance as the nearest valid distance", () => {
+    const result = prioritizeStations([row("at-station", 0, { diesel: 1.8 }), row("away", 1, { diesel: 1.7 })], "distance", "diesel");
+    expect(result.map((item) => item.id)).toEqual(["at-station", "away"]);
+    expect(result[0].isNearest).toBe(true);
+  });
+
+  it("uses only the configured fuel and keeps fuel prices independent", () => {
+    const result = prioritizeStations([
+      row("diesel-cheap", 4, { diesel: 1.4, e10: 1.8 }),
+      row("e10-cheap", 2, { diesel: 1.7, e10: 1.3 }),
+    ], "price", "diesel");
+    expect(result.map((item) => item.id)).toEqual(["e10-cheap", "diesel-cheap"]);
+    expect(result[1].isCheapest).toBe(true);
+  });
+
+  it("supports one and two stations without duplication", () => {
+    expect(prioritizeStations([row("one", 1, { diesel: 1.5 })], "distance", "diesel")).toHaveLength(1);
+    expect(prioritizeStations([row("one", 1), row("two", 2)], "distance", "diesel").map((item) => item.id)).toEqual(["one", "two"]);
+    expect(prioritizeStations([row("same", 1), row("same", 1), row("other", 2)], "distance", "diesel").map((item) => item.id)).toEqual(["same", "other"]);
   });
 });
 
@@ -404,14 +461,13 @@ describe("card", () => {
     await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".station img")?.getAttribute("src")).toContain("/mobile_fuel_stations/logos/aral.png");
   });
-  it("renders logos in nearest/cheapest highlights and falls back on image errors", async () => {
+  it("renders the prioritized station logo and falls back on image errors", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     const hass = hassFor(1, {
       nearest_station: { station_id: "nearest", station_name: "Nearest", brand: "ARAL", price: 1.7, distance: 1, latitude: 49, longitude: 8 },
       cheapest_station: { station_id: "cheapest", station_name: "Cheapest", brand: "JET", price: 1.6, distance: 2, latitude: 49, longitude: 8 },
     }, { brand: "ARAL", station_id: "nearest", latitude: 49, longitude: 8 });
     card.setConfig({ entity: overviewId, show_brand_logos: true }); card.hass = hass; await card.updateComplete;
-    expect(card.shadowRoot?.querySelectorAll(".highlight img")).toHaveLength(2);
     const logo = card.shadowRoot?.querySelector(".station img") as HTMLImageElement;
     logo.dispatchEvent(new Event("error")); await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".station img")).toBeNull();
@@ -459,13 +515,13 @@ describe("card", () => {
     expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(1);
     card.remove();
   });
-  it("shows the actual provider for stations and highlights", async () => {
+  it("shows the actual provider for stations", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     const hass = hassFor(1, { nearest_station: { station_id: "sensor-1", station_name: "Nearest", provider: "petromap", latitude: 49, longitude: 8 } }, { station_id: "sensor-1", provider: "tankerkoenig", latitude: 49, longitude: 8 });
     card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".summary")?.textContent).toContain("Quelle: Tankerkönig");
     expect(card.shadowRoot?.querySelector(".station .provider")?.textContent).toContain("Tankerkönig");
-    expect(card.shadowRoot?.querySelector(".highlight .provider")?.textContent).toContain("Petromap");
+    expect(card.shadowRoot?.querySelector(".highlight")).toBeNull();
   });
   it("marks mixed and missing provider metadata without guessing", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId });
@@ -495,40 +551,23 @@ describe("card", () => {
     expect(css).toContain("grid-template-columns: 36px minmax(0, 1fr) minmax(92px, auto) 36px");
     expect(css).toContain("@container (max-width: 360px)");
   });
-  it("renders nearest and cheapest highlights from the overview", async () => {
+  it("renders nearest and cheapest as one shared prioritized list in detailed mode", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
-    const hass = hassFor(1, {
-      nearest_station: { station_id: "outside", station_name: "Nearest", brand: "ARAL", price: null, distance: 1.2, is_open: true, latitude: 49, longitude: 8 },
-      cheapest_station: { station_id: "slot-1", station_name: "Cheapest", brand: "JET", price: 1.649, distance: 5.8, is_open: true, latitude: 49.1, longitude: 8.1 },
-    }, { station_id: "slot-1", latitude: 49.1, longitude: 8.1 });
+    const hass = hassFor(3, { sort_mode: "price", sort_fuel: "diesel" });
+    const rows = [
+      ["sensor.vehicle_station_1", 5, 1.699],
+      ["sensor.vehicle_station_2", 1, 1.799],
+      ["sensor.vehicle_station_3", 3, 1.599],
+    ] as const;
+    rows.forEach(([id, distance, price], index) => { hass.states[id]!.attributes = { station_name: `Station ${index + 1}`, station_id: id, distance, fuel_prices: { diesel: price }, latitude: 49, longitude: 8 }; });
     card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
-    expect(card.shadowRoot?.querySelectorAll(".highlight")).toHaveLength(2);
-    expect(card.shadowRoot?.textContent).toContain("Nächste");
-    expect(card.shadowRoot?.textContent).toContain("Günstigste");
-    expect(card.shadowRoot?.textContent).toContain("Preis nicht verfügbar");
-    let entityId: string | undefined;
-    card.addEventListener("hass-more-info", (event) => { entityId = (event as CustomEvent).detail.entityId; });
-    (card.shadowRoot?.querySelectorAll(".highlight")[0] as HTMLElement).click();
-    expect(entityId).toBeUndefined();
-    (card.shadowRoot?.querySelectorAll(".highlight")[1] as HTMLElement).click();
-    expect(entityId).toBe("sensor.vehicle_station_1");
-    expect(card.shadowRoot?.querySelectorAll(".highlight .navigate")).toHaveLength(2);
-  });
-  it("merges nearest and per-fuel cheapest highlights for the same station", async () => {
-    const card = new MobileFuelStationsCard(); document.body.append(card);
-    const hass = hassFor(1, {
-      nearest_station: { station_id: "slot-1", station_name: "Compact Station", price: 1.799, distance: 1.2, latitude: 49, longitude: 8 },
-      cheapest_stations_by_fuel: {
-        diesel: { station_id: "slot-1", station_name: "Compact Station", fuel_type: "diesel", price: 1.799, distance: 1.2, latitude: 49, longitude: 8 },
-        e10: { station_id: "slot-1", station_name: "Compact Station", fuel_type: "e10", price: 1.699, distance: 1.2, latitude: 49, longitude: 8 },
-      },
-    }, { station_id: "slot-1", latitude: 49, longitude: 8 });
-    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
-    expect(card.shadowRoot?.querySelectorAll(".highlight")).toHaveLength(1);
-    expect(card.shadowRoot?.textContent).toContain("Nächste");
-    expect(card.shadowRoot?.textContent).toContain("Günstigste Diesel");
-    expect(card.shadowRoot?.textContent).toContain("Günstigste E10");
-    expect(card.shadowRoot?.querySelectorAll(".highlight .navigate")).toHaveLength(1);
+    const stations = [...(card.shadowRoot?.querySelectorAll(".station") ?? [])];
+    expect(stations).toHaveLength(3);
+    expect(stations[0].textContent).toContain("Station 2");
+    expect(stations[1].textContent).toContain("Station 3");
+    expect(stations[0].textContent).toContain("Nächste");
+    expect(stations[1].textContent).toContain("Günstigste");
+    expect(card.shadowRoot?.querySelectorAll(".highlight")).toHaveLength(0);
   });
   it("uses compact mode without duplicate highlight cards and marks nearest/cheapest inline", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
@@ -558,7 +597,7 @@ describe("card", () => {
     const hass = hassFor(5, {
       nearest_station: { station_id: "slot-2", station_name: "Nearest", latitude: 49, longitude: 8 },
       cheapest_stations_by_fuel: { diesel: { station_id: "slot-2", station_name: "Nearest", fuel_type: "diesel", price: 1.699, latitude: 49, longitude: 8 } },
-    }, { station_id: "slot-2", street: "Hauptstraße", house_number: "1", postcode: "66111", place: "Saarbrücken", distance: 2.4, is_open: false, latitude: 49, longitude: 8, fuel_prices: { e10: 1.659, diesel: 1.699 } });
+    }, { street: "Hauptstraße", house_number: "1", postcode: "66111", place: "Saarbrücken", distance: 2.4, is_open: false, latitude: 49, longitude: 8, fuel_prices: { e10: 1.659, diesel: 1.699 } });
     card.setConfig({ entity: overviewId, display_mode: "compact" }); card.hass = hass; await card.updateComplete;
     const rows = [...(card.shadowRoot?.querySelectorAll(".compact-station") ?? [])];
     expect(rows).toHaveLength(5);
@@ -568,7 +607,8 @@ describe("card", () => {
     expect(rows[1].querySelector(".station-meta")?.textContent).toContain("Geschlossen");
     expect(rows[1].querySelector(".station-meta")?.textContent).toContain("2,4 km");
     expect(rows[1].querySelectorAll(".fuel-price")).toHaveLength(2);
-    expect(rows[1].querySelectorAll(".station-badge")).toHaveLength(2);
+    expect(rows[0].querySelectorAll(".station-badge")).toHaveLength(2);
+    expect(rows[1].querySelectorAll(".station-badge")).toHaveLength(0);
     expect(card.shadowRoot?.querySelectorAll(".highlight")).toHaveLength(0);
   });
   it("keeps compact names and addresses bounded while preserving keyboard navigation", async () => {
@@ -600,7 +640,8 @@ describe("card", () => {
     card.hass = hassFor(1, { nearest_station: { station_id: "slot-1", station_name: "Nearest", latitude: 49, longitude: 8 } }, { station_id: "slot-1", latitude: 49, longitude: 8 });
     await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".detailed-mode")).toBeTruthy();
-    expect(card.shadowRoot?.querySelector(".highlight")).toBeTruthy();
+    expect(card.shadowRoot?.querySelector(".highlight")).toBeNull();
+    expect(card.shadowRoot?.querySelector(".station-badge")).toBeTruthy();
     expect(MobileFuelStationsCard.getStubConfig(hassFor(1)).display_mode).toBe("compact");
   });
   it("wraps long station details without losing prices or navigation", async () => {
