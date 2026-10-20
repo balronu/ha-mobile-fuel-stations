@@ -331,6 +331,20 @@ describe("card", () => {
       card.remove();
     }
   });
+  it("shows a successful fallback provider without hiding station data", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId });
+    card.hass = hassFor(1, {
+      last_update_result: "provider_success",
+      fallback_attempted: true,
+      fallback_provider: "nakordoni",
+      fallback_result: "success",
+    });
+    await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Ersatzanbieter verwendet: Nakordoni");
+    expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(1);
+    card.remove();
+  });
   it("shows the actual provider for stations and highlights", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     const hass = hassFor(1, { nearest_station: { station_id: "sensor-1", station_name: "Nearest", provider: "petromap", latitude: 49, longitude: 8 } }, { station_id: "sensor-1", provider: "tankerkoenig", latitude: 49, longitude: 8 });

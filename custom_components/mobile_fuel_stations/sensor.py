@@ -243,6 +243,11 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
                 for fuel, station in getattr(self.coordinator, "cheapest_stations", {}).items()
             },
             "provider": self.coordinator.config.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG),
+            "configured_providers": sorted(getattr(self.coordinator, "provider_modes", ())),
+            "fallback_attempted": getattr(self.coordinator, "fallback_attempted", False),
+            "fallback_provider": getattr(self.coordinator, "fallback_provider", None),
+            "fallback_result": getattr(self.coordinator, "fallback_result", None),
+            "fallback_skip_reason": getattr(self.coordinator, "fallback_skip_reason", None),
             "attribution_name": "Data by nakordoni.eu"
             if self.coordinator.config.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
             else None,

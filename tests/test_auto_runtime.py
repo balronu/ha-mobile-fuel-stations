@@ -20,6 +20,7 @@ from mobile_fuel_stations.const import (
     CONF_RADIUS,
     CONF_STATION_COUNT,
     CONF_TANKERKOENIG_API_KEY,
+    FETCH_MODE_MANUAL,
     PROVIDER_AUTO,
     PROVIDER_PETROMAP,
     PROVIDER_TANKERKOENIG,
@@ -33,6 +34,7 @@ from mobile_fuel_stations.providers.base import (
     NoSuitableProviderError,
     ProviderAuthError,
     ProviderCapabilities,
+    ProviderNetworkError,
     ProviderPermissionError,
     ProviderRateLimitError,
     ProviderTimeoutError,
@@ -40,6 +42,7 @@ from mobile_fuel_stations.providers.base import (
     Station,
 )
 from mobile_fuel_stations.providers.petromap import PETROMAP_CAPABILITIES
+from mobile_fuel_stations.providers.nakordoni import NakordoniMarketAccess
 
 
 class _Store:
@@ -187,6 +190,50 @@ def test_auto_de_uses_tankerkoenig_once_and_routes_secret(monkeypatch, fuel):
     _assert_runtime_usage_zero(pm)
 
 
+def test_auto_tankerkoenig_network_failure_falls_back_to_petromap(monkeypatch):
+    coordinator, tk, pm = _coordinator(
+        monkeypatch, "DE", "diesel", tk_error=ProviderNetworkError("dns")
+    )
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == [_station("pm")]
+    assert len(tk.calls) == 1
+    assert len(pm.calls) == 1
+    assert coordinator.fallback_attempted is True
+    assert coordinator.fallback_provider == PROVIDER_PETROMAP
+    assert coordinator.fallback_result == "success"
+
+
+def test_auto_provider_selection_falls_back_during_manual_refresh(monkeypatch):
+    coordinator, tk, pm = _coordinator(
+        monkeypatch, "DE", "diesel", tk_error=ProviderNetworkError("timeout")
+    )
+    coordinator.fetch_mode = FETCH_MODE_MANUAL
+    coordinator._manual_refresh_in_progress = True
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == [_station("pm")]
+    assert len(tk.calls) == 1
+    assert len(pm.calls) == 1
+    assert coordinator.fallback_provider == PROVIDER_PETROMAP
+
+
+def test_auto_tankerkoenig_auth_failure_does_not_fall_back(monkeypatch):
+    coordinator, tk, pm = _coordinator(
+        monkeypatch, "DE", "diesel", tk_error=ProviderAuthError("invalid_key")
+    )
+
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+
+    assert len(tk.calls) == 1
+    assert not pm.calls
+    assert coordinator.fallback_attempted is False
+    assert coordinator.fallback_skip_reason == "tankerkoenig:ProviderAuthError"
+
+
 @pytest.mark.parametrize("fuel", ["diesel", "e5"])
 def test_auto_at_uses_petromap_once_and_routes_secret(monkeypatch, fuel):
     coordinator, tk, pm = _coordinator(monkeypatch, "AT", fuel)
@@ -242,10 +289,27 @@ def test_oauth_only_nakordoni_is_a_configured_auto_provider():
     coordinator.options = {}
 
     assert coordinator._provider_configured(PROVIDER_NAKORDONI) is True
-
     coordinator._oauth_session = None
     coordinator.options = {"nakordoni_auth_method": AUTH_METHOD_OAUTH2}
     assert coordinator._provider_configured(PROVIDER_NAKORDONI) is True
+
+
+def test_restored_nakordoni_market_access_updates_auto_context():
+    coordinator = object.__new__(MobileFuelStationsCoordinator)
+    coordinator.nakordoni_market_access = NakordoniMarketAccess(
+        markets_allowed=("DE",),
+    )
+    coordinator.country_auto_context = CountryAutoContext(
+        "diesel",
+        allowed_providers={PROVIDER_NAKORDONI},
+        nakordoni_enabled=False,
+        nakordoni_capabilities=ProviderCapabilities(),
+    )
+
+    coordinator._refresh_nakordoni_auto_context()
+
+    assert coordinator.country_auto_context.nakordoni_enabled is True
+    assert coordinator.country_auto_context.nakordoni_capabilities.supported_countries == {"DE"}
 
 
 def test_auto_diagnostics_report_effective_provider_and_cooldown_without_secrets():
