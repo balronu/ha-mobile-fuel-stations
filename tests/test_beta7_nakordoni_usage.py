@@ -47,3 +47,17 @@ def test_account_usage_is_never_polled_more_often_than_15_minutes():
 
     asyncio.run(coordinator.async_update_nakordoni_usage(force=True))
     assert provider.calls == 2
+
+
+def test_usage_snapshot_round_trips_without_secrets():
+    provider = UsageProvider()
+    coordinator = coordinator_for_usage(provider)
+    asyncio.run(coordinator.async_update_nakordoni_usage())
+
+    snapshot = coordinator._nakordoni_usage_to_store()
+    restored = coordinator_for_usage(provider)
+    restored._restore_nakordoni_usage(snapshot)
+
+    assert restored.nakordoni_account_usage.cheap.remaining == 99
+    assert restored.nakordoni_usage_last_success is not None
+    assert "secret" not in repr(snapshot).lower()

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0-beta.5 — Status, Kontingent und Startup-Härtung
+
+- Provider-Cooldowns werden je Provider mit einer backendseitigen absoluten Endzeit dargestellt.
+- Der manuelle Abrufbutton berücksichtigt zulässige Ersatzprovider und bleibt bei einem verfügbaren Fallback freigegeben.
+- Nakordoni-Kontingente werden ausschließlich aus vorhandenen Usage-Daten angezeigt; Tankerkönig und Petromap melden unbekannte Kontingente statt Schätzungen.
+- Persistierter Stationscache und letzter erfolgreicher Abruf werden beim Start berücksichtigt; frische automatische Caches lösen keinen vorzeitigen Providerabruf aus.
+- Startup-Abrufe werden verzögert, dedupliziert und respektieren Cooldown, Retry-After, Kontingentdaten und Provider-Fallback.
+
 ## 0.8.0-beta.4 — Provider fallback hardening
 
 - Fallback im Auto-Modus ist auf Netzwerk-, Timeout-, HTTP-5xx- und HTTP-429-Fehler begrenzt.

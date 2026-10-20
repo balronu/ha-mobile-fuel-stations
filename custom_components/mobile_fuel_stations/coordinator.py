@@ -90,7 +90,12 @@ from .providers.policy import (
     choose_auto_provider,
     validate_direct_fuel_runtime,
 )
-from .providers.nakordoni import NakordoniMarketAccess, extract_market_access
+from .providers.nakordoni import (
+    NakordoniAccountUsage,
+    NakordoniMarketAccess,
+    NakordoniQuota,
+    extract_market_access,
+)
 from .country_resolver import resolve
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,6 +122,8 @@ _STATION_CACHE_KEY = "stations"
 _CACHE_CONTEXT_KEY = "station_cache_context"
 _CACHE_PROVIDER_KEY = "station_cache_provider"
 _PROVIDER_REQUESTS_KEY = "provider_last_requests"
+_PROVIDER_RETRY_UNTIL_KEY = "provider_retry_not_before"
+_NAKORDONI_USAGE_KEY = "nakordoni_usage"
 
 
 @dataclass(slots=True, frozen=True)
@@ -356,6 +363,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._last_gps_event_key: tuple[float, float, datetime] | None = None
         self.last_request: datetime | None = None
         self.provider_last_requests: dict[str, datetime] = {}
+        self.provider_retry_not_before: dict[str, datetime] = {}
         self._legacy_last_request: datetime | None = None
         self.last_update_attempt: datetime | None = None
         self.last_update_result: str | None = None
@@ -397,6 +405,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._recovery_request_scheduled = False
         self._cooldown_timer_unsub = None
         self._cooldown_refresh_task: asyncio.Task | None = None
+        self._startup_refresh_timer_unsub = None
+        self._startup_refresh_task: asyncio.Task | None = None
         self._provider_lock: asyncio.Lock | None = None
         self._manual_refresh_lock = asyncio.Lock()
         self._manual_refresh_in_progress = False
@@ -495,6 +505,63 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.nakordoni_usage_upgrade_url = usage.upgrade_url
         self.nakordoni_usage_pass_url = usage.pass_url
         self.nakordoni_usage_reset_at = usage.cheap.reset_at
+
+    def _nakordoni_usage_to_store(self) -> dict[str, object] | None:
+        """Serialize the last known usage without credentials or raw payloads."""
+
+        usage = getattr(self, "nakordoni_account_usage", None)
+        if usage is None:
+            return None
+        return {
+            **usage.as_diagnostics(),
+            "last_success": (
+                self.nakordoni_usage_last_success.isoformat()
+                if getattr(self, "nakordoni_usage_last_success", None) else None
+            ),
+            "last_attempt": (
+                self.nakordoni_usage_last_attempt.isoformat()
+                if getattr(self, "nakordoni_usage_last_attempt", None) else None
+            ),
+        }
+
+    def _restore_nakordoni_usage(self, stored: object) -> None:
+        """Restore only the documented, secret-free usage projection."""
+
+        if not isinstance(stored, dict):
+            return
+        raw_quotas = stored.get("quotas")
+        quotas: dict[str, NakordoniQuota] = {}
+        if isinstance(raw_quotas, dict):
+            for name, raw in raw_quotas.items():
+                if not isinstance(name, str) or not isinstance(raw, dict):
+                    continue
+                reset_at = self._parse_time(raw.get("reset_at"))
+                values = {key: raw.get(key) for key in ("limit", "used", "remaining")}
+                if any(value is not None and (not isinstance(value, int) or value < 0) for value in values.values()):
+                    continue
+                quotas[name] = NakordoniQuota(**values, reset_at=reset_at)
+        plan = stored.get("plan") if isinstance(stored.get("plan"), dict) else {}
+        markets = stored.get("markets") if isinstance(stored.get("markets"), dict) else {}
+        trip_pass = stored.get("pass") if isinstance(stored.get("pass"), dict) else {}
+        approved = tuple(value for value in markets.get("approved", ()) if isinstance(value, str))
+        available = tuple(value for value in markets.get("available", ()) if isinstance(value, str))
+        self.nakordoni_account_usage = NakordoniAccountUsage(
+            plan_slug=plan.get("slug") if isinstance(plan.get("slug"), str) else None,
+            plan_name=plan.get("name") if isinstance(plan.get("name"), str) else None,
+            qps=stored.get("qps") if isinstance(stored.get("qps"), int) else None,
+            quotas=quotas,
+            markets_approved=approved,
+            markets_allowed=markets.get("allowed") if isinstance(markets.get("allowed"), int) else None,
+            markets_available=available,
+            key_bound=markets.get("key_bound") if isinstance(markets.get("key_bound"), bool) else None,
+            pass_active=trip_pass.get("active") if isinstance(trip_pass.get("active"), bool) else None,
+            pass_expires_at=self._parse_time(trip_pass.get("expires_at")),
+            pass_days_left=trip_pass.get("days_left") if isinstance(trip_pass.get("days_left"), int) else None,
+            upgrade_url=stored.get("upgrade_url") if isinstance(stored.get("upgrade_url"), str) else None,
+            pass_url=stored.get("pass_url") if isinstance(stored.get("pass_url"), str) else None,
+        )
+        self.nakordoni_usage_last_success = self._parse_time(stored.get("last_success"))
+        self.nakordoni_usage_last_attempt = self._parse_time(stored.get("last_attempt"))
 
     def _nakordoni_auto_eligible(self) -> bool:
         """Auto mode requires explicit market metadata, never just a token/key."""
@@ -689,6 +756,16 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                     if isinstance(provider, str)
                     and (timestamp := self._parse_time(raw_timestamp)) is not None
                 }
+            raw_retry_until = stored.get(_PROVIDER_RETRY_UNTIL_KEY)
+            if isinstance(raw_retry_until, dict):
+                self.provider_retry_not_before = {
+                    provider: timestamp
+                    for provider, raw_timestamp in raw_retry_until.items()
+                    if isinstance(provider, str)
+                    and (timestamp := self._parse_time(raw_timestamp)) is not None
+                }
+                if self.provider_retry_not_before:
+                    self._retry_not_before = max(self.provider_retry_not_before.values())
             elif self.last_request is not None:
                 # Beta-4 stored one global timestamp.  It remains a valid
                 # legacy cooldown only for a direct provider entry; applying
@@ -739,14 +816,16 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             if cached is not None:
                 self._set_station_data(cached)
                 self._has_valid_provider_result = True
-                # Automatic mode refreshes restored data after its provider
-                # cooldown, so cached data is explicitly stale there. Manual
-                # mode has no automatic refresh; a recent successful result
-                # must not become stale merely because the entry reloaded.
-                self.data_stale = bool(self.data_stale or not self.is_manual)
+                # Automatic mode keeps a fresh restored cache usable until its
+                # configured interval expires. Manual mode never turns a
+                # successful cache stale merely because HA reloaded the entry.
+                self.data_stale = bool(self.data_stale or self.startup_refresh_due())
                 self.data = self.stations
-                if not self.is_manual and not getattr(self, "_skip_initial_refresh_on_reload", False):
+                if self.startup_refresh_due():
                     self._schedule_provider_cooldown_refresh()
+        self._restore_nakordoni_usage(
+            stored.get(_NAKORDONI_USAGE_KEY) if isinstance(stored, dict) else None
+        )
         provider_status = await self._provider_status_store.async_load()
         self.provider_status = (
             provider_status if isinstance(provider_status, dict) else {}
@@ -984,6 +1063,74 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if cancel:
             cancel()
 
+    def _cancel_startup_refresh_timer(self) -> None:
+        cancel = getattr(self, "_startup_refresh_timer_unsub", None)
+        self._startup_refresh_timer_unsub = None
+        if cancel:
+            cancel()
+
+    def startup_refresh_due(self) -> bool:
+        """Return whether automatic startup work must fetch immediately."""
+
+        if self.is_manual or not getattr(self, "_has_valid_provider_result", False):
+            return not self.is_manual
+        if self.data_stale or self.last_successful_update is None:
+            return True
+        interval = timedelta(minutes=int(self.options[CONF_UPDATE_INTERVAL]))
+        return datetime.now().astimezone() >= self.last_successful_update + interval
+
+    def async_schedule_startup_refresh(self) -> None:
+        """Schedule the first due refresh from the persisted cache timestamp."""
+
+        if self.is_manual or not getattr(self, "_has_valid_provider_result", False):
+            return
+        if getattr(self, "_startup_refresh_timer_unsub", None) is not None:
+            return
+        if self.last_successful_update is None:
+            return
+        interval = timedelta(minutes=int(self.options[CONF_UPDATE_INTERVAL]))
+        due_at = self.last_successful_update + interval
+        now = datetime.now().astimezone()
+        if getattr(self, "_skip_initial_refresh_on_reload", False) and due_at <= now:
+            due_at = now + interval
+        delay = max(0.0, (due_at - now).total_seconds())
+        if delay <= 0:
+            self._startup_refresh_task = self.hass.async_create_task(
+                self._async_startup_refresh()
+            )
+            return
+
+        @callback
+        def _run(_now: datetime) -> None:
+            self._startup_refresh_timer_unsub = None
+            task = getattr(self, "_startup_refresh_task", None)
+            if task is None or task.done():
+                self._startup_refresh_task = self.hass.async_create_task(
+                    self._async_startup_refresh()
+                )
+
+        self._startup_refresh_timer_unsub = async_call_later(self.hass, delay, _run)
+
+    async def _async_startup_refresh(self) -> None:
+        try:
+            await self.async_request_refresh()
+        except asyncio.CancelledError:
+            raise
+        finally:
+            self._startup_refresh_task = None
+
+    def _provider_cooldown_until(self, provider: str | None) -> datetime | None:
+        if not provider:
+            return None
+        until: list[datetime] = []
+        requested_at = getattr(self, "provider_last_requests", {}).get(provider)
+        if requested_at is not None:
+            until.append(requested_at + self._provider_minimum_interval(provider))
+        retry_until = getattr(self, "provider_retry_not_before", {}).get(provider)
+        if retry_until is not None:
+            until.append(retry_until)
+        return max(until) if until else None
+
     def _schedule_provider_cooldown_refresh(self, provider: str | None = None) -> None:
         provider = provider or self._cache_provider or self.options.get(CONF_PROVIDER_MODE)
         request_at = getattr(self, "provider_last_requests", {}).get(provider or "")
@@ -1060,6 +1207,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.gps_listener_registered = False
         self._cancel_recovery_timer()
         self._cancel_provider_cooldown_timer()
+        self._cancel_startup_refresh_timer()
+        startup_task = getattr(self, "_startup_refresh_task", None)
+        self._startup_refresh_task = None
+        if startup_task and not startup_task.done():
+            startup_task.cancel()
         self._recovery_active = False
         cooldown_task = getattr(self, "_cooldown_refresh_task", None)
         self._cooldown_refresh_task = None
@@ -1144,19 +1296,91 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
     ) -> int:
         """Return a provider's remaining request window without making I/O."""
 
-        requested_at = getattr(self, "provider_last_requests", {}).get(provider or "")
-        if requested_at is None:
-            return 0
         current = now or datetime.now().astimezone()
-        return max(
-            0,
-            int(
-                (
-                    self._provider_minimum_interval(provider)
-                    - (current - requested_at)
-                ).total_seconds()
-            ),
+        until = self._provider_cooldown_until(provider)
+        if until is None:
+            return 0
+        return max(0, int((until - current).total_seconds()))
+
+    @property
+    def diagnostic_provider_cooldowns(self) -> dict[str, dict[str, object]]:
+        """Expose backend-owned absolute cooldown ends for every provider."""
+
+        now = datetime.now().astimezone()
+        result: dict[str, dict[str, object]] = {}
+        for provider in sorted(getattr(self, "provider_modes", ())):
+            until = self._provider_cooldown_until(provider)
+            remaining = max(0, int((until - now).total_seconds())) if until else 0
+            result[provider] = {
+                "active": remaining > 0,
+                "cooldown_until": until.isoformat() if until else None,
+                "remaining_seconds": remaining,
+            }
+        return result
+
+    @property
+    def diagnostic_provider_quotas(self) -> dict[str, dict[str, object]]:
+        """Return only provider-reported quota data, never estimates."""
+
+        result: dict[str, dict[str, object]] = {}
+        usage = self.nakordoni_account_usage
+        usage_updated = self.nakordoni_usage_last_success
+        usage_age = (
+            (datetime.now().astimezone() - usage_updated).total_seconds()
+            if usage_updated else None
         )
+        for provider in sorted(getattr(self, "provider_modes", ())):
+            if provider != PROVIDER_NAKORDONI or usage is None:
+                result[provider] = {
+                    "available": False,
+                    "reason": "not_available",
+                    "updated_at": None,
+                }
+                continue
+            result[provider] = {
+                "available": bool(usage.quotas),
+                "stale": usage_age is None or usage_age > _NAKORDONI_USAGE_INTERVAL.total_seconds(),
+                "updated_at": usage_updated.isoformat() if usage_updated else None,
+                "quotas": usage.as_diagnostics()["quotas"],
+            }
+        return result
+
+    @property
+    def diagnostic_manual_refresh_available(self) -> bool:
+        """Whether the backend currently has at least one usable provider."""
+
+        if not self.is_manual or self._manual_refresh_in_progress:
+            return False
+        if not self._is_auto:
+            provider = self.options.get(CONF_PROVIDER_MODE)
+            return provider in self.available_provider_modes and self._provider_cooldown_remaining(provider) == 0
+        country = self.country_auto_context.confirmed_country
+        if country is None:
+            return False
+        for fuel in getattr(self, "fuel_types", ()):
+            candidate = choose_auto_provider(
+                country,
+                fuel,
+                tankerkoenig_enabled=PROVIDER_TANKERKOENIG in self.available_provider_modes
+                and self._provider_cooldown_remaining(PROVIDER_TANKERKOENIG) == 0,
+                tankerkoenig_capabilities=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].capabilities,
+                petromap_enabled=PROVIDER_PETROMAP in self.available_provider_modes
+                and self._provider_cooldown_remaining(PROVIDER_PETROMAP) == 0,
+                petromap_capabilities=PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities,
+                nakordoni_enabled=self._nakordoni_auto_eligible()
+                and PROVIDER_NAKORDONI in self.available_provider_modes
+                and self._provider_cooldown_remaining(PROVIDER_NAKORDONI) == 0,
+                nakordoni_capabilities=self._nakordoni_auto_capabilities(),
+            )
+            if candidate.provider_mode is not None:
+                return True
+        return False
+
+    @property
+    def diagnostic_manual_refresh_blocked_reason(self) -> str | None:
+        if not self.is_manual or self.diagnostic_manual_refresh_available:
+            return None
+        return "no_provider_available"
 
     def _diagnostic_provider(self) -> str | None:
         if self._is_auto:
@@ -1526,26 +1750,80 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             and self.last_request != provider_last_request
         ):
             provider_last_request = self.last_request
+            legacy_request_override = True
         elif not hasattr(self, "provider_last_requests"):
             # Compatibility for lightweight pre-beta5 coordinator doubles.
             provider_last_request = self.last_request
-        if (
-            provider_last_request is not None
-            and now - provider_last_request < provider_minimum
-        ):
-            self.last_update_result = "provider_cooldown"
-            # A manual request deferred by the provider's rate window has not
-            # failed. Keep the last successful result fresh; transient
-            # provider failures below still mark retained data stale.
-            self.data_stale = bool(self.stations) and not self.is_manual
+            legacy_request_override = True
+        else:
+            legacy_request_override = False
+        cooldown_active = (
+            (
+                provider_last_request is not None
+                and now - provider_last_request < provider_minimum
+            )
+            if legacy_request_override
+            else self._provider_cooldown_remaining(provider_mode, now=now) > 0
+        ) or getattr(self, "provider_retry_not_before", {}).get(provider_mode, now) > now
+        available_modes = getattr(self, "available_provider_modes", self.provider_modes)
+        if cooldown_active:
             if self._is_auto:
-                self._set_auto_runtime_state(
-                    decision,
-                    effective_provider=provider_mode,
-                    reason="provider_cooldown",
+                requested_fuel = requests[0][2]
+                candidate = choose_auto_provider(
+                    self.country_auto_context.confirmed_country,
+                    requested_fuel,
+                    tankerkoenig_enabled=(
+                        provider_mode != PROVIDER_TANKERKOENIG
+                        and PROVIDER_TANKERKOENIG in available_modes
+                        and self._provider_cooldown_remaining(PROVIDER_TANKERKOENIG, now=now) == 0
+                    ),
+                    tankerkoenig_capabilities=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].capabilities,
+                    petromap_enabled=(
+                        provider_mode != PROVIDER_PETROMAP
+                        and PROVIDER_PETROMAP in available_modes
+                        and self._provider_cooldown_remaining(PROVIDER_PETROMAP, now=now) == 0
+                    ),
+                    petromap_capabilities=PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities,
+                    nakordoni_enabled=(
+                        provider_mode != PROVIDER_NAKORDONI
+                        and PROVIDER_NAKORDONI in available_modes
+                        and self._nakordoni_auto_eligible()
+                        and self._provider_cooldown_remaining(PROVIDER_NAKORDONI, now=now) == 0
+                    ),
+                    nakordoni_capabilities=self._nakordoni_auto_capabilities(),
                 )
-            self._schedule_provider_cooldown_refresh(provider_mode)
-            return self._previous_result()
+                if candidate.provider_mode is not None and candidate.fuel_resolution is not None:
+                    effective_fuel = candidate.fuel_resolution.effective_fuel
+                    if effective_fuel is not None:
+                        provider_mode = candidate.provider_mode
+                        provider = self._get_provider(provider_mode)
+                        requests[0] = (provider_mode, provider, requested_fuel, effective_fuel)
+                        decision = candidate
+                        self.fallback_attempted = True
+                        self.fallback_provider = provider_mode
+                        self.fallback_result = "attempted"
+                        self._set_auto_runtime_state(
+                            candidate,
+                            effective_provider=provider_mode,
+                            reason="provider_cooldown_fallback",
+                        )
+                        cooldown_active = False
+            if not cooldown_active:
+                provider_minimum = self._provider_minimum_interval(provider_mode)
+            else:
+                self.last_update_result = "provider_cooldown"
+                # A manual request deferred by the provider's rate window has
+                # not failed. Keep the last successful result fresh;
+                # transient provider failures below still mark retained data stale.
+                self.data_stale = bool(self.stations) and not self.is_manual
+                if self._is_auto:
+                    self._set_auto_runtime_state(
+                        decision,
+                        effective_provider=provider_mode,
+                        reason="provider_cooldown",
+                    )
+                self._schedule_provider_cooldown_refresh(provider_mode)
+                return self._previous_result()
         provider_lock = getattr(self, "_provider_lock", None)
         if provider_lock is None:
             provider_lock = asyncio.Lock()
@@ -1780,6 +2058,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.last_update_error_provider = None
         self.last_retry_after = None
         self._retry_not_before = None
+        getattr(self, "provider_retry_not_before", {}).pop(active_provider_mode, None)
         self.consecutive_failures = 0
         self.recovery_status = "recovered" if recovered else "success"
         self.last_update_result = "provider_success"
@@ -1791,6 +2070,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             _PROVIDER_REQUESTS_KEY: {
                 key: value.isoformat() for key, value in self.provider_last_requests.items()
             },
+            _PROVIDER_RETRY_UNTIL_KEY: {
+                key: value.isoformat()
+                for key, value in getattr(self, "provider_retry_not_before", {}).items()
+            },
+            _NAKORDONI_USAGE_KEY: self._nakordoni_usage_to_store(),
             "last_update_attempt": now.isoformat(),
             "last_update_error_at": None,
             "last_update_error_class": None,
@@ -1841,6 +2125,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._retry_not_before = (
             now + timedelta(seconds=retry_after) if retry_after is not None else None
         )
+        if retry_after is not None:
+            if not hasattr(self, "provider_retry_not_before"):
+                self.provider_retry_not_before = {}
+            self.provider_retry_not_before[provider] = self._retry_not_before
         _LOGGER.warning(
             "Mobile Fuel Stations refresh failed: provider=%s error_class=%s "
             "cached_data=%s retry_after=%s consecutive_failures=%s",
@@ -1857,6 +2145,11 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             _PROVIDER_REQUESTS_KEY: {
                 key: value.isoformat() for key, value in self.provider_last_requests.items()
             },
+            _PROVIDER_RETRY_UNTIL_KEY: {
+                key: value.isoformat()
+                for key, value in getattr(self, "provider_retry_not_before", {}).items()
+            },
+            _NAKORDONI_USAGE_KEY: self._nakordoni_usage_to_store(),
             "last_update_attempt": self.last_update_attempt.isoformat()
             if self.last_update_attempt else None,
             "last_update_error_at": now.isoformat(),

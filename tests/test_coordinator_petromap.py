@@ -839,7 +839,7 @@ def test_inflight_provider_result_is_discarded_after_mode_change(monkeypatch):
     assert coordinator.last_successful_update is None
 
 
-def test_reload_restores_matching_station_cache_as_stale_and_schedules_cooldown(
+def test_reload_restores_fresh_matching_station_cache_without_early_refresh(
     monkeypatch,
 ):
     coordinator = _coordinator(_Provider())
@@ -874,8 +874,8 @@ def test_reload_restores_matching_station_cache_as_stale_and_schedules_cooldown(
 
     assert coordinator.stations == [_station()]
     assert coordinator.data == [_station()]
-    assert coordinator.data_stale is True
-    assert scheduled and scheduled[0][0] > 0
+    assert coordinator.data_stale is False
+    assert scheduled == []
 
 
 def test_reload_rejects_cache_for_different_query_context():
