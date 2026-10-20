@@ -79,6 +79,7 @@ from .providers.base import (
     ProviderTimeoutError,
     ProviderUnavailableError,
     StationSearchQuery,
+    is_fallback_eligible_error,
     resolve_fuel,
 )
 from .providers import PROVIDER_REGISTRY
@@ -366,6 +367,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.last_update_error_code: str | None = None
         self.last_update_error_provider: str | None = None
         self.last_retry_after: int | None = None
+        self.fallback_attempted = False
+        self.fallback_provider: str | None = None
+        self.fallback_result: str | None = None
+        self.fallback_skip_reason: str | None = None
         self.data_stale = False
         self.recovery_status = "never"
         self.consecutive_failures = 0
@@ -527,6 +532,16 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.nakordoni_coverage_countries = metadata.coverage_countries
         self.nakordoni_coverage_fuels = metadata.coverage_fuels
         self.nakordoni_coverage_status = metadata.coverage_status
+        self._refresh_nakordoni_auto_context()
+
+    def _refresh_nakordoni_auto_context(self) -> None:
+        """Apply restored/provider-reported Nakordoni access to Auto policy."""
+
+        context = getattr(self, "country_auto_context", None)
+        if context is None:
+            return
+        context.nakordoni_enabled = self._nakordoni_auto_eligible()
+        context.nakordoni_capabilities = self._nakordoni_auto_capabilities()
 
     @property
     def _is_auto(self) -> bool:
@@ -752,6 +767,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             )
             if isinstance(nakordoni_status.get("coverage_status"), str):
                 self.nakordoni_coverage_status = nakordoni_status["coverage_status"]
+        # The Auto context is constructed before persisted provider status is
+        # loaded.  Re-apply restored market access before the first position
+        # decision so a previously verified Nakordoni entry can be selected.
+        self._refresh_nakordoni_auto_context()
         domain_data = self.hass.data.setdefault(DOMAIN, {})
         domain_data.setdefault("provider_status", {})[self.entry.entry_id] = self.provider_status
         if self.options.get(CONF_MOVEMENT_UPDATES, True):
@@ -1120,6 +1139,25 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
     def _provider_minimum_interval(self, provider: str | None) -> timedelta:
         return _MIN_PROVIDER_INTERVALS.get(provider or "", timedelta(0))
 
+    def _provider_cooldown_remaining(
+        self, provider: str | None, *, now: datetime | None = None
+    ) -> int:
+        """Return a provider's remaining request window without making I/O."""
+
+        requested_at = getattr(self, "provider_last_requests", {}).get(provider or "")
+        if requested_at is None:
+            return 0
+        current = now or datetime.now().astimezone()
+        return max(
+            0,
+            int(
+                (
+                    self._provider_minimum_interval(provider)
+                    - (current - requested_at)
+                ).total_seconds()
+            ),
+        )
+
     def _diagnostic_provider(self) -> str | None:
         if self._is_auto:
             return self.auto_runtime_state.effective_provider if self.auto_runtime_state else self._cache_provider
@@ -1138,12 +1176,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
     @property
     def diagnostic_provider_cooldown_remaining(self) -> int:
         provider = self._diagnostic_provider()
-        requested_at = self.provider_last_requests.get(provider or "")
-        if provider is None or requested_at is None:
-            return 0
-        return max(0, int((self._provider_minimum_interval(provider) - (
-            datetime.now().astimezone() - requested_at
-        )).total_seconds()))
+        return self._provider_cooldown_remaining(provider)
 
     @property
     def diagnostic_next_provider_retry(self) -> datetime | None:
@@ -1370,6 +1403,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         now = datetime.now().astimezone()
         self.last_update_attempt = now
         self.last_update_result = "started"
+        self.fallback_attempted = False
+        self.fallback_provider = None
+        self.fallback_result = None
+        self.fallback_skip_reason = None
         if self.is_manual and not getattr(self, "_manual_refresh_in_progress", False):
             self.last_update_result = "manual_mode"
             return self._previous_result()
@@ -1533,6 +1570,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         try:
             for request_mode, request_provider, requested_fuel, effective_fuel in requests:
                 attempted_modes = {request_mode}
+                skipped_modes: set[str] = set()
                 while True:
                     active_provider_mode = request_mode
                     try:
@@ -1546,24 +1584,36 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                             )
                         )
                         break
-                    except ProviderError:
-                        if not self._is_auto or len(attempted_modes) >= 3:
+                    except ProviderError as err:
+                        if not self._is_auto:
+                            self.fallback_skip_reason = "provider_selection_not_auto"
+                            raise
+                        if not is_fallback_eligible_error(err):
+                            self.fallback_skip_reason = (
+                                f"{active_provider_mode}:{type(err).__name__}"
+                            )
+                            raise
+                        if len(attempted_modes) + len(skipped_modes) >= 3:
+                            self.fallback_skip_reason = "no_unused_provider_available"
                             raise
                         candidate = choose_auto_provider(
                             self.country_auto_context.confirmed_country,
                             requested_fuel,
                             tankerkoenig_enabled=(
                                 PROVIDER_TANKERKOENIG not in attempted_modes
+                                and PROVIDER_TANKERKOENIG not in skipped_modes
                                 and PROVIDER_TANKERKOENIG in getattr(self, "available_provider_modes", self.provider_modes)
                             ),
                             tankerkoenig_capabilities=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].capabilities,
                             petromap_enabled=(
                                 PROVIDER_PETROMAP not in attempted_modes
+                                and PROVIDER_PETROMAP not in skipped_modes
                                 and PROVIDER_PETROMAP in getattr(self, "available_provider_modes", self.provider_modes)
                             ),
                             petromap_capabilities=PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities,
                             nakordoni_enabled=(
                                 PROVIDER_NAKORDONI not in attempted_modes
+                                and PROVIDER_NAKORDONI not in skipped_modes
                                 and self._nakordoni_auto_eligible()
                             ),
                             nakordoni_capabilities=self._nakordoni_auto_capabilities(),
@@ -1574,11 +1624,24 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                             or candidate.fuel_resolution is None
                             or candidate.fuel_resolution.effective_fuel is None
                         ):
+                            self.fallback_skip_reason = candidate.reason
                             raise
+                        candidate_remaining = self._provider_cooldown_remaining(
+                            candidate.provider_mode, now=datetime.now().astimezone()
+                        )
+                        if candidate_remaining > 0:
+                            skipped_modes.add(candidate.provider_mode)
+                            self.fallback_skip_reason = (
+                                f"{candidate.provider_mode}:cooldown:{candidate_remaining}s"
+                            )
+                            continue
                         request_mode = candidate.provider_mode
                         effective_fuel = candidate.fuel_resolution.effective_fuel
                         request_provider = self._get_provider(request_mode)
                         attempted_modes.add(request_mode)
+                        self.fallback_attempted = True
+                        self.fallback_provider = request_mode
+                        self.fallback_result = "attempted"
                         self._set_auto_runtime_state(
                             candidate,
                             effective_provider=request_mode,
@@ -1586,6 +1649,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                         )
                 if request_mode == PROVIDER_NAKORDONI:
                     self._update_nakordoni_metadata(request_provider)
+                if self.fallback_attempted and request_mode == self.fallback_provider:
+                    self.fallback_result = "success"
                 self.last_provider_success = datetime.now().astimezone()
                 await self._set_provider_status(request_mode, "success")
                 if len(requests) > 1 or requested_fuel != effective_fuel:
@@ -1599,6 +1664,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                     ) for station in found]
                 result.extend(found)
         except ProviderAuthError as err:
+            if self.fallback_attempted and active_provider_mode == self.fallback_provider:
+                self.fallback_result = "failed"
             self.last_update_result = "provider_auth_failed"
             if getattr(self, "_recovery_active", False):
                 self._finish_recovery()
@@ -1613,6 +1680,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 raise ConfigEntryAuthFailed("API authentication failed") from err
             raise UpdateFailed("API authentication failed") from err
         except ProviderRateLimitError as err:
+            if self.fallback_attempted and active_provider_mode == self.fallback_provider:
+                self.fallback_result = "failed"
             self.last_update_result = "provider_rate_limited"
             await self._set_provider_status(active_provider_mode, "uncheckable")
             if active_provider_mode == PROVIDER_NAKORDONI:
@@ -1625,6 +1694,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 result="provider_rate_limited",
             )
         except ProviderError as err:
+            if self.fallback_attempted and active_provider_mode == self.fallback_provider:
+                self.fallback_result = "failed"
             diagnostics = getattr(err, "diagnostics", None)
             error_code = getattr(diagnostics, "error_code", None)
             self.last_update_result = (

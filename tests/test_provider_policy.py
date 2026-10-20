@@ -8,8 +8,14 @@ from mobile_fuel_stations.providers.base import (
     ProviderDisabledError,
     FuelFallbackBlockedError,
     NoSuitableProviderError,
+    ProviderAuthError,
+    ProviderNetworkError,
+    ProviderRateLimitError,
+    ProviderResponseError,
+    ProviderTimeoutError,
     ProviderReauthContext,
     ProviderUnavailableError,
+    is_fallback_eligible_error,
     resolve_fuel,
 )
 from mobile_fuel_stations.providers.policy import (
@@ -50,6 +56,24 @@ def test_country_normalization_is_strict_iso_alpha2():
     assert normalize_country_code(None) is None
     assert normalize_country_code("Germany") is None
     assert normalize_country_code("D1") is None
+
+
+@pytest.mark.parametrize("error", [
+    ProviderNetworkError("dns"),
+    ProviderTimeoutError("timeout"),
+    ProviderUnavailableError("503"),
+    ProviderRateLimitError("429"),
+])
+def test_fallback_policy_allows_only_transient_provider_failures(error):
+    assert is_fallback_eligible_error(error) is True
+
+
+@pytest.mark.parametrize("error", [
+    ProviderAuthError("invalid_key"),
+    ProviderResponseError("invalid_payload"),
+])
+def test_fallback_policy_does_not_hide_auth_or_payload_errors(error):
+    assert is_fallback_eligible_error(error) is False
 
 
 def test_fuel_resolution_preserves_supported_fuels_without_fallback():

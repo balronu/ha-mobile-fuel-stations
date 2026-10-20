@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0-beta.4 — Provider fallback hardening
+
+- Fallback im Auto-Modus ist auf Netzwerk-, Timeout-, HTTP-5xx- und HTTP-429-Fehler begrenzt.
+- Authentifizierungs-, Berechtigungs-, Kontingent-, Payload- und Konfigurationsfehler lösen keinen stillen Providerwechsel aus.
+- Persistierte Nakordoni-Marktberechtigungen werden nach einem HA-Neustart wieder in die Auto-Auswahl übernommen.
+- Provider-Cooldowns werden auch vor einem Fallback-Kandidaten berücksichtigt.
+- Geheimnisfreie Fallback-Diagnostik und verständliche Lovelace-Statusmeldungen ergänzt.
+
 ## 0.8.0-beta.3 — Manual fetch cooldown and provider diagnostics
 
 - Disable the manual-fetch button from the backend-provided provider cooldown;

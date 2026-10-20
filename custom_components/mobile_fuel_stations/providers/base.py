@@ -214,6 +214,25 @@ class ProviderUnsupportedFuelError(ProviderConfigurationError):
     """The provider contract does not define the requested fuel mapping."""
 
 
+def is_fallback_eligible_error(error: ProviderError) -> bool:
+    """Return whether another configured provider may be tried safely.
+
+    A fallback may hide a temporary outage, transport failure, or provider
+    throttling.  It must not hide a credential, permission, quota, payload, or
+    configuration problem that also affects the provider contract.
+    """
+
+    return isinstance(
+        error,
+        (
+            ProviderNetworkError,
+            ProviderTimeoutError,
+            ProviderUnavailableError,
+            ProviderRateLimitError,
+        ),
+    )
+
+
 class FuelStationProvider(Protocol):
     """Minimal interface required by the coordinator."""
 

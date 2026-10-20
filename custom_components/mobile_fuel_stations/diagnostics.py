@@ -89,9 +89,18 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "last_provider_attempt": _iso(getattr(coordinator, "last_provider_attempt", None)),
             "last_provider_success": _iso(getattr(coordinator, "last_provider_success", None)),
             "effective_provider": getattr(coordinator, "diagnostic_effective_provider", None),
+            "configured_providers": sorted(getattr(coordinator, "provider_modes", ())),
+            "provider_selection_mode": (
+                "auto" if getattr(coordinator, "_is_auto", False)
+                else getattr(coordinator, "options", {}).get("provider_mode")
+            ),
             "provider_selection_reason": getattr(
                 coordinator, "diagnostic_provider_selection_reason", None
             ),
+            "fallback_attempted": getattr(coordinator, "fallback_attempted", False),
+            "fallback_provider": getattr(coordinator, "fallback_provider", None),
+            "fallback_result": getattr(coordinator, "fallback_result", None),
+            "fallback_skip_reason": getattr(coordinator, "fallback_skip_reason", None),
             "provider_cooldown_remaining": getattr(
                 coordinator, "diagnostic_provider_cooldown_remaining", None
             ),
