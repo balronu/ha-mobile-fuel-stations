@@ -188,6 +188,66 @@ describe("card", () => {
     (card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement)?.click();
     expect(callService).toHaveBeenCalledWith("mobile_fuel_stations", "manual_refresh", { entry_id: "entry-opel" });
   });
+  it("keeps the confirmed backend mode while a mode change is pending", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    let resolveService: (() => void) | undefined;
+    const callService = vi.fn().mockImplementation(() => new Promise<void>((resolve) => { resolveService = resolve; }));
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "automatic" }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    (card.shadowRoot?.querySelectorAll(".mode-switch button")[1] as HTMLButtonElement).click();
+    await card.updateComplete;
+    expect((card.shadowRoot?.querySelector(".mode-switch button.selected") as HTMLButtonElement).textContent).toContain("Automatisch");
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+    resolveService?.(); await Promise.resolve(); await card.updateComplete;
+    expect((card.shadowRoot?.querySelector(".mode-switch button.selected") as HTMLButtonElement).textContent).toContain("Automatisch");
+    hass.states[overviewId]!.attributes.fetch_mode = "manual";
+    card.hass = hass; await card.updateComplete;
+    expect((card.shadowRoot?.querySelector(".mode-switch button.selected") as HTMLButtonElement).textContent).toContain("Manuell");
+  });
+  it("shows a mode error without replacing existing station data", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn().mockRejectedValue(new Error("name 'hass' is not defined"));
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "automatic" }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    (card.shadowRoot?.querySelectorAll(".mode-switch button")[1] as HTMLButtonElement).click();
+    await Promise.resolve(); await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("name 'hass' is not defined");
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+    expect((card.shadowRoot?.querySelector(".mode-switch button.selected") as HTMLButtonElement).textContent).toContain("Automatisch");
+    expect(card.shadowRoot?.querySelector(".stations")).toBeTruthy();
+  });
+  it("keeps station data visible when manual refresh fails and clears the error after success", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn()
+      .mockRejectedValueOnce(new Error("Manual refresh failed"))
+      .mockResolvedValueOnce(undefined);
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual" }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    (card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement).click();
+    await Promise.resolve(); await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Manual refresh failed");
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+    (card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement).click();
+    await Promise.resolve(); await card.updateComplete;
+    expect(card.shadowRoot?.textContent).not.toContain("Manual refresh failed");
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+  });
+  it("does not mark a fresh manual result stale solely because the mode is manual", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId });
+    card.hass = hassFor(1, { fetch_mode: "manual", data_stale: false, last_successful_update: new Date().toISOString() });
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".stale-warning")).toBeNull();
+    expect(card.shadowRoot?.textContent).toContain("Station 1");
+  });
+  it("keeps multiple cards for one config entry on the confirmed backend mode", async () => {
+    const first = new MobileFuelStationsCard(); const second = new MobileFuelStationsCard(); document.body.append(first, second);
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual" }), callService: vi.fn().mockResolvedValue(undefined) };
+    first.setConfig({ entity: overviewId }); second.setConfig({ entity: overviewId }); first.hass = hass; second.hass = hass;
+    await first.updateComplete; await second.updateComplete;
+    expect(first.shadowRoot?.querySelector(".mode-switch button.selected")?.textContent).toContain("Manuell");
+    expect(second.shadowRoot?.querySelector(".mode-switch button.selected")?.textContent).toContain("Manuell");
+  });
   it("keeps the card read-only for a non-admin dashboard user", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     const callService = vi.fn().mockResolvedValue(undefined);

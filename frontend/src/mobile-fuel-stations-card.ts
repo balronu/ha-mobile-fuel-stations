@@ -351,6 +351,7 @@ export class MobileFuelStationsCard extends LitElement {
     .closed { color: var(--secondary-text-color); }
     .message { color: var(--secondary-text-color); }
     .stale-warning { color: var(--warning-color, var(--primary-color)); margin: 0 0 10px; font-size: .9rem; }
+    .control-error { color: var(--error-color, var(--warning-color, var(--primary-color))); margin: 0 0 10px; font-size: .9rem; }
     .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 0; border-top: 1px solid var(--divider-color); border-bottom: 1px solid var(--divider-color); }
     .control-label { color: var(--secondary-text-color); font-size: .85rem; }
     .mode-switch { display: inline-flex; border: 1px solid var(--divider-color); border-radius: 999px; overflow: hidden; }
@@ -387,6 +388,7 @@ export class MobileFuelStationsCard extends LitElement {
   private _config?: CardConfig;
   private _hass?: Hass;
   private _configError?: string;
+  private _controlError?: string;
   private _failedBrandLogos = new Set<string>();
   private _manualRefreshInFlight = false;
   private _modeChangeInFlight = false;
@@ -426,6 +428,7 @@ export class MobileFuelStationsCard extends LitElement {
       <ha-card>
         <div class="header"><h2>${this._text("title")}</h2><span class="summary">${this._summary(overview, stations)}</span></div>
         ${this._controls(overview)}
+        ${this._controlError ? html`<div class="control-error" role="alert">${this._controlError}</div>` : nothing}
         ${isUnavailable ? html`<div class="message" role="status">${this._text("unavailable")}</div>` : nothing}
         ${!isUnavailable && this._hasRefreshError(overview) ? html`<div class="stale-warning" role="alert">${this._refreshError(overview)}</div>` : nothing}
         ${!isUnavailable && overview.attributes.data_stale === true ? html`<div class="stale-warning" role="status">${this._staleMessage(overview)}</div>` : nothing}
@@ -456,8 +459,9 @@ export class MobileFuelStationsCard extends LitElement {
     this._modeChangeInFlight = true;
     try {
       await this._hass.callService("mobile_fuel_stations", "set_fetch_mode", { entry_id: entryId, fetch_mode: mode });
+      this._controlError = undefined;
     } catch (error) {
-      this._configError = error instanceof Error ? error.message : this._text("controlFailed");
+      this._controlError = error instanceof Error ? error.message : this._text("controlFailed");
     } finally {
       this._modeChangeInFlight = false;
       this.requestUpdate();
@@ -470,8 +474,9 @@ export class MobileFuelStationsCard extends LitElement {
     this.requestUpdate();
     try {
       await this._hass.callService("mobile_fuel_stations", "manual_refresh", { entry_id: entryId });
+      this._controlError = undefined;
     } catch (error) {
-      this._configError = error instanceof Error ? error.message : this._text("controlFailed");
+      this._controlError = error instanceof Error ? error.message : this._text("controlFailed");
     } finally {
       this._manualRefreshInFlight = false;
       this.requestUpdate();

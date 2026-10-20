@@ -82,6 +82,24 @@ def test_manual_refresh_performs_exactly_one_coordinator_request():
     assert coordinator._manual_refresh_in_progress is False
 
 
+def test_manual_mode_does_not_mark_existing_result_stale_during_provider_cooldown(monkeypatch):
+    coordinator = _manual_coordinator()
+    coordinator._has_valid_provider_result = True
+    coordinator.stations = [object()]
+    coordinator.data = coordinator.stations
+    coordinator.last_request = None
+    coordinator.provider_last_requests = {}
+    coordinator.data_stale = False
+
+    # A normal manual-mode coordinator returns its confirmed result without
+    # polling; the explicit refresh path must not turn that result stale just
+    # because the mode is manual.
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == coordinator.stations
+    assert coordinator.data_stale is False
+
+
 def test_parallel_manual_refresh_is_rejected():
     coordinator = _manual_coordinator()
     asyncio.run(coordinator._manual_refresh_lock.acquire())
