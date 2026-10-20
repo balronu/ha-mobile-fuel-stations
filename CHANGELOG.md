@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0-beta.6 — Nakordoni-Verfügbarkeit und Fallback-Gründe
+
+- Explizite Nakordoni-Marktberechtigungen aus geeigneten Usage-Metadaten werden für API-Key und OAuth2 synchronisiert.
+- Numerische Kontingent-/Markt-Zähler werden nicht als Länderberechtigungen interpretiert; unvollständige Daten überschreiben keine bestätigten Berechtigungen.
+- Kontingent null sperrt den Provider vorab; unbekannte oder veraltete Kontingente bleiben ausdrücklich unbekannt.
+- Providerbezogene Verfügbarkeitsgründe werden an die Lovelace-Karte übertragen; Tankerkönig-Cooldown und Nakordoni-Marktabdeckung werden getrennt dargestellt.
+- Der globale Countdown wird nur aus einer Backend-Prüfung abgeleitet, die nach Ablauf tatsächlich einen zulässigen Abruf erwarten lässt; einzelne Provider-Cooldowns bleiben separat sichtbar.
+- Persistierte Usage-/Marktdaten werden vor der ersten Auto-Auswahl wiederhergestellt, ohne zusätzliche Statusaufrufe.
+
 ## 0.8.0-beta.5 — Status, Kontingent und Startup-Härtung
 
 - Provider-Cooldowns werden je Provider mit einer backendseitigen absoluten Endzeit dargestellt.

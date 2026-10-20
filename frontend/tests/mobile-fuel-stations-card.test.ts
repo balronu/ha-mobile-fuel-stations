@@ -210,6 +210,8 @@ describe("card", () => {
       config_entry_id: "entry-womo",
       fetch_mode: "manual",
       manual_refresh_available: true,
+      provider_cooldown_remaining: 240,
+      manual_refresh_retry_seconds: 0,
       provider_cooldowns: {
         tankerkoenig: { active: true, cooldown_until: new Date(Date.now() + 240000).toISOString(), remaining_seconds: 240 },
         nakordoni: { active: false, cooldown_until: null, remaining_seconds: 0 },
@@ -225,6 +227,30 @@ describe("card", () => {
     expect(card.shadowRoot?.textContent).toContain("Tankerkönig");
     expect(card.shadowRoot?.textContent).toContain("Provider-Cooldown aktiv");
   });
+  it("does not show a global cooldown when the backend says no retry can unlock a provider", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const callService = vi.fn();
+    const hass = { ...hassFor(1, {
+      config_entry_id: "entry-womo",
+      fetch_mode: "manual",
+      manual_refresh_available: false,
+      provider_cooldown_remaining: 240,
+      manual_refresh_retry_seconds: 0,
+      provider_availability: {
+        tankerkoenig: { available: false, status: "cooldown" },
+        nakordoni: { available: false, status: "coverage_unknown" },
+      },
+      provider_cooldowns: {
+        tankerkoenig: { active: true, cooldown_until: new Date(Date.now() + 240000).toISOString(), remaining_seconds: 240 },
+        nakordoni: { active: false, cooldown_until: null, remaining_seconds: 0 },
+      },
+    }), callService };
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    const refresh = card.shadowRoot?.querySelector("button.refresh") as HTMLButtonElement;
+    expect(refresh.disabled).toBe(true);
+    expect(refresh.textContent).not.toContain("Erneut abrufen in");
+    expect(refresh.textContent).toContain("Kein Provider verfügbar");
+  });
   it("renders verified quota data and marks unsupported provider quotas unavailable", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     const hass = hassFor(1, {
@@ -237,6 +263,19 @@ describe("card", () => {
     card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
     expect(card.shadowRoot?.textContent).toContain("7/10 Aufrufe verbleibend");
     expect(card.shadowRoot?.textContent).toContain("Tankerkönig · Kontingent nicht verfügbar");
+  });
+  it("renders the backend provider reason instead of a misleading quota state", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = hassFor(1, {
+      provider_availability: {
+        tankerkoenig: { available: false, status: "cooldown" },
+        nakordoni: { available: false, status: "coverage_unknown" },
+      },
+      provider_cooldowns: { tankerkoenig: { active: false, remaining_seconds: 0 }, nakordoni: { active: false, remaining_seconds: 0 } },
+      provider_quotas: { tankerkoenig: { available: false }, nakordoni: { available: false } },
+    });
+    card.setConfig({ entity: overviewId }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Nakordoni · Marktabdeckung unbekannt");
   });
   it("keeps the confirmed backend mode while a mode change is pending", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
