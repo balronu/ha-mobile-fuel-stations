@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.3"><img src="https://img.shields.io/badge/Stable-v0.8.3-16a34a" alt="Stable v0.8.3"></a>
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.4-beta.2"><img src="https://img.shields.io/badge/Pre--release-v0.8.4--beta.2-f59e0b" alt="Pre-release v0.8.4-beta.2"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.4-beta.3"><img src="https://img.shields.io/badge/Pre--release-v0.8.4--beta.3-f59e0b" alt="Pre-release v0.8.4-beta.3"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -69,10 +69,10 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.8.3` | Aktuelle stabile Version |
-| Pre-release | `v0.8.4-beta.2` | Beta mit drei Kartenlayouts und responsiven Kacheln |
+| Pre-release | `v0.8.4-beta.3` | Beta mit vollständigem Editor-Audit und korrigierten Layoutoptionen |
 | Vorherige Stable | `v0.7.3` | Verfügbare Rollback-Version |
 | Historische Beta | `v0.8.0-beta.8` | Vorangegangene Pre-release |
-| Frontend-Komponente | `v0.8.4-beta.2` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.8.4-beta.3` | Unabhängig versionierte Lovelace-Komponente |
 
 `v0.8.3` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
@@ -84,12 +84,12 @@ experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
 festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
 
-`v0.8.4-beta.2` ist die aktuelle Pre-release für Tests. Sie lässt `v0.8.3`
+`v0.8.4-beta.3` ist die aktuelle Pre-release für Tests. Sie lässt `v0.8.3`
 als Stable unverändert und ergänzt die Kartenmodi **Ausführlich**, **Kompakt**
 und **Individuell**. Anzeige, Sortierung und sichtbare Anzahl gehören zur
 jeweiligen Karte; die Integration bleibt für Beschaffung und Aktualisierung
 zuständig. Die Beta-Ressource verwendet den neuen Cache-Key
-`v=0.8.4-beta.2`.
+`v=0.8.4-beta.3`.
 
 v0.7.1 verbesserte außerdem die Erkennung integrationszugehöriger Overview-
 Sensoren im visuellen Lovelace-Editor. Auch vorübergehend `unavailable`-
@@ -182,7 +182,7 @@ erhalten.
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.8.3` ist die aktuelle stabile HACS-Version; `v0.8.4-beta.2` muss in HACS
+`v0.8.3` ist die aktuelle stabile HACS-Version; `v0.8.4-beta.3` muss in HACS
 als Pre-release ausgewählt werden. `v0.7.3` bleibt als
 vorherige Stable-Rollback-Version verfügbar. Historische Betas bleiben im
 GitHub-Archiv erhalten.
@@ -195,7 +195,7 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und automatisch
 registriert. Die Frontend-Ressource lautet:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.4-beta.2
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.4-beta.3
 ```
 
 Der versionsabhängige Resource-Key verhindert, dass ein neues Bundle unter

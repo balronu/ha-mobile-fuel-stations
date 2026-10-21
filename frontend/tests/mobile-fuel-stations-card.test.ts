@@ -699,7 +699,39 @@ describe("card", () => {
     expect(card.shadowRoot?.querySelectorAll(".featured-top")).toHaveLength(2);
     expect(card.shadowRoot?.textContent).toContain("Nächste"); expect(card.shadowRoot?.textContent).toContain("Günstigste");
   });
-  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.2"); });
+  it("applies visual field toggles without leaving empty station columns", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "configured_list", show_brand_logos: false, navigation: false, show_prices: false, show_distance: false, show_provider_row: false });
+    card.hass = hassFor(1, {}, { brand: "Shell", latitude: 49, longitude: 8, provider: "tankerkoenig" }); await card.updateComplete;
+    const station = card.shadowRoot?.querySelector(".station") as HTMLElement;
+    expect(station.classList).toContain("no-logo"); expect(station.classList).toContain("no-navigation"); expect(station.classList).toContain("no-prices");
+    expect(station.querySelector(".brand-logo, .icon")).toBeNull(); expect(station.querySelector(".navigate")).toBeNull(); expect(station.querySelector(".prices")).toBeNull();
+    expect(station.querySelector(".detail-meta")?.textContent).not.toContain("km");
+  });
+  it("removes list separators from every mode while retaining featured tile borders", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "highlights_list", show_dividers: false }); card.hass = hassFor(3); await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".custom-mode.no-dividers")).toBeTruthy();
+    expect(card.shadowRoot?.querySelectorAll(".stations .station")).toHaveLength(1);
+    expect(card.shadowRoot?.querySelectorAll(".featured-station")).toHaveLength(2);
+    const css = Array.from(card.shadowRoot?.querySelectorAll("style") ?? []).map((node) => node.textContent ?? "").join("\n");
+    expect(css).toContain(".no-dividers .station"); expect(css).not.toContain(".stations.no-dividers .station");
+  });
+  it("renders custom distance exactly once and hides all distance output when disabled", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "configured_list", show_distance: true }); card.hass = hassFor(1, {}, { distance: 1.8 }); await card.updateComplete;
+    const station = card.shadowRoot?.querySelector(".station") as HTMLElement;
+    expect(station.querySelectorAll(".detail-meta")).toHaveLength(1); expect(station.querySelector(".detail-meta")?.textContent).toContain("1,8 km"); expect(station.querySelector(".prices .meta")).toBeNull();
+    card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "configured_list", show_distance: false }); await card.updateComplete;
+    expect(station.querySelector(".detail-meta")?.textContent).not.toContain("km"); expect(station.querySelector(".prices .meta")).toBeNull();
+  });
+  it("removes the complete optional custom header without a spacer", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId, display_mode: "custom", show_title: false, show_station_count: false, show_radius: false, show_fuel_type: false, show_last_updated: false, show_provider: false, show_fetch_mode: false, show_diagnostics: false, show_refresh: false }); card.hass = hassFor(1); await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".header, .controls, .diagnostics")).toBeNull();
+    expect(card.shadowRoot?.querySelector("ha-card .stations")).toBeTruthy();
+  });
+  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.3"); });
   it("keeps the same custom priority labels when the nearest is also cheapest", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); const hass = hassFor(2);
     hass.states["sensor.vehicle_station_1"]!.attributes.distance = 1; hass.states["sensor.vehicle_station_1"]!.attributes.fuel_prices = { diesel: 1.2 };

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.4-beta.3] - 2026-10-21
+
+- Vollständiger visueller Audit der Lovelace-Karteneditoroptionen.
+- Trennlinien werden in allen Listenlayouts zuverlässig ein- und ausgeblendet.
+- Individuelle Entfernungen erscheinen nicht mehr doppelt.
+- Deaktivierte Logos, Navigation und Preise hinterlassen keine leeren Grid-Spalten.
+- Responsive Kachel- und Dichte-Regressionen mit Chromium dokumentiert.
+- Frontend-Cache-Key auf `v=0.8.4-beta.3` aktualisiert.
+
 ## 0.8.4-beta.2 — Responsive tiles, denser individual lists, and editor cleanup
 
 - Makes the Individual **Highlights + list** layout use compact responsive tiles;
