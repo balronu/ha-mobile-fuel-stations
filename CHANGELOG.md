@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.4-beta.1 — Three card layouts and per-card display settings
+
+- Adds Detailed, Compact, and Individual Lovelace modes while preserving the
+  v0.8.3 compact and legacy detailed defaults.
+- Adds per-card sorting, price-sorting fuel, visible station limit, header and
+  station-field toggles, density, dividers, and optional highlights plus list.
+- Keeps integration options as non-destructive legacy fallbacks; card settings
+  do not change provider polling, cache, credentials, or API requests.
+- Adds a cache-busting frontend version `v=0.8.4-beta.1` and documents why an
+  already-open browser tab may still need one dashboard reload.
+- Adds regression coverage for individual layouts, card-local sorting,
+  duplicate-free highlights, legacy YAML compatibility, and no provider calls.
+
 ## 0.8.3 — Unified station prioritization
 
 - Priorisiert in Kompakt- und Ausführlich-Ansicht dieselbe Tankstellenliste: Nächste zuerst, danach die günstigste unterschiedliche Tankstelle für den konfigurierten Kraftstoff.

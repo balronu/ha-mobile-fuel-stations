@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.3"><img src="https://img.shields.io/badge/Stable-v0.8.3-16a34a" alt="Stable v0.8.3"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.4-beta.1"><img src="https://img.shields.io/badge/Pre--release-v0.8.4--beta.1-f59e0b" alt="Pre-release v0.8.4-beta.1"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -68,9 +69,10 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.8.3` | Aktuelle stabile Version |
+| Pre-release | `v0.8.4-beta.1` | Beta mit drei Kartenlayouts |
 | Vorherige Stable | `v0.7.3` | Verfügbare Rollback-Version |
 | Historische Beta | `v0.8.0-beta.8` | Vorangegangene Pre-release |
-| Frontend-Komponente | `v0.8.3` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.8.4-beta.1` | Unabhängig versionierte Lovelace-Komponente |
 
 `v0.8.3` ist die aktuelle stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
@@ -81,6 +83,13 @@ experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 über einen Live-Callback bestätigt. Herkunft, fehlende Einzelbildlizenz und
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
 festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
+
+`v0.8.4-beta.1` ist die aktuelle Pre-release für Tests. Sie lässt `v0.8.3`
+als Stable unverändert und ergänzt die Kartenmodi **Ausführlich**, **Kompakt**
+und **Individuell**. Anzeige, Sortierung und sichtbare Anzahl gehören zur
+jeweiligen Karte; die Integration bleibt für Beschaffung und Aktualisierung
+zuständig. Die Beta-Ressource verwendet den neuen Cache-Key
+`v=0.8.4-beta.1`.
 
 v0.7.1 verbesserte außerdem die Erkennung integrationszugehöriger Overview-
 Sensoren im visuellen Lovelace-Editor. Auch vorübergehend `unavailable`-
@@ -153,9 +162,14 @@ nebeneinanderstehenden Preisen und Navigation. Die Kennzeichnungen für
 „Nächste“ und „Günstigste“ bleiben inline; Provider-, Kontingent- und
 Cooldown-Diagnose liegt im aufklappbaren Bereich.
 
-Bestehende YAML-Karten ohne display_mode bleiben aus Kompatibilitätsgründen
-im bisherigen ausführlichen Modus. Der visuelle Editor bietet Kompakt und
-Ausführlich an.
+Bestehende YAML-Karten ohne `display_mode` bleiben aus Kompatibilitätsgründen
+im bisherigen ausführlichen Modus. Der visuelle Editor bietet **Kompakt**,
+**Ausführlich** und **Individuell**. Im individuellen Modus stehen einfache
+Liste, Kacheln für „Nächste“/„Günstigste“ plus Liste und eine konfigurierbare
+Liste zur Verfügung. Sortierung, Preis-Kraftstoff, sichtbare Anzahl,
+Kopfbereich, Stationsfelder, Dichte und Trennlinien werden pro Karte
+gespeichert. Die bestehenden Integrationsoptionen bleiben als Legacy-Fallback
+erhalten.
 
 ## Installation über HACS
 
@@ -168,7 +182,8 @@ Ausführlich an.
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.8.3` ist die aktuelle stabile HACS-Version; `v0.7.3` bleibt als
+`v0.8.3` ist die aktuelle stabile HACS-Version; `v0.8.4-beta.1` muss in HACS
+als Pre-release ausgewählt werden. `v0.7.3` bleibt als
 vorherige Stable-Rollback-Version verfügbar. Historische Betas bleiben im
 GitHub-Archiv erhalten.
 
@@ -180,12 +195,15 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und automatisch
 registriert. Die Frontend-Ressource lautet:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.3
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.4-beta.1
 ```
 
-Bei einer bestehenden Installation können alte Ressourcen im Browser- oder
-Frontend-Cache liegen; nach einem Update hilft ein vollständiger Home-Assistant-
-Neustart und ein Neuladen des Browsers. Die technische Ladebeschreibung steht
+Der versionsabhängige Resource-Key verhindert, dass ein neues Bundle unter
+derselben URL aus dem Browsercache geladen wird. Eine bereits ausgeführte
+JavaScript-Datei kann Home Assistant jedoch nicht sicher im laufenden Tab
+ersetzen; je nach HA-Frontend, Companion-App oder offenem Dashboard kann ein
+einmaliges Dashboard-Neuladen erforderlich bleiben. Es gibt keinen pauschalen
+automatischen Hard Reload und keine Reload-Schleife. Die technische Ladebeschreibung steht
 in [docs/RESOURCE_LOADING.md](docs/RESOURCE_LOADING.md).
 
 ## Einrichtung und Konfiguration
@@ -196,7 +214,8 @@ Im Konfigurationsdialog werden typischerweise gewählt:
 - Suchradius und maximale Anzahl der Stationen (1 bis 10)
 - eine oder mehrere Kraftstoffarten
 - einer oder mehrere Provider beziehungsweise **Automatisch**
-- Sortierung nach Entfernung oder Kraftstoffpreis
+- Sortierung nach Entfernung oder Kraftstoffpreis (pro Karte; Legacy-Fallback
+  aus der Integration, wenn die Karte keine Einstellung enthält)
 - Polling-Intervall sowie Bewegungsschwelle und Cooldown
 - optional adaptive Aktualisierung (standardmäßig deaktiviert)
 - gewünschter Navigationsdienst der Karte
