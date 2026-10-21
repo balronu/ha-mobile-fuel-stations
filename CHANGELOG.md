@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.4] - 2026-10-21
+
+- Stable release of the complete v0.8.4 card cycle.
+- Adds Detailed, Compact, and Individual modes with per-card sorting, price
+  fuel, visible station count, header/station fields, density, dividers, and
+  optional Highlights + list layout.
+- Keeps existing YAML cards, Config Entries, provider fetching, and update
+  behavior compatible.
+- Removes empty header controls wrappers and prevents duplicate dividers across
+  all visibility combinations; the stable frontend cache key is `v=0.8.4`.
+
 ## [0.8.4-beta.6] - 2026-10-21
 
 - Leeren Refresh-Wrapper entfernt, wenn der Abrufmodus ausgeblendet und der
