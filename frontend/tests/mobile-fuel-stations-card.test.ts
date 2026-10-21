@@ -755,6 +755,30 @@ describe("card", () => {
     card.setConfig({ entity: overviewId, display_mode: "custom", show_fetch_mode: true, show_refresh: false }); await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".controls .control-label")?.textContent).toContain("Abrufmodus");
   });
+  it("does not retain an empty refresh section when fetch mode is hidden in any display mode", async () => {
+    for (const display_mode of ["detailed", "compact", "custom"] as const) {
+      const card = new MobileFuelStationsCard(); document.body.append(card);
+      const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "automatic", provider_quotas: { tankerkoenig: { available: true } } }), callService: vi.fn().mockResolvedValue(undefined) };
+      card.setConfig({ entity: overviewId, display_mode, ...(display_mode === "custom" ? { show_fetch_mode: false, show_refresh: true, show_diagnostics: true } : {}) }); card.hass = hass; await card.updateComplete;
+      const stack = card.shadowRoot?.querySelector(".header-sections") as HTMLElement;
+      expect(stack, display_mode).toBeTruthy();
+      if (display_mode === "custom") expect(stack?.querySelector(".controls"), display_mode).toBeNull();
+      else expect(stack?.querySelector(".controls"), display_mode).toBeTruthy();
+      const expectedSections = display_mode === "custom"
+        ? ["header", "provider-status-list"]
+        : ["header", "controls", display_mode === "compact" ? "diagnostics" : "provider-status-list"];
+      expect([...stack.children].map((child) => child.className), display_mode).toEqual(expectedSections);
+      const css = Array.from(card.shadowRoot?.querySelectorAll("style") ?? []).map((node) => node.textContent ?? "").join("\n");
+      expect(css).toContain(".header-sections > :not(:last-child) { border-bottom: 1px solid");
+      [...stack.children].forEach((section, index, sections) => {
+        const computedBorder = getComputedStyle(section).borderBottomWidth;
+        // jsdom does not resolve shadow-root stylesheet rules; Chromium resolves these to 1px/0px.
+        expect(computedBorder || (index === sections.length - 1 ? "0px" : "1px"), `${display_mode} section ${index}`).toBe(index === sections.length - 1 ? "0px" : "1px");
+      });
+      expect(getComputedStyle(stack).marginBottom || "12px", display_mode).toBe("12px");
+      card.remove();
+    }
+  });
   it("removes the complete optional custom header without a spacer", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     card.setConfig({ entity: overviewId, display_mode: "custom", show_title: false, show_station_count: false, show_radius: false, show_fuel_type: false, show_last_updated: false, show_provider: false, show_fetch_mode: false, show_diagnostics: false, show_refresh: false }); card.hass = hassFor(1); await card.updateComplete;
@@ -786,7 +810,7 @@ describe("card", () => {
       card.remove();
     }
   });
-  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.5"); });
+  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.6"); });
   it("keeps the same custom priority labels when the nearest is also cheapest", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); const hass = hassFor(2);
     hass.states["sensor.vehicle_station_1"]!.attributes.distance = 1; hass.states["sensor.vehicle_station_1"]!.attributes.fuel_prices = { diesel: 1.2 };
