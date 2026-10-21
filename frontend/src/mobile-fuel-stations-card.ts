@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 
-export const FRONTEND_BUILD_VERSION = "0.8.4-beta.1";
+export const FRONTEND_BUILD_VERSION = "0.8.4-beta.2";
 
 type HassState = {
   state: string;
@@ -544,13 +544,23 @@ export class MobileFuelStationsCard extends LitElement {
     .diagnostics .provider-status-list { padding: 0 0 7px; }
     .custom-mode .header { margin-bottom: 8px; }
     .custom-mode .stations.no-dividers .station { border-top: 0; }
-    .custom-mode .stations.dense { gap: 0; }
-    .custom-mode .stations.dense .station { padding-top: 5px; padding-bottom: 5px; }
+    .custom-mode .stations { gap: 4px; }
+    .custom-mode.dense .stations { gap: 0; }
+    .custom-mode.dense .stations .station { padding-top: 3px; padding-bottom: 3px; }
     .custom-mode .featured-stations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
-    .custom-mode .featured-station { border: 1px solid var(--divider-color); border-radius: var(--ha-card-border-radius, 12px); padding: 8px; }
-    .custom-mode .featured-station .station-main { min-width: 0; }
-    .custom-mode .featured-station { border-top: 0; }
-    .custom-mode .featured-station .provider { display: none; }
+    .custom-mode .featured-station { display: flex; flex-direction: column; min-width: 0; height: 100%; box-sizing: border-box; border: 1px solid var(--divider-color); border-radius: var(--ha-card-border-radius, 12px); padding: 8px; cursor: pointer; }
+    .custom-mode .featured-station:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+    .featured-top { display: grid; grid-template-columns: 32px minmax(0, 1fr) 40px; gap: 6px; align-items: center; min-width: 0; }
+    .featured-main { min-width: 0; }
+    .featured-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .featured-values { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-top: auto; padding-top: 6px; min-width: 0; }
+    .featured-values .price { font-size: 1rem; }
+    .featured-values .meta { overflow: hidden; text-overflow: ellipsis; }
+    .featured-station .navigate { min-width: 40px; min-height: 40px; padding: 6px; }
+    .custom-mode .detail-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; color: var(--secondary-text-color); font-size: .8rem; line-height: 1.2; }
+    .custom-mode.dense .station { gap: 6px; }
+    .custom-mode.dense .address { font-size: .78rem; line-height: 1.15; }
+    .custom-mode.dense .detail-meta { gap: 1px 4px; font-size: .74rem; line-height: 1.1; }
     .custom-mode .name.short { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .custom-mode .station-field-hidden { display: none; }
     .custom-mode .station.no-address .station-main { min-height: 2.2em; }
@@ -592,9 +602,9 @@ export class MobileFuelStationsCard extends LitElement {
       .compact-mode .fuel-price { min-width: 42px; }
       .highlight { grid-template-columns: 26px minmax(0, 1fr) auto auto; gap: 6px; }
       .highlight .navigate { grid-column: auto; }
-      .custom-mode .featured-stations { grid-template-columns: 1fr; }
     }
-    @container (max-width: 360px) {
+    @container (max-width: 359px) {
+      .custom-mode .featured-stations { grid-template-columns: 1fr; }
       .compact-mode .station { grid-template-columns: 32px minmax(0, 1fr) 36px; }
       .compact-mode .brand-logo, .compact-mode .icon { width: 32px; height: 32px; }
       .compact-mode .station .prices { grid-column: 2; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; text-align: left; }
@@ -674,7 +684,7 @@ export class MobileFuelStationsCard extends LitElement {
         ${!isUnavailable && overview.attributes.data_stale === true ? html`<div class="stale-warning" role="status">${this._staleMessage(overview)}</div>` : nothing}
         ${!isUnavailable && overview.attributes.data_stale !== true && stations.some(({ state }) => state.attributes.price_stale === true) ? html`<div class="stale-warning" role="status">${this._text("providerPricesStale")}</div>` : nothing}
         ${this._hasNakordoni(overview, discoveredStations) ? html`<div class="secondary"><a href="https://nakordoni.eu" target="_blank" rel="noopener">Data by nakordoni.eu</a></div>` : nothing}
-        ${!isUnavailable ? (stations.length ? html`${featured.length ? html`<div class="featured-stations">${featured.map((station) => this._station(station, false, true))}</div>` : nothing}<div class="stations">${list.map((station) => this._station(station, compact))}</div>` : html`<div class="message">${this._text("none")}</div>`) : nothing}
+        ${!isUnavailable ? (stations.length ? html`${featured.length ? html`<div class="featured-stations">${featured.map((station) => this._featuredStation(station))}</div>` : nothing}<div class="stations">${list.map((station) => this._station(station, compact))}</div>` : html`<div class="message">${this._text("none")}</div>`) : nothing}
       </ha-card>
       </div>
     `;
@@ -977,7 +987,27 @@ export class MobileFuelStationsCard extends LitElement {
     return `${this._text("retryIn")} ${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
   }
 
-  private _station(station: StationPriority, compact = false, featured = false) {
+  private _featuredStation(station: StationPriority) {
+    const { id, state, isNearest, isCheapest } = station;
+    const a = state.attributes;
+    const name = text(a.station_name) ?? text(a.name) ?? id;
+    const brand = text(a.brand);
+    const distance = formatDistance(a.distance, this._locale());
+    const fuelPrices = a.fuel_prices && typeof a.fuel_prices === "object" ? a.fuel_prices as Record<string, unknown> : undefined;
+    const selectedFuel = this._config?.sort_fuel ?? text(a.requested_fuel) ?? text(a.fuel_type) ?? (fuelPrices ? Object.keys(fuelPrices)[0] : undefined);
+    const selectedPrice = selectedFuel && fuelPrices ? fuelPrices[selectedFuel] : state.state;
+    const price = formatPrice(selectedPrice, this._locale(), text(a.currency) ?? "EUR") ?? this._text("noPrice");
+    const badges = this._config?.show_badges !== false ? this._stationBadges(isNearest, isCheapest, false) : nothing;
+    const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
+    const navigation = navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing;
+    const label = `${name}, ${this._locale() === "en-US" ? "price" : "Preis"} ${price}${distance ? `, ${distance}` : ""}`;
+    return html`<article class="featured-station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
+      <div class="featured-top">${this._brandLogo(brand, name)}<div class="featured-main"><div class="featured-name" title=${name}>${name}</div>${badges}</div>${navigation}</div>
+      <div class="featured-values">${this._config?.show_prices !== false ? html`<span class="price">${price}</span>` : nothing}${this._config?.show_distance !== false && distance ? html`<span class="meta">${distance}</span>` : nothing}</div>
+    </article>`;
+  }
+
+  private _station(station: StationPriority, compact = false) {
     const { id, state, isNearest, isCheapest } = station;
     const a = state.attributes;
     const name = text(a.station_name) ?? text(a.name) ?? id;
@@ -998,7 +1028,8 @@ export class MobileFuelStationsCard extends LitElement {
     const showDistance = config.show_distance !== false;
     const showPrices = config.show_prices !== false;
     const showFuelLabels = config.show_fuel_labels !== false;
-    const showProvider = !compact && config.show_provider_row !== false;
+    const custom = config.display_mode === "custom";
+    const showProvider = !compact && !custom && config.show_provider_row !== false;
     const showBadges = config.show_badges !== false;
     const label = `${name}, ${priceRows.map((row) => `${row.fuel} ${row.value ?? this._text("noPrice")}`).join(", ")}`;
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
@@ -1006,7 +1037,7 @@ export class MobileFuelStationsCard extends LitElement {
     const fuelMarkup = showPrices ? priceRows.map((row) => html`<div class="fuel-price"><span>${showFuelLabels ? html`${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}` : nothing}</span><strong>${row.value ?? this._text("noPrice")}</strong></div>`) : nothing;
     const navigation = navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing;
     const nameClass = config.name_mode === "short" ? "name short" : "name";
-    const stationClass = `${compact ? "compact-station" : ""} ${featured ? "featured-station" : ""} ${showAddress ? "" : "no-address"}`.trim();
+    const stationClass = `${compact ? "compact-station" : ""} ${custom ? "custom-station" : ""} ${showAddress ? "" : "no-address"}`.trim();
     const nameMarkup = showName ? html`<div class=${nameClass} title=${name}>${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}${badges}</div>` : badges;
     if (compact) {
       return html`<div class="station ${stationClass}" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
@@ -1023,9 +1054,10 @@ export class MobileFuelStationsCard extends LitElement {
         ${navigation}
       </div>`;
     }
+    const detailMeta = html`${showStatus && status ? html`<span class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</span>` : nothing}${showDistance && distance ? html`<span>${distance}</span>` : nothing}${config.show_provider_row !== false ? html`<span>${this._text("source")}: ${provider}</span>` : nothing}${freshness ? html`<span>${freshness}</span>` : nothing}`;
     return html`<div class="station ${stationClass}" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       ${this._brandLogo(brand, name)}
-      <div>${nameMarkup}${showAddress && address ? html`<div class="address" title=${address}>${address}</div>` : nothing}${showProvider ? html`<div class="provider">${this._text("source")}: ${provider}</div>` : nothing}${showStatus && status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}</div>
+      <div>${nameMarkup}${showAddress && address ? html`<div class="address" title=${address}>${address}</div>` : nothing}${custom ? html`<div class="detail-meta">${detailMeta}</div>` : html`${showProvider ? html`<div class="provider">${this._text("source")}: ${provider}</div>` : nothing}${showStatus && status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}`}</div>
       <div class="prices">${fuelMarkup}${showDistance && distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
       ${navigation}
     </div>`;
@@ -1062,8 +1094,14 @@ class MobileFuelStationsCardEditor extends LitElement {
   static styles = css`
     :host { display: block; }
     label { display: block; color: var(--primary-text-color); margin: 8px 0; }
-    select, input { box-sizing: border-box; width: 100%; padding: 8px; color: var(--primary-text-color); background: var(--card-background-color); border: 1px solid var(--divider-color); border-radius: 4px; }
-    .row { margin-top: 16px; }
+    .field { display: block; }
+    select, input:not([type="checkbox"]) { box-sizing: border-box; width: 100%; padding: 8px; color: var(--primary-text-color); background: var(--card-background-color); border: 1px solid var(--divider-color); border-radius: 4px; }
+    input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--primary-color); }
+    .option { display: flex; align-items: center; gap: 8px; min-height: 32px; margin: 3px 0; cursor: pointer; }
+    .option span { min-width: 0; }
+    fieldset { margin: 12px 0; padding: 8px 12px 10px; border: 1px solid var(--divider-color); border-radius: 8px; }
+    legend { padding: 0 4px; color: var(--secondary-text-color); font-weight: 600; }
+    .row { margin-top: 12px; }
   `;
   private _config: CardConfig = normalizeCardConfig({ display_mode: "compact" });
   private _hass?: Hass;
@@ -1073,22 +1111,22 @@ class MobileFuelStationsCardEditor extends LitElement {
     const entities = Object.entries(this._hass?.states ?? {}).filter(([id, value]) => this._isOverview(id, value));
     const selected = this._hass?.states[this._config.entity ?? ""];
     const fuelTypes = Array.from(new Set((Array.isArray(selected?.attributes.fuel_types) ? selected?.attributes.fuel_types : [selected?.attributes.fuel_type]).filter((fuel): fuel is string => typeof fuel === "string" && Boolean(fuel.trim()))));
-    const mode = html`<div class="row"><label>${this._text("displayMode")}<select .value=${this._config.display_mode ?? "detailed"} @change=${(event: Event) => this._changeDisplayMode(event)}><option value="compact">${this._text("compact")}</option><option value="detailed">${this._text("detailed")}</option><option value="custom">${this._text("custom")}</option></select></label></div>`;
+    const mode = html`<div class="row"><label class="field">${this._text("displayMode")}<select .value=${this._config.display_mode ?? "detailed"} @change=${(event: Event) => this._changeDisplayMode(event)}><option value="compact">${this._text("compact")}</option><option value="detailed">${this._text("detailed")}</option><option value="custom">${this._text("custom")}</option></select></label></div>`;
     const custom = this._config.display_mode === "custom";
     const customOptions = custom ? html`
       <fieldset><legend>${this._text("customLayout")}</legend>
-        <label>${this._text("layout")}<select .value=${this._config.custom_layout ?? "list"} @change=${(event: Event) => this._changeCustomLayout(event)}><option value="list">${this._text("simpleList")}</option><option value="highlights_list">${this._text("highlightsList")}</option><option value="configured_list">${this._text("configuredList")}</option></select></label>
-        <label>${this._text("sortMode")}<select .value=${this._config.sort_mode ?? "distance"} @change=${(event: Event) => this._changeSortMode(event)}><option value="distance">${this._text("distanceSort")}</option><option value="price">${this._text("priceSort")}</option></select></label>
-        <label>${this._text("sortFuel")}<select .value=${this._config.sort_fuel ?? fuelTypes[0] ?? "diesel"} @change=${(event: Event) => this._changeSortFuel(event)}>${(fuelTypes.length ? fuelTypes : ["diesel"]).map((fuel) => html`<option value=${fuel}>${fuelLabel(fuel) ?? fuel}</option>`)}</select></label>
-        <label>${this._text("visibleCount")}<input type="number" min="0" step="1" .value=${String(this._config.visible_station_count ?? 0)} @change=${(event: Event) => this._changeNumber(event, "visible_station_count")}></label>
-        <label>${this._text("title")}<input .value=${this._config.title ?? ""} @change=${(event: Event) => this._changeText(event, "title")}></label>
+        <label class="field">${this._text("layout")}<select .value=${this._config.custom_layout ?? "list"} @change=${(event: Event) => this._changeCustomLayout(event)}><option value="list">${this._text("simpleList")}</option><option value="highlights_list">${this._text("highlightsList")}</option><option value="configured_list">${this._text("configuredList")}</option></select></label>
+        <label class="field">${this._text("sortMode")}<select .value=${this._config.sort_mode ?? "distance"} @change=${(event: Event) => this._changeSortMode(event)}><option value="distance">${this._text("distanceSort")}</option><option value="price">${this._text("priceSort")}</option></select></label>
+        <label class="field">${this._text("sortFuel")}<select .value=${this._config.sort_fuel ?? fuelTypes[0] ?? "diesel"} @change=${(event: Event) => this._changeSortFuel(event)}>${(fuelTypes.length ? fuelTypes : ["diesel"]).map((fuel) => html`<option value=${fuel}>${fuelLabel(fuel) ?? fuel}</option>`)}</select></label>
+        <label class="field">${this._text("visibleCount")}<input type="number" min="0" step="1" .value=${String(this._config.visible_station_count ?? 0)} @change=${(event: Event) => this._changeNumber(event, "visible_station_count")}></label>
+        <label class="field">${this._text("title")}<input .value=${this._config.title ?? ""} @change=${(event: Event) => this._changeText(event, "title")}></label>
       </fieldset>
       <fieldset><legend>${this._text("headerFields")}</legend>${this._checkbox("show_title", "showTitle")}${this._checkbox("show_station_count", "showCount")}${this._checkbox("show_radius", "showRadius")}${this._checkbox("show_fuel_type", "showFuel")}${this._checkbox("show_last_updated", "showUpdated")}${this._checkbox("show_provider", "showProvider")}${this._checkbox("show_fetch_mode", "showFetchMode")}${this._checkbox("show_diagnostics", "showDiagnostics")}${this._checkbox("show_refresh", "showRefresh")}</fieldset>
-      <fieldset><legend>${this._text("stationFields")}</legend>${this._checkbox("show_brand_logos", "brandLogos")}${this._checkbox("show_name", "stationName")}${this._checkbox("show_address", "address")}${this._checkbox("show_status", "status")}${this._checkbox("show_distance", "distance")}${this._checkbox("show_prices", "prices")}${this._checkbox("show_fuel_labels", "fuelLabels")}${this._checkbox("show_provider_row", "providerRow")}${this._checkbox("show_badges", "badges")}${this._checkbox("navigation", "navigation")}
-        <label>${this._text("nameMode")}<select .value=${this._config.name_mode ?? "full"} @change=${(event: Event) => this._changeNameMode(event)}><option value="full">${this._text("fullName")}</option><option value="short">${this._text("shortName")}</option></select></label>
-        <label>${this._text("density")}<select .value=${this._config.density ?? "normal"} @change=${(event: Event) => this._changeDensity(event)}><option value="normal">${this._text("normalSpacing")}</option><option value="compact">${this._text("compactSpacing")}</option></select></label>${this._checkbox("show_dividers", "dividers")}
+      <fieldset><legend>${this._text("stationFields")}</legend>${this._checkbox("show_brand_logos", "brandLogos")}${this._checkbox("show_name", "stationName")}${this._checkbox("show_address", "address")}${this._checkbox("show_status", "status")}${this._checkbox("show_distance", "distance")}${this._checkbox("show_prices", "prices")}${this._checkbox("show_fuel_labels", "fuelLabels")}${this._checkbox("show_provider_row", "providerRow")}${this._checkbox("show_badges", "badges")}
+        <label class="field">${this._text("nameMode")}<select .value=${this._config.name_mode ?? "full"} @change=${(event: Event) => this._changeNameMode(event)}><option value="full">${this._text("fullName")}</option><option value="short">${this._text("shortName")}</option></select></label>
+        <label class="field">${this._text("density")}<select .value=${this._config.density ?? "normal"} @change=${(event: Event) => this._changeDensity(event)}><option value="normal">${this._text("normalSpacing")}</option><option value="compact">${this._text("compactSpacing")}</option></select></label>${this._checkbox("show_dividers", "dividers")}
       </fieldset>` : nothing;
-    return html`${mode}<label>${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label>${customOptions}<div class="row"><label><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}> ${this._text("navigation")}</label></div><div class="row"><label>${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option><option value="waze">${this._text("waze")}</option></select></label></div>${custom ? nothing : html`<div class="row"><label><input type="checkbox" .checked=${this._config.show_brand_logos !== false} @change=${(event: Event) => this._changeBrandLogos(event)}> ${this._text("brandLogos")}</label><label>${this._text("logoPath")}<input .value=${this._config.logo_path ?? DEFAULT_LOGO_PATH} @change=${(event: Event) => this._changeLogoPath(event)}></label></div>`}`;
+    return html`${mode}<label class="field">${this._text("entity")}<select .value=${this._config.entity ?? ""} @change=${(event: Event) => this._changeEntity(event)}><option value="">${entities.length ? this._text("choose") : this._text("none")}</option>${entities.map(([id, value]) => html`<option value=${id}>${value?.attributes.friendly_name ?? id}</option>`)}</select></label>${customOptions}<fieldset><legend>${this._text("navigationSection")}</legend><label class="option"><input type="checkbox" .checked=${this._config.navigation !== false} @change=${(event: Event) => this._changeNavigation(event)}><span>${this._text("navigation")}</span></label><label class="field">${this._text("provider")}<select .value=${this._config.navigation_provider ?? "auto"} .disabled=${this._config.navigation === false} @change=${(event: Event) => this._changeProvider(event)}><option value="auto">${this._text("auto")}</option><option value="apple">${this._text("apple")}</option><option value="google">${this._text("google")}</option><option value="waze">${this._text("waze")}</option></select></label></fieldset>${custom ? nothing : html`<div class="row"><label class="option"><input type="checkbox" .checked=${this._config.show_brand_logos !== false} @change=${(event: Event) => this._changeBrandLogos(event)}><span>${this._text("brandLogos")}</span></label><label class="field">${this._text("logoPath")}<input .value=${this._config.logo_path ?? DEFAULT_LOGO_PATH} @change=${(event: Event) => this._changeLogoPath(event)}></label></div>`}`;
   }
   private _isOverview(id: string, value: HassState | undefined): boolean { return isOverviewEntity(id, value); }
   private _changeEntity(event: Event) { this._configChanged({ ...this._config, entity: (event.target as HTMLSelectElement).value }); }
@@ -1102,12 +1140,12 @@ class MobileFuelStationsCardEditor extends LitElement {
   private _changeText(event: Event, key: "title") { this._configChanged({ ...this._config, [key]: (event.target as HTMLInputElement).value }); }
   private _changeNameMode(event: Event) { this._configChanged({ ...this._config, name_mode: (event.target as HTMLSelectElement).value as "full" | "short" }); }
   private _changeDensity(event: Event) { this._configChanged({ ...this._config, density: (event.target as HTMLSelectElement).value as CardDensity }); }
-  private _checkbox(key: keyof CardConfig, labelKey: string) { const checked = this._config[key] !== false && typeof this._config[key] !== "string"; return html`<label><input type="checkbox" .checked=${checked} @change=${(event: Event) => this._changeBoolean(event, key)}> ${this._text(labelKey as Parameters<MobileFuelStationsCardEditor["_text"]>[0])}</label>`; }
+  private _checkbox(key: keyof CardConfig, labelKey: string) { const checked = this._config[key] !== false && typeof this._config[key] !== "string"; return html`<label class="option"><input type="checkbox" .checked=${checked} @change=${(event: Event) => this._changeBoolean(event, key)}><span>${this._text(labelKey as Parameters<MobileFuelStationsCardEditor["_text"]>[0])}</span></label>`; }
   private _changeBoolean(event: Event, key: keyof CardConfig) { this._configChanged({ ...this._config, [key]: (event.target as HTMLInputElement).checked }); }
   private _changeBrandLogos(event: Event) { this._configChanged({ ...this._config, show_brand_logos: (event.target as HTMLInputElement).checked }); }
   private _changeLogoPath(event: Event) { this._configChanged({ ...this._config, logo_path: (event.target as HTMLInputElement).value }); }
   private _configChanged(config: CardConfig) { this._config = config; this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config } })); }
-  private _text(key: "entity" | "choose" | "none" | "navigation" | "provider" | "auto" | "apple" | "google" | "waze" | "selectEntity" | "brandLogos" | "logoPath" | "displayMode" | "compact" | "detailed" | "custom" | "customLayout" | "layout" | "simpleList" | "highlightsList" | "configuredList" | "sortMode" | "distanceSort" | "priceSort" | "sortFuel" | "visibleCount" | "title" | "headerFields" | "stationFields" | "showTitle" | "showCount" | "showRadius" | "showFuel" | "showUpdated" | "showProvider" | "showFetchMode" | "showDiagnostics" | "showRefresh" | "stationName" | "address" | "status" | "distance" | "prices" | "fuelLabels" | "providerRow" | "badges" | "nameMode" | "fullName" | "shortName" | "density" | "normalSpacing" | "compactSpacing" | "dividers"): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? { entity: "Overview entity", choose: "Select an entity", none: "No overview sensors found", navigation: "Show navigation", provider: "Navigation provider", auto: "Automatic", apple: "Apple Maps", google: "Google Maps", waze: "Waze", selectEntity: "Select an overview entity", brandLogos: "Show brand logos", logoPath: "Logo path", displayMode: "Display mode", compact: "Compact", detailed: "Detailed", custom: "Individual", customLayout: "Individual layout", layout: "Layout", simpleList: "Simple list", highlightsList: "Highlights + list", configuredList: "Configured list", sortMode: "Remaining station sort", distanceSort: "Distance — nearest first", priceSort: "Fuel price — cheapest first", sortFuel: "Price sorting fuel", visibleCount: "Visible stations (0 = all)", title: "Card title", headerFields: "Header fields", stationFields: "Station fields", showTitle: "Show title", showCount: "Show station count", showRadius: "Show radius", showFuel: "Show fuel type", showUpdated: "Show last update", showProvider: "Show provider", showFetchMode: "Show fetch-mode control", showDiagnostics: "Show diagnostics", showRefresh: "Show refresh button", stationName: "Show station name", address: "Show address", status: "Show opening status", distance: "Show distance", prices: "Show prices", fuelLabels: "Show fuel labels", providerRow: "Show provider per station", badges: "Show nearest/cheapest labels", nameMode: "Name length", fullName: "Full name", shortName: "Short / ellipsis", density: "Row spacing", normalSpacing: "Normal", compactSpacing: "Compact", dividers: "Show dividers" }[key] : { entity: "Overview-Entity", choose: "Bitte auswählen", none: "Keine Overview-Sensoren gefunden", navigation: "Navigation anzeigen", provider: "Navigationsanbieter", auto: "Automatisch", apple: "Apple Karten", google: "Google Maps", waze: "Waze", selectEntity: "Bitte eine Overview-Entity auswählen", brandLogos: "Markenlogos anzeigen", logoPath: "Logo-Pfad", displayMode: "Darstellung", compact: "Kompakt", detailed: "Ausführlich", custom: "Individuell", customLayout: "Individuelles Layout", layout: "Layout", simpleList: "Einfache Liste", highlightsList: "Kacheln + Liste", configuredList: "Konfigurierte Liste", sortMode: "Sortierung der übrigen Tankstellen", distanceSort: "Entfernung – nächste zuerst", priceSort: "Kraftstoffpreis – günstigste zuerst", sortFuel: "Kraftstoff für Preissortierung", visibleCount: "Sichtbare Tankstellen (0 = alle)", title: "Kartentitel", headerFields: "Kopfbereich", stationFields: "Tankstellenfelder", showTitle: "Titel anzeigen", showCount: "Tankstellenanzahl anzeigen", showRadius: "Radius anzeigen", showFuel: "Kraftstoffart anzeigen", showUpdated: "Letzte Aktualisierung anzeigen", showProvider: "Provider anzeigen", showFetchMode: "Abrufmodus anzeigen", showDiagnostics: "Diagnosebereich anzeigen", showRefresh: "Aktualisieren anzeigen", stationName: "Tankstellenname anzeigen", address: "Adresse anzeigen", status: "Öffnungsstatus anzeigen", distance: "Entfernung anzeigen", prices: "Preise anzeigen", fuelLabels: "Kraftstoffbezeichnungen anzeigen", providerRow: "Provider je Tankstelle anzeigen", badges: "Nächste/Günstigste anzeigen", nameMode: "Namenslänge", fullName: "Vollständiger Name", shortName: "Kurz / Ellipsis", density: "Zeilenabstand", normalSpacing: "Normal", compactSpacing: "Kompakt", dividers: "Trennlinien anzeigen" }[key]; }
+  private _text(key: "entity" | "choose" | "none" | "navigation" | "navigationSection" | "provider" | "auto" | "apple" | "google" | "waze" | "selectEntity" | "brandLogos" | "logoPath" | "displayMode" | "compact" | "detailed" | "custom" | "customLayout" | "layout" | "simpleList" | "highlightsList" | "configuredList" | "sortMode" | "distanceSort" | "priceSort" | "sortFuel" | "visibleCount" | "title" | "headerFields" | "stationFields" | "showTitle" | "showCount" | "showRadius" | "showFuel" | "showUpdated" | "showProvider" | "showFetchMode" | "showDiagnostics" | "showRefresh" | "stationName" | "address" | "status" | "distance" | "prices" | "fuelLabels" | "providerRow" | "badges" | "nameMode" | "fullName" | "shortName" | "density" | "normalSpacing" | "compactSpacing" | "dividers"): string { return this._hass?.locale?.language?.toLowerCase().startsWith("en") ? { entity: "Overview entity", choose: "Select an entity", none: "No overview sensors found", navigation: "Show navigation", navigationSection: "Navigation", provider: "Navigation provider", auto: "Automatic", apple: "Apple Maps", google: "Google Maps", waze: "Waze", selectEntity: "Select an overview entity", brandLogos: "Show brand logos", logoPath: "Logo path", displayMode: "Display mode", compact: "Compact", detailed: "Detailed", custom: "Individual", customLayout: "Individual layout", layout: "Layout", simpleList: "Simple list", highlightsList: "Highlights + list", configuredList: "Configured list", sortMode: "Remaining station sort", distanceSort: "Distance — nearest first", priceSort: "Fuel price — cheapest first", sortFuel: "Price sorting fuel", visibleCount: "Visible stations (0 = all)", title: "Card title", headerFields: "Header fields", stationFields: "Station fields", showTitle: "Show title", showCount: "Show station count", showRadius: "Show radius", showFuel: "Show fuel type", showUpdated: "Show last update", showProvider: "Show provider", showFetchMode: "Show fetch-mode control", showDiagnostics: "Show diagnostics", showRefresh: "Show refresh button", stationName: "Show station name", address: "Show address", status: "Show opening status", distance: "Show distance", prices: "Show prices", fuelLabels: "Show fuel labels", providerRow: "Show provider per station", badges: "Show nearest/cheapest labels", nameMode: "Name length", fullName: "Full name", shortName: "Short / ellipsis", density: "Row spacing", normalSpacing: "Normal", compactSpacing: "Compact", dividers: "Show dividers" }[key] : { entity: "Overview-Entity", choose: "Bitte auswählen", none: "Keine Overview-Sensoren gefunden", navigation: "Navigation anzeigen", navigationSection: "Navigation", provider: "Navigationsanbieter", auto: "Automatisch", apple: "Apple Karten", google: "Google Maps", waze: "Waze", selectEntity: "Bitte eine Overview-Entity auswählen", brandLogos: "Markenlogos anzeigen", logoPath: "Logo-Pfad", displayMode: "Darstellung", compact: "Kompakt", detailed: "Ausführlich", custom: "Individuell", customLayout: "Individuelles Layout", layout: "Layout", simpleList: "Einfache Liste", highlightsList: "Kacheln + Liste", configuredList: "Konfigurierte Liste", sortMode: "Sortierung der übrigen Tankstellen", distanceSort: "Entfernung – nächste zuerst", priceSort: "Kraftstoffpreis – günstigste zuerst", sortFuel: "Kraftstoff für Preissortierung", visibleCount: "Sichtbare Tankstellen (0 = alle)", title: "Kartentitel", headerFields: "Kopfbereich", stationFields: "Tankstellenfelder", showTitle: "Titel anzeigen", showCount: "Tankstellenanzahl anzeigen", showRadius: "Radius anzeigen", showFuel: "Kraftstoffart anzeigen", showUpdated: "Letzte Aktualisierung anzeigen", showProvider: "Provider anzeigen", showFetchMode: "Abrufmodus anzeigen", showDiagnostics: "Diagnosebereich anzeigen", showRefresh: "Aktualisieren anzeigen", stationName: "Tankstellenname anzeigen", address: "Adresse anzeigen", status: "Öffnungsstatus anzeigen", distance: "Entfernung anzeigen", prices: "Preise anzeigen", fuelLabels: "Kraftstoffbezeichnungen anzeigen", providerRow: "Provider je Tankstelle anzeigen", badges: "Nächste/Günstigste anzeigen", nameMode: "Namenslänge", fullName: "Vollständiger Name", shortName: "Kurz / Ellipsis", density: "Zeilenabstand", normalSpacing: "Normal", compactSpacing: "Kompakt", dividers: "Trennlinien anzeigen" }[key]; }
 }
 
 function registerCustomElements(): void {
