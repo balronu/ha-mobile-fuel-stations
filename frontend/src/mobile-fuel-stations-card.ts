@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 
-export const FRONTEND_BUILD_VERSION = "0.8.4-beta.5";
+export const FRONTEND_BUILD_VERSION = "0.8.4-beta.6";
 
 type HassState = {
   state: string;
@@ -768,7 +768,8 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _controlsVisible(overview: HassState, showMode: boolean, showRefresh: boolean): boolean {
     const entryId = text(overview.attributes.config_entry_id);
-    return Boolean(entryId && this._hass?.callService && this._hass.user?.is_admin !== false && (showMode || showRefresh));
+    const manualMode = overview.attributes.fetch_mode === "manual";
+    return Boolean(entryId && this._hass?.callService && this._hass.user?.is_admin !== false && (showMode || (showRefresh && manualMode)));
   }
 
   private _providerKeys(overview: HassState): string[] {
@@ -790,8 +791,8 @@ export class MobileFuelStationsCard extends LitElement {
 
   private _controls(overview: HassState, cooldown: { backend: number; display: number }, showMode = true, showRefresh = true) {
     const entryId = text(overview.attributes.config_entry_id);
-    if (!entryId || !this._hass?.callService || this._hass.user?.is_admin === false || (!showMode && !showRefresh)) return nothing;
     const mode = overview.attributes.fetch_mode === "manual" ? "manual" : "automatic";
+    if (!entryId || !this._hass?.callService || this._hass.user?.is_admin === false || (!showMode && (!showRefresh || mode !== "manual"))) return nothing;
     const busy = this._manualRefreshInFlight || this._modeChangeInFlight;
     const cooldownActive = cooldown.backend > 0;
     const backendAllowsRefresh = typeof overview.attributes.manual_refresh_available === "boolean"

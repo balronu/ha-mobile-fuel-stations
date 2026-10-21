@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.4-beta.6] - 2026-10-21
+
+- Leeren Refresh-Wrapper entfernt, wenn der Abrufmodus ausgeblendet und der
+  Kartenmodus automatisch ist.
+- Berechnete Kopfbereich-Rahmen und Abstände für alle drei Darstellungen sowie
+  die Sichtbarkeitskombinationen regressionsgeprüft.
+- Frontend-Cache-Key auf `v=0.8.4-beta.6` aktualisiert.
+
 ## [0.8.4-beta.5] - 2026-10-21
 
 - Kopfbereich in einen gemeinsamen Stack sichtbarer Sektionen überführt.
