@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.4-beta.5] - 2026-10-21
+
+- Kopfbereich in einen gemeinsamen Stack sichtbarer Sektionen überführt.
+- Doppelte Trennlinien und leere Kopfbereich-Wrapper bei deaktivierten Optionen entfernt.
+- Verhalten für Titel/Metadaten, Abrufmodus, Diagnose und Aktualisieren in allen drei Darstellungen vereinheitlicht.
+- Frontend-Cache-Key auf `v=0.8.4-beta.5` aktualisiert.
+
 ## [0.8.4-beta.4] - 2026-10-21
 
 - Individuelle Stationen kompakter und ohne doppelte Entfernung gerendert.

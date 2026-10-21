@@ -761,7 +761,32 @@ describe("card", () => {
     expect(card.shadowRoot?.querySelector(".header, .controls, .diagnostics")).toBeNull();
     expect(card.shadowRoot?.querySelector("ha-card .stations")).toBeTruthy();
   });
-  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.4"); });
+  it("keeps only visible header sections and one separator between them", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual", provider_quotas: { tankerkoenig: { available: true } } }), callService: vi.fn().mockResolvedValue(undefined) };
+    card.setConfig({ entity: overviewId, display_mode: "custom", show_title: true, show_fetch_mode: true, show_refresh: true, show_diagnostics: true }); card.hass = hass; await card.updateComplete;
+    const stack = card.shadowRoot?.querySelector(".header-sections") as HTMLElement;
+    expect(stack).toBeTruthy();
+    expect([...stack.children].map((child) => child.className)).toEqual(["header", "controls", "provider-status-list"]);
+    const css = Array.from(card.shadowRoot?.querySelectorAll("style") ?? []).map((node) => node.textContent ?? "").join("\n");
+    expect(css).toContain(".header-sections > :not(:last-child)");
+    card.setConfig({ entity: overviewId, display_mode: "custom", show_title: false, show_station_count: false, show_radius: false, show_fuel_type: false, show_last_updated: false, show_provider: false, show_fetch_mode: false, show_refresh: false, show_diagnostics: false }); await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".header-sections")).toBeNull();
+    card.remove();
+  });
+  it("applies the header section stack consistently to detailed, compact, and custom modes", async () => {
+    for (const display_mode of ["detailed", "compact", "custom"] as const) {
+      const card = new MobileFuelStationsCard(); document.body.append(card);
+      const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual", provider_quotas: { tankerkoenig: { available: true } } }), callService: vi.fn().mockResolvedValue(undefined) };
+      card.setConfig({ entity: overviewId, display_mode }); card.hass = hass; await card.updateComplete;
+      const stack = card.shadowRoot?.querySelector(".header-sections");
+      expect(stack, display_mode).toBeTruthy();
+      expect(stack?.children.length, display_mode).toBeGreaterThan(0);
+      expect(stack?.querySelectorAll(".controls").length, display_mode).toBe(1);
+      card.remove();
+    }
+  });
+  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.5"); });
   it("keeps the same custom priority labels when the nearest is also cheapest", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); const hass = hassFor(2);
     hass.states["sensor.vehicle_station_1"]!.attributes.distance = 1; hass.states["sensor.vehicle_station_1"]!.attributes.fuel_prices = { diesel: 1.2 };
