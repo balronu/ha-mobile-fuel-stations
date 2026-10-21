@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 
-export const FRONTEND_BUILD_VERSION = "0.8.4-beta.3";
+export const FRONTEND_BUILD_VERSION = "0.8.4-beta.4";
 
 type HassState = {
   state: string;
@@ -560,6 +560,18 @@ export class MobileFuelStationsCard extends LitElement {
     .featured-station.no-logo .featured-top { grid-template-columns: minmax(0, 1fr) 40px; }
     .featured-station.no-logo.no-navigation .featured-top { grid-template-columns: minmax(0, 1fr); }
     .custom-mode .detail-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; color: var(--secondary-text-color); font-size: .8rem; line-height: 1.2; }
+    .custom-mode .custom-station { grid-template-columns: 32px minmax(0, 1fr) auto; }
+    .custom-mode .custom-station.no-logo { grid-template-columns: minmax(0, 1fr) auto; }
+    .custom-mode .custom-station.no-navigation { grid-template-columns: 32px minmax(0, 1fr); }
+    .custom-mode .custom-station.no-logo.no-navigation { grid-template-columns: minmax(0, 1fr); }
+    .custom-mode .custom-primary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: start; min-width: 0; }
+    .custom-mode .custom-prices { min-width: 0; text-align: right; }
+    .custom-mode .custom-prices .fuel-price { justify-content: flex-end; }
+    .custom-mode.dense .custom-station { padding-top: 2px; padding-bottom: 2px; gap: 4px; }
+    .custom-mode.dense .custom-primary { gap: 4px; }
+    .custom-mode.dense .custom-prices { font-size: .82rem; line-height: 1.05; }
+    .custom-mode.dense .custom-prices .fuel-price { gap: 3px; }
+    .custom-mode.dense .custom-station .address { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .custom-mode.dense .station { gap: 6px; }
     .custom-mode.dense .address { font-size: .78rem; line-height: 1.15; }
     .custom-mode.dense .detail-meta { gap: 1px 4px; font-size: .74rem; line-height: 1.1; }
@@ -749,8 +761,8 @@ export class MobileFuelStationsCard extends LitElement {
       ? overview.attributes.manual_refresh_available
       : !cooldownActive;
     const blocked = !backendAllowsRefresh;
-    return html`<div class="controls" aria-label="${this._text("fetchMode")}">
-      <span class="control-label">${this._text("fetchMode")}</span>
+    return html`<div class="controls" aria-label="${showMode ? this._text("fetchMode") : this._text("refreshNow")}">
+      ${showMode ? html`<span class="control-label">${this._text("fetchMode")}</span>` : nothing}
       ${showMode ? html`<div class="mode-switch" role="group" aria-label="${this._text("fetchMode")}">
         <button class=${mode === "automatic" ? "selected" : ""} ?disabled=${busy || mode === "automatic"} @click=${() => this._setFetchMode(entryId, "automatic")}>${this._text("automatic")}</button>
         <button class=${mode === "manual" ? "selected" : ""} ?disabled=${busy || mode === "manual"} @click=${() => this._setFetchMode(entryId, "manual")}>${this._text("manual")}</button>
@@ -1097,7 +1109,20 @@ export class MobileFuelStationsCard extends LitElement {
         ${navigation}
       </div>`;
     }
-    const detailMeta = html`${showStatus && status ? html`<span class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</span>` : nothing}${showDistance && distance ? html`<span>${distance}</span>` : nothing}${config.show_provider_row !== false ? html`<span>${this._text("source")}: ${provider}</span>` : nothing}${freshness ? html`<span>${freshness}</span>` : nothing}`;
+    const detailMeta = html`${showStatus && status ? html`<span class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</span>` : nothing}${showDistance && distance ? html`<span class="distance">${distance}</span>` : nothing}${config.show_provider_row !== false ? html`<span>${this._text("source")}: ${provider}</span>` : nothing}${freshness ? html`<span>${freshness}</span>` : nothing}`;
+    const hasDetailMeta = Boolean((showStatus && status) || (showDistance && distance) || config.show_provider_row !== false || freshness);
+    const hasPrimary = showName || showBadges || showPrices;
+    if (custom) {
+      return html`<div class="station ${stationClass}" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
+        ${this._brandLogo(brand, name)}
+        <div class="station-main">
+          ${hasPrimary ? html`<div class="custom-primary">${nameMarkup}${showPrices ? html`<div class="custom-prices">${fuelMarkup}</div>` : nothing}</div>` : nothing}
+          ${showAddress && address ? html`<div class="address" title=${address}>${address}</div>` : nothing}
+          ${hasDetailMeta ? html`<div class="detail-meta">${detailMeta}</div>` : nothing}
+        </div>
+        ${navigation}
+      </div>`;
+    }
     return html`<div class="station ${stationClass}" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       ${this._brandLogo(brand, name)}
       <div>${nameMarkup}${showAddress && address ? html`<div class="address" title=${address}>${address}</div>` : nothing}${custom ? html`<div class="detail-meta">${detailMeta}</div>` : html`${showProvider ? html`<div class="provider">${this._text("source")}: ${provider}</div>` : nothing}${showStatus && status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}`}</div>
@@ -1162,7 +1187,7 @@ class MobileFuelStationsCardEditor extends LitElement {
         <label class="field">${this._text("sortMode")}<select .value=${this._config.sort_mode ?? "distance"} @change=${(event: Event) => this._changeSortMode(event)}><option value="distance">${this._text("distanceSort")}</option><option value="price">${this._text("priceSort")}</option></select></label>
         <label class="field">${this._text("sortFuel")}<select .value=${this._config.sort_fuel ?? fuelTypes[0] ?? "diesel"} @change=${(event: Event) => this._changeSortFuel(event)}>${(fuelTypes.length ? fuelTypes : ["diesel"]).map((fuel) => html`<option value=${fuel}>${fuelLabel(fuel) ?? fuel}</option>`)}</select></label>
         <label class="field">${this._text("visibleCount")}<input type="number" min="0" step="1" .value=${String(this._config.visible_station_count ?? 0)} @change=${(event: Event) => this._changeNumber(event, "visible_station_count")}></label>
-        <label class="field">${this._text("title")}<input .value=${this._config.title ?? ""} @change=${(event: Event) => this._changeText(event, "title")}></label>
+        <label class="field">${this._text("title")}<input .value=${this._config.title ?? ""} placeholder=${this._config.title ? "" : "Standard: Tankstellen in der Nähe / Default: Nearby fuel stations"} @change=${(event: Event) => this._changeText(event, "title")}></label>
       </fieldset>
       <fieldset><legend>${this._text("headerFields")}</legend>${this._checkbox("show_title", "showTitle")}${this._checkbox("show_station_count", "showCount")}${this._checkbox("show_radius", "showRadius")}${this._checkbox("show_fuel_type", "showFuel")}${this._checkbox("show_last_updated", "showUpdated")}${this._checkbox("show_provider", "showProvider")}${this._checkbox("show_fetch_mode", "showFetchMode")}${this._checkbox("show_diagnostics", "showDiagnostics")}${this._checkbox("show_refresh", "showRefresh")}</fieldset>
       <fieldset><legend>${this._text("stationFields")}</legend>${this._checkbox("show_brand_logos", "brandLogos")}${this._checkbox("show_name", "stationName")}${this._checkbox("show_address", "address")}${this._checkbox("show_status", "status")}${this._checkbox("show_distance", "distance")}${this._checkbox("show_prices", "prices")}${this._checkbox("show_fuel_labels", "fuelLabels")}${this._checkbox("show_provider_row", "providerRow")}${this._checkbox("show_badges", "badges")}

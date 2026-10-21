@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.4-beta.4] - 2026-10-21
+
+- Individuelle Stationen kompakter und ohne doppelte Entfernung gerendert.
+- Abrufmodus-Label verschwindet vollständig, wenn die Option deaktiviert ist.
+- Trennlinien, responsive Kacheln und deaktivierte Felder visuell auditiert.
+- Standardtitel-Hinweis im Karteneditor ergänzt.
+- Frontend-Cache-Key auf `v=0.8.4-beta.4` aktualisiert.
+
 ## [0.8.4-beta.3] - 2026-10-21
 
 - Vollständiger visueller Audit der Lovelace-Karteneditoroptionen.

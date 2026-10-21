@@ -706,7 +706,22 @@ describe("card", () => {
     const station = card.shadowRoot?.querySelector(".station") as HTMLElement;
     expect(station.classList).toContain("no-logo"); expect(station.classList).toContain("no-navigation"); expect(station.classList).toContain("no-prices");
     expect(station.querySelector(".brand-logo, .icon")).toBeNull(); expect(station.querySelector(".navigate")).toBeNull(); expect(station.querySelector(".prices")).toBeNull();
-    expect(station.querySelector(".detail-meta")?.textContent).not.toContain("km");
+    expect(station.querySelector(".detail-meta .distance")).toBeNull();
+  });
+  it("audits individual station-field switches against rendered output", async () => {
+    const cases = [
+      ["show_name", ".name"], ["show_address", ".address"], ["show_status", ".open, .closed"],
+      ["show_distance", ".detail-meta .distance"], ["show_prices", ".custom-prices"], ["show_provider_row", ".detail-meta span"],
+      ["show_badges", ".station-badges"],
+    ] as const;
+    for (const [key, selector] of cases) {
+      const card = new MobileFuelStationsCard(); document.body.append(card);
+      card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "configured_list", [key]: false }); card.hass = hassFor(1, {}, { distance: 1.4, brand: "Shell", latitude: 49, longitude: 8 }); await card.updateComplete;
+      const match = key === "show_provider_row"
+        ? [...(card.shadowRoot?.querySelectorAll(".detail-meta span") ?? [])].find((node) => node.textContent?.includes("Quelle"))
+        : card.shadowRoot?.querySelector(selector);
+      expect(match, key).toBeFalsy(); card.remove();
+    }
   });
   it("removes list separators from every mode while retaining featured tile borders", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
@@ -725,13 +740,28 @@ describe("card", () => {
     card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "configured_list", show_distance: false }); await card.updateComplete;
     expect(station.querySelector(".detail-meta")?.textContent).not.toContain("km"); expect(station.querySelector(".prices .meta")).toBeNull();
   });
+  it("keeps custom prices beside the name and distance only in the shared metadata row", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "configured_list", density: "compact", show_prices: true, show_distance: true }); card.hass = hassFor(1, {}, { distance: 1.4, fuel_prices: { diesel: 1.599, e10: 1.699 } }); await card.updateComplete;
+    const station = card.shadowRoot?.querySelector(".custom-station") as HTMLElement;
+    expect(station.querySelector(".custom-prices")).toBeTruthy(); expect(station.querySelector(".prices")).toBeNull();
+    expect((station.textContent?.match(/1,4 km/g) ?? [])).toHaveLength(1);
+  });
+  it("removes the fetch-mode label with the fetch-mode control", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    const hass = { ...hassFor(1, { config_entry_id: "entry-opel", fetch_mode: "manual" }), callService: vi.fn().mockResolvedValue(undefined) };
+    card.setConfig({ entity: overviewId, display_mode: "custom", show_fetch_mode: false, show_refresh: false }); card.hass = hass; await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".controls")).toBeNull(); expect(card.shadowRoot?.textContent).not.toContain("Abrufmodus");
+    card.setConfig({ entity: overviewId, display_mode: "custom", show_fetch_mode: true, show_refresh: false }); await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".controls .control-label")?.textContent).toContain("Abrufmodus");
+  });
   it("removes the complete optional custom header without a spacer", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
     card.setConfig({ entity: overviewId, display_mode: "custom", show_title: false, show_station_count: false, show_radius: false, show_fuel_type: false, show_last_updated: false, show_provider: false, show_fetch_mode: false, show_diagnostics: false, show_refresh: false }); card.hass = hassFor(1); await card.updateComplete;
     expect(card.shadowRoot?.querySelector(".header, .controls, .diagnostics")).toBeNull();
     expect(card.shadowRoot?.querySelector("ha-card .stations")).toBeTruthy();
   });
-  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.3"); });
+  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.4"); });
   it("keeps the same custom priority labels when the nearest is also cheapest", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); const hass = hassFor(2);
     hass.states["sensor.vehicle_station_1"]!.attributes.distance = 1; hass.states["sensor.vehicle_station_1"]!.attributes.fuel_prices = { diesel: 1.2 };
@@ -777,6 +807,12 @@ describe("card", () => {
     const mode = editor.shadowRoot?.querySelectorAll("select")[0] as HTMLSelectElement; expect(Array.from(mode.options).map((option) => option.value)).toEqual(["compact", "detailed", "custom"]); mode.value = "compact"; mode.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.display_mode).toBe("compact");
     const checkbox = editor.shadowRoot?.querySelector("input[type=checkbox]") as HTMLInputElement; checkbox.checked = false; checkbox.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation).toBe(false);
     const provider = editor.shadowRoot?.querySelectorAll("select")[2] as HTMLSelectElement; expect(Array.from(provider.options).map((option) => option.value)).toEqual(["auto", "apple", "google", "waze"]); provider.value = "waze"; provider.dispatchEvent(new Event("change", { bubbles: true })); expect(changed?.detail.config.navigation_provider).toBe("waze"); expect(changed?.detail.config.entity).toBe(overviewId); expect(changed?.detail.config.navigation).toBe(false);
+  });
+  it("shows the default-title hint without writing a title into the config", async () => {
+    const editor = MobileFuelStationsCard.getConfigElement() as HTMLElement & { hass: unknown; setConfig: (config: unknown) => void; updateComplete: Promise<unknown> };
+    document.body.append(editor); editor.hass = hassFor(1); editor.setConfig({ entity: overviewId, display_mode: "custom" }); await editor.updateComplete;
+    const title = [...(editor.shadowRoot?.querySelectorAll("input") ?? [])].find((input) => (input as HTMLInputElement).type !== "checkbox" && (input as HTMLInputElement).placeholder.includes("Standard")) as HTMLInputElement;
+    expect(title).toBeTruthy(); expect(title.value).toBe("");
   });
   it("exposes individual layout, card sorting, fuel, and visibility controls", async () => {
     const editor = MobileFuelStationsCard.getConfigElement() as HTMLElement & { hass: unknown; setConfig: (config: unknown) => void; updateComplete: Promise<unknown> };

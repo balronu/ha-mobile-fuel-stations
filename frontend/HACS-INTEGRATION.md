@@ -8,7 +8,7 @@
 - Home Assistant registriert beim Integrations-Setup den statischen Pfad
   `/mobile_fuel_stations` über `async_register_static_paths`.
 - Die automatisch registrierte JavaScript-URL enthält die Integrationsversion,
-  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.4-beta.3`.
+  zum Beispiel `/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.4-beta.4`.
 - Der physische StaticPath und die ausgelieferte Datei bleiben
   `/mobile_fuel_stations/mobile-fuel-stations-card.js`.
 
@@ -59,7 +59,7 @@ HTTP 5xx und HTTP 429 begrenzt. Authentifizierungs-, Berechtigungs-, Kontingent-
 Payload- und Konfigurationsfehler werden nicht durch einen stillen Wechsel
 verdeckt; Nakordoni benötigt nachgewiesene Marktberechtigung.
 
-Die Beta `v0.8.4-beta.3` ergänzt Ausführlich, Kompakt und Individuell sowie
+Die Beta `v0.8.4-beta.4` ergänzt Ausführlich, Kompakt und Individuell sowie
 kartenspezifische Sortierung und Anzeigeoptionen. Die Integrationseinstellungen
 bleiben als Legacy-Fallback erhalten. Ein bereits ausgeführtes JavaScript-Modul
 kann im offenen Browser-Tab nicht sicher ersetzt werden; der neue Resource-Key
