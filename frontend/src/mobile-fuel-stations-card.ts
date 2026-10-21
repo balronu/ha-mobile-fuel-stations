@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 
-export const FRONTEND_BUILD_VERSION = "0.8.4-beta.4";
+export const FRONTEND_BUILD_VERSION = "0.8.4-beta.5";
 
 type HassState = {
   state: string;
@@ -518,7 +518,10 @@ export class MobileFuelStationsCard extends LitElement {
     .message { color: var(--secondary-text-color); }
     .stale-warning { color: var(--warning-color, var(--primary-color)); margin: 0 0 10px; font-size: .9rem; }
     .control-error { color: var(--error-color, var(--warning-color, var(--primary-color))); margin: 0 0 10px; font-size: .9rem; }
-    .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 0; border-top: 1px solid var(--divider-color); border-bottom: 1px solid var(--divider-color); }
+    .header-sections { display: flex; flex-direction: column; margin-bottom: 12px; }
+    .header-sections > :not(:last-child) { border-bottom: 1px solid var(--divider-color); }
+    .header-sections > .header { margin: 0; padding-bottom: 10px; }
+    .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; padding: 8px 0; }
     .control-label { color: var(--secondary-text-color); font-size: .85rem; }
     .mode-switch { display: inline-flex; border: 1px solid var(--divider-color); border-radius: 999px; overflow: hidden; }
     .controls button { color: var(--primary-text-color); background: var(--card-background-color); border: 0; padding: 6px 10px; cursor: pointer; font: inherit; }
@@ -539,7 +542,7 @@ export class MobileFuelStationsCard extends LitElement {
     .station-badge.cheapest { color: var(--primary-color); }
     .detailed-mode .station-badge { border: 1px solid currentColor; border-radius: 999px; padding: 1px 5px; font-size: .72rem; font-weight: 600; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-    .diagnostics { margin: 0 0 10px; border-top: 1px solid var(--divider-color); border-bottom: 1px solid var(--divider-color); }
+    .diagnostics { margin: 0; }
     .diagnostics summary { cursor: pointer; padding: 7px 0; color: var(--secondary-text-color); font-size: .85rem; }
     .diagnostics .provider-status-list { padding: 0 0 7px; }
     .custom-mode .header { margin-bottom: 8px; }
@@ -587,6 +590,7 @@ export class MobileFuelStationsCard extends LitElement {
     .station.no-logo.no-navigation.no-prices { grid-template-columns: minmax(0, 1fr); }
     .compact-mode ha-card { padding: 10px 12px; }
     .compact-mode .header { margin-bottom: 6px; }
+    .header-sections > .header { margin-bottom: 0; }
     .compact-mode .controls { margin-bottom: 6px; padding: 5px 0; }
     .compact-mode .station { padding: 4px 0; gap: 6px; }
     .compact-station { grid-template-columns: 36px minmax(0, 1fr) auto auto; min-height: 56px; }
@@ -727,9 +731,7 @@ export class MobileFuelStationsCard extends LitElement {
     return html`
       <div class=${classes}>
       <ha-card>
-        ${this._header(overview, stations)}
-        ${this._controls(overview, cooldown, !custom || this._config.show_fetch_mode !== false, !custom || this._config.show_refresh !== false)}
-        ${this._providerStatus(overview, compact, !custom || this._config.show_diagnostics !== false)}
+        ${this._headerSections(overview, stations, cooldown, compact, custom)}
         ${this._controlError ? html`<div class="control-error" role="alert">${this._controlError}</div>` : nothing}
         ${isUnavailable ? html`<div class="message" role="status">${this._text("unavailable")}</div>` : nothing}
         ${!isUnavailable && this._hasRefreshError(overview) ? html`<div class="stale-warning" role="alert">${this._refreshError(overview, cooldown.display)}</div>` : nothing}
@@ -741,6 +743,41 @@ export class MobileFuelStationsCard extends LitElement {
       </ha-card>
       </div>
     `;
+  }
+
+  private _headerSections(overview: HassState, stations: Array<{ id: string; state: HassState }>, cooldown: { backend: number; display: number }, compact: boolean, custom: boolean) {
+    const showMode = !custom || this._config?.show_fetch_mode !== false;
+    const showRefresh = !custom || this._config?.show_refresh !== false;
+    const showDiagnostics = !custom || this._config?.show_diagnostics !== false;
+    const headerVisible = this._headerVisible(overview, stations);
+    const controlsVisible = this._controlsVisible(overview, showMode, showRefresh);
+    const diagnosticsVisible = showDiagnostics && this._providerKeys(overview).length > 0;
+    if (!headerVisible && !controlsVisible && !diagnosticsVisible) return nothing;
+    return html`<div class="header-sections">
+      ${headerVisible ? this._header(overview, stations) : nothing}
+      ${controlsVisible ? this._controls(overview, cooldown, showMode, showRefresh) : nothing}
+      ${diagnosticsVisible ? this._providerStatus(overview, compact, true) : nothing}
+    </div>`;
+  }
+
+  private _headerVisible(overview: HassState, stations: Array<{ id: string; state: HassState }>): boolean {
+    const custom = this._config?.display_mode === "custom";
+    const showTitle = !custom || this._config?.show_title !== false;
+    return showTitle || Boolean(this._summary(overview, stations, custom ? this._config : undefined));
+  }
+
+  private _controlsVisible(overview: HassState, showMode: boolean, showRefresh: boolean): boolean {
+    const entryId = text(overview.attributes.config_entry_id);
+    return Boolean(entryId && this._hass?.callService && this._hass.user?.is_admin !== false && (showMode || showRefresh));
+  }
+
+  private _providerKeys(overview: HassState): string[] {
+    const source = (value: unknown): Record<string, unknown> => value && typeof value === "object" ? value as Record<string, unknown> : {};
+    return Array.from(new Set([
+      ...Object.keys(source(overview.attributes.provider_cooldowns)),
+      ...Object.keys(source(overview.attributes.provider_quotas)),
+      ...Object.keys(source(overview.attributes.provider_availability)),
+    ]));
   }
 
   private _header(overview: HassState, stations: Array<{ id: string; state: HassState }>) {
@@ -778,7 +815,7 @@ export class MobileFuelStationsCard extends LitElement {
       ? overview.attributes.provider_quotas as Record<string, Record<string, unknown>> : {};
     const availability = overview.attributes.provider_availability && typeof overview.attributes.provider_availability === "object"
       ? overview.attributes.provider_availability as Record<string, Record<string, unknown>> : {};
-    const providers = Array.from(new Set([...Object.keys(cooldowns), ...Object.keys(quotas), ...Object.keys(availability)]));
+    const providers = this._providerKeys(overview);
     if (!enabled || !providers.length) return nothing;
     let activeCooldown = false;
     const rows = providers.map((provider) => {
