@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 
-export const FRONTEND_BUILD_VERSION = "0.8.4-beta.2";
+export const FRONTEND_BUILD_VERSION = "0.8.4-beta.3";
 
 type HassState = {
   state: string;
@@ -543,7 +543,7 @@ export class MobileFuelStationsCard extends LitElement {
     .diagnostics summary { cursor: pointer; padding: 7px 0; color: var(--secondary-text-color); font-size: .85rem; }
     .diagnostics .provider-status-list { padding: 0 0 7px; }
     .custom-mode .header { margin-bottom: 8px; }
-    .custom-mode .stations.no-dividers .station { border-top: 0; }
+    .no-dividers .station { border-top: 0; }
     .custom-mode .stations { gap: 4px; }
     .custom-mode.dense .stations { gap: 0; }
     .custom-mode.dense .stations .station { padding-top: 3px; padding-bottom: 3px; }
@@ -557,6 +557,8 @@ export class MobileFuelStationsCard extends LitElement {
     .featured-values .price { font-size: 1rem; }
     .featured-values .meta { overflow: hidden; text-overflow: ellipsis; }
     .featured-station .navigate { min-width: 40px; min-height: 40px; padding: 6px; }
+    .featured-station.no-logo .featured-top { grid-template-columns: minmax(0, 1fr) 40px; }
+    .featured-station.no-logo.no-navigation .featured-top { grid-template-columns: minmax(0, 1fr); }
     .custom-mode .detail-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; color: var(--secondary-text-color); font-size: .8rem; line-height: 1.2; }
     .custom-mode.dense .station { gap: 6px; }
     .custom-mode.dense .address { font-size: .78rem; line-height: 1.15; }
@@ -564,6 +566,13 @@ export class MobileFuelStationsCard extends LitElement {
     .custom-mode .name.short { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .custom-mode .station-field-hidden { display: none; }
     .custom-mode .station.no-address .station-main { min-height: 2.2em; }
+    .station.no-logo { grid-template-columns: minmax(0, 1fr) auto auto; }
+    .station.no-navigation { grid-template-columns: 32px minmax(0, 1fr) auto; }
+    .station.no-logo.no-navigation { grid-template-columns: minmax(0, 1fr) auto; }
+    .station.no-prices { grid-template-columns: 32px minmax(0, 1fr) auto; }
+    .station.no-logo.no-prices { grid-template-columns: minmax(0, 1fr) auto; }
+    .station.no-navigation.no-prices { grid-template-columns: 32px minmax(0, 1fr); }
+    .station.no-logo.no-navigation.no-prices { grid-template-columns: minmax(0, 1fr); }
     .compact-mode ha-card { padding: 10px 12px; }
     .compact-mode .header { margin-bottom: 6px; }
     .compact-mode .controls { margin-bottom: 6px; padding: 5px 0; }
@@ -588,7 +597,17 @@ export class MobileFuelStationsCard extends LitElement {
       .header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
       .summary { margin-top: 0; }
       .station { grid-template-columns: 32px minmax(12rem, 1fr) minmax(8rem, auto) auto; }
+      .station.no-logo { grid-template-columns: minmax(12rem, 1fr) minmax(8rem, auto) auto; }
+      .station.no-navigation { grid-template-columns: 32px minmax(12rem, 1fr) minmax(8rem, auto); }
+      .station.no-logo.no-navigation { grid-template-columns: minmax(12rem, 1fr) minmax(8rem, auto); }
+      .station.no-prices { grid-template-columns: 32px minmax(12rem, 1fr) auto; }
+      .station.no-logo.no-prices { grid-template-columns: minmax(12rem, 1fr) auto; }
+      .station.no-navigation.no-prices { grid-template-columns: 32px minmax(12rem, 1fr); }
+      .station.no-logo.no-navigation.no-prices { grid-template-columns: minmax(12rem, 1fr); }
       .compact-mode .station { grid-template-columns: 36px minmax(12rem, 1fr) auto auto; }
+      .compact-mode .station.no-logo { grid-template-columns: minmax(12rem, 1fr) auto auto; }
+      .compact-mode .station.no-navigation { grid-template-columns: 36px minmax(12rem, 1fr) auto; }
+      .compact-mode .station.no-logo.no-navigation { grid-template-columns: minmax(12rem, 1fr) auto; }
     }
     @container (max-width: 599px) {
       ha-card { padding: 12px; }
@@ -596,9 +615,24 @@ export class MobileFuelStationsCard extends LitElement {
       .station .prices { grid-column: 2; grid-row: 2; text-align: left; }
       .fuel-price { justify-content: flex-start; gap: 4px; }
       .station .navigate { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
+      .station.no-logo { grid-template-columns: minmax(0, 1fr) auto; }
+      .station.no-navigation { grid-template-columns: 26px minmax(0, 1fr); }
+      .station.no-logo.no-navigation { grid-template-columns: minmax(0, 1fr); }
+      .station.no-prices { grid-template-columns: 26px minmax(0, 1fr); }
+      .station.no-logo.no-prices { grid-template-columns: minmax(0, 1fr); }
+      .station.no-navigation.no-prices { grid-template-columns: 26px minmax(0, 1fr); }
+      .station.no-logo.no-navigation.no-prices { grid-template-columns: minmax(0, 1fr); }
+      .station.no-navigation .prices { grid-column: 2; }
       .compact-mode .station { grid-template-columns: 36px minmax(0, 1fr) minmax(92px, auto) 36px; gap: 5px; }
       .compact-mode .station .prices { grid-column: 3; grid-row: 1; justify-content: flex-end; flex-wrap: nowrap; text-align: right; }
       .compact-mode .station .navigate { grid-column: 4; grid-row: 1; align-self: center; }
+      .compact-mode .station.no-logo { grid-template-columns: minmax(0, 1fr) minmax(92px, auto) 36px; }
+      .compact-mode .station.no-navigation { grid-template-columns: 36px minmax(0, 1fr) minmax(92px, auto); }
+      .compact-mode .station.no-logo.no-navigation { grid-template-columns: minmax(0, 1fr) minmax(92px, auto); }
+      .compact-mode .station.no-prices { grid-template-columns: 36px minmax(0, 1fr) 36px; }
+      .compact-mode .station.no-logo.no-prices { grid-template-columns: minmax(0, 1fr) 36px; }
+      .compact-mode .station.no-navigation.no-prices { grid-template-columns: 36px minmax(0, 1fr); }
+      .compact-mode .station.no-logo.no-navigation.no-prices { grid-template-columns: minmax(0, 1fr); }
       .compact-mode .fuel-price { min-width: 42px; }
       .highlight { grid-template-columns: 26px minmax(0, 1fr) auto auto; gap: 6px; }
       .highlight .navigate { grid-column: auto; }
@@ -609,6 +643,13 @@ export class MobileFuelStationsCard extends LitElement {
       .compact-mode .brand-logo, .compact-mode .icon { width: 32px; height: 32px; }
       .compact-mode .station .prices { grid-column: 2; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; text-align: left; }
       .compact-mode .station .navigate { grid-column: 3; grid-row: 1 / span 2; }
+      .compact-mode .station.no-logo { grid-template-columns: minmax(0, 1fr) 36px; }
+      .compact-mode .station.no-navigation { grid-template-columns: 32px minmax(0, 1fr); }
+      .compact-mode .station.no-logo.no-navigation { grid-template-columns: minmax(0, 1fr); }
+      .compact-mode .station.no-prices { grid-template-columns: 32px minmax(0, 1fr) 36px; }
+      .compact-mode .station.no-logo.no-prices { grid-template-columns: minmax(0, 1fr) 36px; }
+      .compact-mode .station.no-navigation.no-prices { grid-template-columns: 32px minmax(0, 1fr); }
+      .compact-mode .station.no-logo.no-navigation.no-prices { grid-template-columns: minmax(0, 1fr); }
     }
   `;
 
@@ -1001,7 +1042,8 @@ export class MobileFuelStationsCard extends LitElement {
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
     const navigation = navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing;
     const label = `${name}, ${this._locale() === "en-US" ? "price" : "Preis"} ${price}${distance ? `, ${distance}` : ""}`;
-    return html`<article class="featured-station" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
+    const featuredClass = `featured-station ${this._config?.show_brand_logos === false ? "no-logo" : ""} ${navigationUrl ? "" : "no-navigation"}`.trim();
+    return html`<article class="${featuredClass}" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       <div class="featured-top">${this._brandLogo(brand, name)}<div class="featured-main"><div class="featured-name" title=${name}>${name}</div>${badges}</div>${navigation}</div>
       <div class="featured-values">${this._config?.show_prices !== false ? html`<span class="price">${price}</span>` : nothing}${this._config?.show_distance !== false && distance ? html`<span class="meta">${distance}</span>` : nothing}</div>
     </article>`;
@@ -1034,10 +1076,11 @@ export class MobileFuelStationsCard extends LitElement {
     const label = `${name}, ${priceRows.map((row) => `${row.fuel} ${row.value ?? this._text("noPrice")}`).join(", ")}`;
     const navigationUrl = this._config?.navigation !== false ? buildNavigationUrl(a.latitude, a.longitude, this._config?.navigation_provider ?? "auto") : null;
     const badges = showBadges ? this._stationBadges(isNearest, isCheapest, compact) : nothing;
-    const fuelMarkup = showPrices ? priceRows.map((row) => html`<div class="fuel-price"><span>${showFuelLabels ? html`${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}` : nothing}</span><strong>${row.value ?? this._text("noPrice")}</strong></div>`) : nothing;
+    const fuelMarkup = showPrices ? priceRows.map((row) => html`<div class="fuel-price">${showFuelLabels ? html`<span>${row.fuel}${row.fallback ? html` <span class="secondary">(${this._text("fallback")})</span>` : nothing}</span>` : nothing}<strong>${row.value ?? this._text("noPrice")}</strong></div>`) : nothing;
     const navigation = navigationUrl ? html`<a class="navigate" href=${navigationUrl} target="_blank" rel="noopener noreferrer" aria-label="${this._text("navigate")}" @click=${(event: Event) => event.stopPropagation()}><ha-icon icon="mdi:navigation" aria-hidden="true"></ha-icon></a>` : nothing;
     const nameClass = config.name_mode === "short" ? "name short" : "name";
-    const stationClass = `${compact ? "compact-station" : ""} ${custom ? "custom-station" : ""} ${showAddress ? "" : "no-address"}`.trim();
+    const showPricesColumn = showPrices || (!custom && !compact && showDistance && Boolean(distance));
+    const stationClass = [compact ? "compact-station" : "", custom ? "custom-station" : "", showAddress ? "" : "no-address", config.show_brand_logos === false ? "no-logo" : "", navigationUrl ? "" : "no-navigation", showPricesColumn ? "" : "no-prices"].filter(Boolean).join(" ");
     const nameMarkup = showName ? html`<div class=${nameClass} title=${name}>${name}${brand && shouldShowBrand(name, brand) ? html` <span class="secondary">(${brand})</span>` : nothing}${badges}</div>` : badges;
     if (compact) {
       return html`<div class="station ${stationClass}" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
@@ -1050,7 +1093,7 @@ export class MobileFuelStationsCard extends LitElement {
             ${showDistance && distance ? html`<span class="meta">${distance}</span>` : nothing}
           </div>
         </div>
-        <div class="prices">${fuelMarkup}</div>
+        ${showPricesColumn ? html`<div class="prices">${fuelMarkup}</div>` : nothing}
         ${navigation}
       </div>`;
     }
@@ -1058,7 +1101,7 @@ export class MobileFuelStationsCard extends LitElement {
     return html`<div class="station ${stationClass}" role="button" tabindex="0" aria-label="${label}" @click=${() => this._moreInfo(id)} @keydown=${(event: KeyboardEvent) => this._keyActivate(event, id)}>
       ${this._brandLogo(brand, name)}
       <div>${nameMarkup}${showAddress && address ? html`<div class="address" title=${address}>${address}</div>` : nothing}${custom ? html`<div class="detail-meta">${detailMeta}</div>` : html`${showProvider ? html`<div class="provider">${this._text("source")}: ${provider}</div>` : nothing}${showStatus && status ? html`<div class=${open ? "open" : "closed"}>${open ? this._text("open") : this._text("closed")}</div>` : nothing}${freshness ? html`<div class="secondary">${freshness}</div>` : nothing}`}</div>
-      <div class="prices">${fuelMarkup}${showDistance && distance ? html`<div class="meta">${distance}</div>` : nothing}</div>
+      ${showPricesColumn ? html`<div class="prices">${fuelMarkup}${!custom && showDistance && distance ? html`<div class="meta">${distance}</div>` : nothing}</div>` : nothing}
       ${navigation}
     </div>`;
   }
@@ -1074,7 +1117,7 @@ export class MobileFuelStationsCard extends LitElement {
   private _message(message: string) { return html`<ha-card><div class="message">${message}</div></ha-card>`; }
   private _brandLogo(brand: unknown, alt: string) {
     const config = this._config;
-    if (!config || config.show_brand_logos === false) return html`<ha-icon class="icon" icon="mdi:gas-station" aria-hidden="true"></ha-icon>`;
+    if (!config || config.show_brand_logos === false) return nothing;
     const url = buildBrandLogoUrl(brand, config.logo_path, alt);
     const cacheKey = url ?? "fallback";
     if (!url || this._failedBrandLogos.has(cacheKey)) return html`<ha-icon class="icon" icon="mdi:gas-station" aria-label="${this._text("unknownBrand")}"></ha-icon>`;
