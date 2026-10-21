@@ -549,7 +549,7 @@ describe("card", () => {
     expect(css).toContain("object-fit: contain");
     expect(css).toContain("grid-template-columns: 32px minmax(0, 1fr) auto auto");
     expect(css).toContain("grid-template-columns: 36px minmax(0, 1fr) minmax(92px, auto) 36px");
-    expect(css).toContain("@container (max-width: 360px)");
+    expect(css).toContain("@container (max-width: 359px)");
   });
   it("renders nearest and cheapest as one shared prioritized list in detailed mode", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card);
@@ -695,16 +695,27 @@ describe("card", () => {
     hass.states["sensor.vehicle_station_2"]!.attributes.distance = 2; hass.states["sensor.vehicle_station_2"]!.attributes.fuel_prices = { diesel: 1.3 };
     hass.states["sensor.vehicle_station_3"]!.attributes.distance = 3; hass.states["sensor.vehicle_station_3"]!.attributes.fuel_prices = { diesel: 1.5 };
     card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "highlights_list" }); card.hass = hass; await card.updateComplete;
-    expect(card.shadowRoot?.querySelectorAll(".featured-station")).toHaveLength(2); expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(3);
+    expect(card.shadowRoot?.querySelectorAll(".featured-station")).toHaveLength(2); expect(card.shadowRoot?.querySelectorAll(".station, .featured-station")).toHaveLength(3);
+    expect(card.shadowRoot?.querySelectorAll(".featured-top")).toHaveLength(2);
     expect(card.shadowRoot?.textContent).toContain("Nächste"); expect(card.shadowRoot?.textContent).toContain("Günstigste");
   });
-  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.1"); });
+  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.4-beta.2"); });
   it("keeps the same custom priority labels when the nearest is also cheapest", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); const hass = hassFor(2);
     hass.states["sensor.vehicle_station_1"]!.attributes.distance = 1; hass.states["sensor.vehicle_station_1"]!.attributes.fuel_prices = { diesel: 1.2 };
     hass.states["sensor.vehicle_station_2"]!.attributes.distance = 2; hass.states["sensor.vehicle_station_2"]!.attributes.fuel_prices = { diesel: 1.5 };
     card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "highlights_list" }); card.hass = hass; await card.updateComplete;
-    expect(card.shadowRoot?.querySelectorAll(".station")).toHaveLength(2); expect(card.shadowRoot?.textContent).toContain("Nächste"); expect(card.shadowRoot?.textContent).toContain("Günstigste");
+    expect(card.shadowRoot?.querySelectorAll(".station, .featured-station")).toHaveLength(2); expect(card.shadowRoot?.textContent).toContain("Nächste"); expect(card.shadowRoot?.textContent).toContain("Günstigste");
+  });
+  it("uses one compact custom station meta row and keeps the density class on the card", async () => {
+    const card = new MobileFuelStationsCard(); document.body.append(card);
+    card.setConfig({ entity: overviewId, display_mode: "custom", custom_layout: "configured_list", density: "compact" });
+    card.hass = hassFor(2, {}, { provider: "tankerkoenig", street: "Hauptstraße", house_number: "1", distance: 1, price_age_hours: 2 });
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".custom-mode.dense")).toBeTruthy();
+    expect(card.shadowRoot?.querySelectorAll(".detail-meta")).toHaveLength(2);
+    expect(card.shadowRoot?.querySelectorAll(".detail-meta .open")).toHaveLength(2);
+    expect(card.shadowRoot?.textContent).toContain("Quelle");
   });
   it("shows Nakordoni attribution only for Nakordoni data", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); card.setConfig({ entity: overviewId });
@@ -743,6 +754,8 @@ describe("card", () => {
     expect(selects.some((select) => Array.from(select.options).some((option) => option.value === "highlights_list"))).toBe(true);
     expect(selects.some((select) => Array.from(select.options).some((option) => option.value === "price"))).toBe(true);
     expect(editor.shadowRoot?.querySelectorAll("input[type=checkbox]").length).toBeGreaterThan(10);
+    expect(editor.shadowRoot?.querySelectorAll("label.option").length).toBeGreaterThan(10);
+    expect(editor.shadowRoot?.querySelectorAll("fieldset label.option input[type=checkbox][value='']").length).toBe(0);
   });
   it("lists unavailable overview entities from separate vehicle entries", async () => {
     const editor = MobileFuelStationsCard.getConfigElement() as HTMLElement & { hass: unknown; setConfig: (config: unknown) => void; updateComplete: Promise<unknown> };

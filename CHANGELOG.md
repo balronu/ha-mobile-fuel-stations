@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.4-beta.2 — Responsive tiles, denser individual lists, and editor cleanup
+
+- Makes the Individual **Highlights + list** layout use compact responsive tiles;
+  at 390 CSS pixels the nearest and cheapest tiles remain side by side, while
+  a genuinely narrower card stacks them without overflow.
+- Keeps the nearest/cheapest priority and labels shared across Detailed,
+  Compact, and Individual modes; the same station remains one tile with both
+  labels when it wins both priorities.
+- Makes Individual compact density affect the complete station row, combining
+  status, distance, provider, and freshness into one metadata line.
+- Removes the duplicate navigation checkbox and groups editor options with
+  left-aligned checkbox controls.
+- Updates the frontend cache key and generated bundle to `v=0.8.4-beta.2`.
+
 ## 0.8.4-beta.1 — Three card layouts and per-card display settings
 
 - Adds Detailed, Compact, and Individual Lovelace modes while preserving the
