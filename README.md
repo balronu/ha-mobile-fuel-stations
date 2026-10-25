@@ -530,8 +530,8 @@ Provider-Mindestabständen, Cache-Reload, Cooldown und Unload-Abbruch geprüft.
 Historische Release Notes liegen unverändert im
 [Release-Archiv auf GitHub](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/).
 Die Stable-Release Notes stehen in
-[`docs/releases/RELEASE_NOTES_v0.7.3.md`](docs/releases/RELEASE_NOTES_v0.7.3.md)
-und [`docs/releases/RELEASE_NOTES_v0.8.0.md`](docs/releases/RELEASE_NOTES_v0.8.0.md).
+[`docs/releases/RELEASE_NOTES_v0.8.4.md`](docs/releases/RELEASE_NOTES_v0.8.4.md)
+und im [GitHub-Release v0.8.4](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.4).
 Die Beta-Release-Notes stehen in
 [`docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md).
 Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),

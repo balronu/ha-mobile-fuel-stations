@@ -420,7 +420,8 @@ Historical release notes are preserved in the
 The historical beta release notes are in
 [`RELEASE_NOTES_v0.8.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md).
 The current Stable release notes are in
-[`RELEASE_NOTES_v0.8.0.md`](docs/releases/RELEASE_NOTES_v0.8.0.md).
+[`RELEASE_NOTES_v0.8.4.md`](docs/releases/RELEASE_NOTES_v0.8.4.md) and the
+[GitHub v0.8.4 release](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.4).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).
