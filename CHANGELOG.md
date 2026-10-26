@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.8.5-beta.1] - 2026-10-26
+
+### Deutsch
+
+- Nakordoni-v2-Vertrag für dokumentierte Kraftstoffarten, `station_ref`, dynamische Abdeckung und leere 200-Ergebnisse erweitert.
+- Preisfrische verwendet `confirmed_at`, `age_hours` und `stale`; Preise über sieben Tage werden nicht als aktuell hervorgehoben.
+- Währungen werden beim Preisvergleich nicht miteinander vermischt; alte Nakordoni-Cachepreise nach 90 Tagen werden nicht fortgeführt.
+- Radius-/Limit-Grenzen, Provider-Hinweise und lokalisierte Empty-Reasons werden transparent diagnostiziert.
+
+### English
+
+- Extends the Nakordoni v2 contract for documented fuel types, `station_ref`, dynamic coverage, and empty HTTP-200 results.
+- Price freshness uses `confirmed_at`, `age_hours`, and `stale`; prices older than seven days are not treated as current highlights.
+- Explicit currencies are never compared numerically; Nakordoni cached prices older than 90 days are not continued.
+- Radius/limit caps, provider notices, and localized empty reasons are exposed transparently.
+
 ## [0.8.4] - 2026-10-21
 
 - Stable release of the complete v0.8.4 card cycle.

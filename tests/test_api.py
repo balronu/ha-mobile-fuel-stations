@@ -95,3 +95,12 @@ def test_price_sort_uses_explicit_fuel_and_missing_prices_last():
     e10 = Station("e10", "E10", "", 1.8, 5, True, "", "", "", "", None, None, fuel_prices={"e10": 1.8})
     result = sort_stations([diesel, e10], 5, mode="price", fuel="diesel")
     assert [station.station_id for station in result] == ["diesel", "e10"]
+
+
+def test_price_sort_does_not_compare_explicit_currencies():
+    eur = Station("eur", "EUR", "", 2.0, 1, True, "", "", "", "", None, None,
+                  currency="EUR", fuel_prices={"diesel": 2.0}, fuel_currencies={"diesel": "EUR"})
+    pln = Station("pln", "PLN", "", 5.0, 1, True, "", "", "", "", None, None,
+                  currency="PLN", fuel_prices={"diesel": 5.0}, fuel_currencies={"diesel": "PLN"})
+    assert [station.station_id for station in sort_stations([pln, eur], 2, mode="price", fuel="diesel")] == ["eur", "pln"]
+    assert cheapest_by_fuel([pln, eur])["diesel"].station_id == "eur"

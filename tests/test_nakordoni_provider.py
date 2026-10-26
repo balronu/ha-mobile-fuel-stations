@@ -166,6 +166,49 @@ def test_nakordoni_request_uses_bearer_header_and_one_page():
     assert cheapest_station(stations).station_id == "stable-ref"
 
 
+def test_nakordoni_freshness_uses_confirmation_age_and_parses_empty_metadata():
+    response = payload()
+    response["data"].update({
+        "stations": [],
+        "empty_reason": "no_fresh_price_in_radius",
+        "suggestion": "Try a different fuel type.",
+        "nearest_station_km": 31.2,
+        "nearest_search_km": 25,
+        "country": "PL",
+        "coverage": {
+            "station_countries": ["PL", "DE"],
+            "station_counts": {"PL": 4, "DE": 2},
+        },
+    })
+    provider = NakordoniProvider(Session(Response(response)), "nakordoni-dummy")
+    assert asyncio.run(provider.async_search(query())) == []
+    metadata = provider.last_response_metadata
+    assert metadata.empty_reason == "no_fresh_price_in_radius"
+    assert metadata.suggestion == "Try a different fuel type."
+    assert metadata.nearest_search_km == 25
+    assert metadata.coverage_station_counts == (("DE", 2), ("PL", 4))
+
+
+def test_nakordoni_radius_and_limit_are_capped_without_extra_requests():
+    session = Session(Response(payload()))
+    provider = NakordoniProvider(session, "nakordoni-dummy")
+    asyncio.run(provider.async_search(StationSearchQuery(49.24, 6.99, 80, "diesel", station_count=99)))
+    assert session.calls[0][1]["radius_km"] == "25"
+    assert session.calls[0][1]["limit"] == "20"
+
+
+def test_nakordoni_age_marks_price_stale_even_when_updated_at_is_recent():
+    response = payload()
+    response["data"]["stations"][0]["prices"]["diesel"].update({
+        "updated_at": "2026-10-25T12:00:00Z",
+        "confirmed_at": "2026-10-17T12:00:00Z",
+        "age_hours": 169,
+        "stale": False,
+    })
+    result = asyncio.run(NakordoniProvider(Session(Response(response)), "dummy").async_search(query()))
+    assert result[0].price_stale is True
+
+
 def test_nakordoni_e10_cheapest_uses_normalized_per_fuel_price():
     response = payload()
     stations = response["data"]["stations"]

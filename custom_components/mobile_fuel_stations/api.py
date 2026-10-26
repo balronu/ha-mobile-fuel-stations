@@ -32,6 +32,7 @@ def merge_stations(stations: list[Station]) -> list[Station]:
     for group in groups.values():
         first = group[0]
         prices: dict[str, float | None] = {}
+        currencies: dict[str, str | None] = {}
         fallbacks: dict[str, bool] = {}
         for station in group:
             fuel = station.requested_fuel or station.fuel_type
@@ -43,15 +44,20 @@ def merge_stations(stations: list[Station]) -> list[Station]:
                 ):
                     continue
                 prices[fuel] = station.price
+                if station.fuel_currencies and fuel in station.fuel_currencies:
+                    currencies[fuel] = station.fuel_currencies[fuel]
+                elif fuel:
+                    currencies[fuel] = station.currency
                 fallbacks[fuel] = station.fallback_used
-        merged.append(replace(first, fuel_prices=prices or None, fuel_fallbacks=fallbacks or None))
+        merged.append(replace(first, fuel_prices=prices or None, fuel_currencies=currencies or None, fuel_fallbacks=fallbacks or None))
     return merged
 
 
 def sort_stations(stations: list[Station], limit: int, *, mode: str = "price", fuel: str = "diesel") -> list[Station]:
     """Sort by an explicit mode; coordinator default is distance."""
     if mode == "price":
-        key = lambda station: (not station.is_open, (station.fuel_prices or {}).get(fuel) is None, (station.fuel_prices or {}).get(fuel, float("inf")), station.distance if station.distance is not None else float("inf"), station.station_id)
+        currency = _comparison_currency(stations, fuel)
+        key = lambda station: (not station.is_open, _price_for_currency(station, fuel, currency) is None, _price_for_currency(station, fuel, currency) if _price_for_currency(station, fuel, currency) is not None else float("inf"), station.distance if station.distance is not None else float("inf"), station.station_id)
     else:
         key = lambda station: (station.distance is None, station.distance if station.distance is not None else float("inf"), not station.is_open, station.station_id)
     return sorted(stations, key=key)[:limit]
@@ -89,6 +95,7 @@ def cheapest_station(stations: list[Station]) -> Station | None:
     only an explicitly closed station is excluded.
     """
 
+    currency = _comparison_currency(stations, None)
     candidates = [
         station
         for station in stations
@@ -96,6 +103,7 @@ def cheapest_station(stations: list[Station]) -> Station | None:
         and station.price_stale is not True
         and station.price is not None
         and isfinite(station.price)
+        and _currency_matches(station, None, currency)
     ]
     return min(
         candidates,
@@ -114,7 +122,10 @@ def cheapest_by_fuel(stations: list[Station]) -> dict[str, Station]:
         if station.is_open is False:
             continue
         for fuel, price in (station.fuel_prices or {}).items():
+            currency = _comparison_currency(stations, fuel)
             if station.price_stale is True or price is None or not isfinite(price):
+                continue
+            if not _currency_matches(station, fuel, currency):
                 continue
             current = result.get(fuel)
             current_price = (current.fuel_prices or {}).get(fuel, float("inf")) if current else float("inf")
@@ -157,6 +168,7 @@ def station_attributes(station: Station | None) -> dict[str, object] | None:
         "requested_fuel": station.requested_fuel,
         "fallback_used": station.fallback_used,
         "fuel_prices": station.fuel_prices,
+        "fuel_currencies": station.fuel_currencies,
         "fuel_fallbacks": station.fuel_fallbacks,
     }
     attributes.update({
@@ -165,3 +177,30 @@ def station_attributes(station: Station | None) -> dict[str, object] | None:
         if value is not None and (key != "fallback_used" or value)
     })
     return attributes
+
+
+def _station_currency(station: Station, fuel: str | None) -> str | None:
+    if fuel and station.fuel_currencies and fuel in station.fuel_currencies:
+        value = station.fuel_currencies[fuel]
+    else:
+        value = station.currency
+    return value.strip().upper() if isinstance(value, str) and value.strip() else None
+
+
+def _comparison_currency(stations: list[Station], fuel: str | None) -> str | None:
+    """Choose one currency group; never rank explicit currencies together."""
+    explicit = [_station_currency(station, fuel) for station in stations]
+    explicit = [value for value in explicit if value]
+    return sorted(set(explicit))[0] if explicit else None
+
+
+def _currency_matches(station: Station, fuel: str | None, currency: str | None) -> bool:
+    actual = _station_currency(station, fuel)
+    return currency is None or actual == currency
+
+
+def _price_for_currency(station: Station, fuel: str, currency: str | None) -> float | None:
+    price = (station.fuel_prices or {}).get(fuel)
+    if price is None or not isfinite(price) or not _currency_matches(station, fuel, currency):
+        return None
+    return price

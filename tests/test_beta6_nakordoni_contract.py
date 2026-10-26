@@ -58,6 +58,7 @@ def test_auto_other_country_prefers_nakordoni_then_petromap():
     assert decision.provider_mode == PROVIDER_PETROMAP
 
 
-def test_hvo100_is_not_claimed_by_nakordoni():
-    assert "hvo" not in NAKORDONI_FUELS
+def test_documented_nakordoni_fuels_are_claimed_without_aliasing_hvo100():
+    assert {"diesel", "e5", "e10", "superplus", "super100", "premdiesel",
+            "truckdiesel", "hvo", "lpg", "cng", "adblue", "e85", "lng"} <= NAKORDONI_FUELS
     assert "hvo100" not in NAKORDONI_FUELS

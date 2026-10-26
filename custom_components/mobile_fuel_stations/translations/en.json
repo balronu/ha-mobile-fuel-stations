@@ -105,7 +105,7 @@
     "provider_mode": {"options": {"tankerkoenig": "Tankerkönig", "petromap": "Petromap", "nakordoni": "Nakordoni", "auto": "Automatic (recommended)"}},
     "nakordoni_auth_method": {"options": {"oauth2": "OAuth2 automatic sign-in", "api_key": "Manual API key"}},
     "sort_mode": {"options": {"distance": "Distance — nearest first", "price": "Fuel price — cheapest first"}},
-    "sort_fuel": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100"}},
+    "sort_fuel": {"options": {"e5": "Super E5", "e10": "Super E10", "diesel": "Diesel", "lpg": "Autogas (LPG)", "hvo100": "HVO100", "superplus": "Super Plus", "super100": "Super 100", "premdiesel": "Premium Diesel", "truckdiesel": "Truck Diesel", "hvo": "HVO", "cng": "CNG", "adblue": "AdBlue", "e85": "E85", "lng": "LNG"}},
     "fetch_mode": {"options": {"automatic": "Automatic", "manual": "Manual"}}
   }
 }

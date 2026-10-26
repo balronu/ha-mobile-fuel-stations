@@ -31,7 +31,20 @@ from .base import (
 NAKORDONI_API_URL = "https://nakordoni.eu/api/v2/data/fuel-stations"
 NAKORDONI_ACCOUNT_USAGE_URL = "https://nakordoni.eu/api/v2/account/usage"
 NAKORDONI_ATTRIBUTION_URL = "https://nakordoni.eu"
-NAKORDONI_FUELS = frozenset({"diesel", "e5", "e10", "lpg"})
+NAKORDONI_FUELS = frozenset({
+    "diesel", "e5", "e10", "superplus", "super100", "premdiesel",
+    "truckdiesel", "hvo", "lpg", "cng", "adblue", "e85", "lng",
+})
+NAKORDONI_DEFAULT_RADIUS_KM = 25.0
+NAKORDONI_MAX_RADIUS_KM = 25.0
+NAKORDONI_DEFAULT_LIMIT = 5
+NAKORDONI_MAX_LIMIT = 20
+NAKORDONI_STALE_AFTER_HOURS = 7 * 24
+NAKORDONI_EMPTY_REASONS = frozenset({
+    "no_station_in_radius", "no_price_for_fuel_type",
+    "fuel_type_not_priced_in_country", "unknown_fuel_type",
+    "no_fresh_price_in_radius",
+})
 NAKORDONI_CAPABILITIES = ProviderCapabilities(
     supported_fuel_types=NAKORDONI_FUELS,
     max_radius_km=MAX_API_RADIUS_KM,
@@ -49,7 +62,10 @@ class NakordoniResponseMetadata:
     notices: tuple[str, ...] = ()
     total_found: int | None = None
     empty_reason: str | None = None
+    suggestion: str | None = None
     nearest_station_km: float | None = None
+    nearest_search_km: float | None = None
+    country: str | None = None
     markets_approved: tuple[str, ...] = ()
     markets_granted: tuple[str, ...] = ()
     markets_allowed: tuple[str, ...] = ()
@@ -58,6 +74,12 @@ class NakordoniResponseMetadata:
     coverage_countries: tuple[str, ...] = ()
     coverage_fuels: tuple[str, ...] = ()
     coverage_status: str = "unknown"
+    coverage_station_countries: tuple[str, ...] = ()
+    coverage_station_counts: tuple[tuple[str, int], ...] = ()
+    requested_radius_km: float | None = None
+    effective_radius_km: float | None = None
+    requested_limit: int | None = None
+    effective_limit: int | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -183,14 +205,25 @@ def extract_market_access(value: object) -> NakordoniMarketAccess:
     )
 
 
-def _coverage_fields(data: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...], str]:
+def _coverage_fields(data: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...], str, tuple[str, ...], tuple[tuple[str, int], ...]]:
     coverage = data.get("coverage")
     if not isinstance(coverage, dict):
-        return (), (), "unknown"
+        return (), (), "unknown", (), ()
     countries = _market_codes(coverage.get("countries", coverage.get("markets")))
     fuels = tuple(sorted({item.strip().lower() for item in coverage.get("fuels", ()) if isinstance(item, str) and item.strip()})) if isinstance(coverage.get("fuels", ()), (list, tuple, set)) else ()
     status = coverage.get("status") if isinstance(coverage.get("status"), str) else "confirmed"
-    return countries, fuels, status
+    station_countries = _market_codes(coverage.get("station_countries"))
+    raw_counts = coverage.get("station_counts")
+    counts: dict[str, int] = {}
+    if isinstance(raw_counts, dict):
+        for country, count in raw_counts.items():
+            if isinstance(country, str) and country.strip() and isinstance(count, int) and count >= 0:
+                counts[country.strip().upper()] = count
+    elif isinstance(raw_counts, list):
+        for item in raw_counts:
+            if isinstance(item, dict) and isinstance(item.get("country"), str) and isinstance(item.get("count"), int) and item["count"] >= 0:
+                counts[item["country"].strip().upper()] = item["count"]
+    return countries, fuels, status, station_countries, tuple(sorted(counts.items()))
 
 
 _SAFE_ERROR_CODES = frozenset(
@@ -388,6 +421,12 @@ def _parse_station(item: object, fuel_type: str) -> Station:
     quote = quote if isinstance(quote, dict) else {}
     street, house_number, postcode, place = _address_fields(item)
     price = _number(quote.get("price"), "prices.price", optional=True)
+    age_hours = _number(quote.get("age_hours"), "prices.age_hours", optional=True)
+    if age_hours is not None and age_hours < 0:
+        age_hours = None
+    stale = quote.get("stale") if isinstance(quote.get("stale"), bool) else None
+    if age_hours is not None and age_hours >= NAKORDONI_STALE_AFTER_HOURS:
+        stale = True
     return Station(
         station_id=station_ref,
         name=_text(item.get("name")),
@@ -406,11 +445,12 @@ def _parse_station(item: object, fuel_type: str) -> Station:
         country_code=_text(item.get("country")) or None,
         provider=PROVIDER_NAKORDONI,
         price_confirmed_at=_timestamp(quote.get("confirmed_at")),
-        price_age_hours=_number(quote.get("age_hours"), "prices.age_hours", optional=True),
-        price_stale=quote.get("stale") if isinstance(quote.get("stale"), bool) else None,
+        price_age_hours=age_hours,
+        price_stale=stale,
         fuel_type=fuel_type,
         requested_fuel=fuel_type,
         fuel_prices={fuel_type: price} if price is not None else None,
+        fuel_currencies={fuel_type: _text(quote.get("currency")) or None},
     )
 
 
@@ -514,8 +554,8 @@ class NakordoniProvider:
             raise ProviderUnsupportedFuelError(
                 f"Nakordoni fuel mapping is not verified: {query.fuel_type}"
             )
-        radius = min(float(query.radius_km), MAX_API_RADIUS_KM)
-        limit = min(max(int(query.station_count), 1), 20)
+        radius = min(max(float(query.radius_km), 0.0), NAKORDONI_MAX_RADIUS_KM)
+        limit = min(max(int(query.station_count), 1), NAKORDONI_MAX_LIMIT)
         params = {
             "lat": f"{query.latitude:.7f}",
             "lon": f"{query.longitude:.7f}",
@@ -573,7 +613,7 @@ class NakordoniProvider:
                     raise exception
                 notices = data.get("notices")
                 market_access = extract_market_access(payload)
-                coverage_countries, coverage_fuels, coverage_status = _coverage_fields(data)
+                coverage_countries, coverage_fuels, coverage_status, station_countries, station_counts = _coverage_fields(data)
                 if not coverage_countries and data["stations"]:
                     coverage_countries = tuple(
                         sorted({station.country_code for station in (
@@ -589,11 +629,17 @@ class NakordoniProvider:
                         for item in notices
                     ) if isinstance(notices, list) else (),
                     total_found=data.get("total_found") if isinstance(data.get("total_found"), int) else None,
-                    empty_reason=data.get("empty_reason") if isinstance(data.get("empty_reason"), str) else None,
+                    empty_reason=data.get("empty_reason") if data.get("empty_reason") in NAKORDONI_EMPTY_REASONS else None,
+                    suggestion=data.get("suggestion") if isinstance(data.get("suggestion"), str) else None,
                     nearest_station_km=(
                         _number(data.get("nearest_station_km"), "nearest_station_km", optional=True)
                         if data.get("nearest_station_km") is not None else None
                     ),
+                    nearest_search_km=(
+                        _number(data.get("nearest_search_km"), "nearest_search_km", optional=True)
+                        if data.get("nearest_search_km") is not None else None
+                    ),
+                    country=data.get("country") if isinstance(data.get("country"), str) else None,
                     markets_approved=market_access.markets_approved,
                     markets_granted=market_access.markets_granted,
                     markets_allowed=market_access.markets_allowed,
@@ -602,6 +648,12 @@ class NakordoniProvider:
                     coverage_countries=coverage_countries,
                     coverage_fuels=coverage_fuels,
                     coverage_status=coverage_status,
+                    coverage_station_countries=station_countries,
+                    coverage_station_counts=station_counts,
+                    requested_radius_km=float(query.radius_km),
+                    effective_radius_km=radius,
+                    requested_limit=int(query.station_count),
+                    effective_limit=limit,
                 )
                 try:
                     stations = [_parse_station(item, query.fuel_type) for item in data["stations"]]
