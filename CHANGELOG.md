@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.8.5] - 2026-10-26
+
+### Deutsch
+
+- Nakordoni-v2-Unterstützung für dokumentierte Kraftstoffarten, stabile
+  Stationsidentifikation und dynamische Länderabdeckung.
+- Preisfrische berücksichtigt `confirmed_at`, `age_hours` und `stale`; alte
+  Nakordoni-Cachepreise werden nicht künstlich fortgeführt.
+- Preisvergleiche mischen keine unterschiedlichen Währungen; Empty-Reasons,
+  Provider-Hinweise, Radius- und Stationslimits werden diagnostiziert.
+- Bestehende Config Entries, Karteneinstellungen und die Lovelace-Modi bleiben
+  kompatibel; `v0.8.4` bleibt als Rollback-Version verfügbar.
+
+### English
+
+- Adds Nakordoni v2 support for documented fuel types, stable station identity,
+  and dynamic country coverage.
+- Price freshness uses `confirmed_at`, `age_hours`, and `stale`; old Nakordoni
+  cached prices are not artificially continued.
+- Price comparisons never mix currencies; empty reasons, provider notices,
+  radius and station limits are exposed diagnostically.
+- Existing Config Entries, card settings, and Lovelace modes remain compatible;
+  `v0.8.4` remains available as a rollback version.
+
 ## [0.8.5-beta.1] - 2026-10-26
 
 ### Deutsch
