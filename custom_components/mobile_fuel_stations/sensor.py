@@ -291,6 +291,18 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "attribution_url": "https://nakordoni.eu"
             if self.coordinator.config.get(CONF_PROVIDER_MODE) == PROVIDER_NAKORDONI
             else None,
+            "provider_empty_reason": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "empty_reason", None),
+            "provider_suggestion": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "suggestion", None),
+            "provider_nearest_station_km": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "nearest_station_km", None),
+            "provider_nearest_search_km": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "nearest_search_km", None),
+            "provider_country": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "country", None),
+            "provider_notices": list(getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "notices", ())),
+            "provider_requested_radius_km": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "requested_radius_km", None),
+            "provider_effective_radius_km": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "effective_radius_km", None),
+            "provider_requested_limit": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "requested_limit", None),
+            "provider_effective_limit": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "effective_limit", None),
+            "coverage_station_countries": list(getattr(self.coordinator, "nakordoni_coverage_station_countries", ())),
+            "coverage_station_counts": dict(getattr(self.coordinator, "nakordoni_coverage_station_counts", ())),
         }
 
 

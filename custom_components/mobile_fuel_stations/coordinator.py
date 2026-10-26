@@ -57,6 +57,7 @@ from .const import (
     PROVIDER_NAKORDONI,
     FETCH_MODE_AUTOMATIC,
     FETCH_MODE_MANUAL,
+    FUEL_TYPES,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
@@ -447,6 +448,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.nakordoni_coverage_countries: tuple[str, ...] = ()
         self.nakordoni_coverage_fuels: tuple[str, ...] = ()
         self.nakordoni_coverage_status = "unknown"
+        self.nakordoni_coverage_station_countries: tuple[str, ...] = ()
+        self.nakordoni_coverage_station_counts: tuple[tuple[str, int], ...] = ()
+        self.nakordoni_response_metadata = None
         self.nakordoni_upgrade_url = self.nakordoni_market_access.upgrade_url
         self.nakordoni_account_usage = None
         self.nakordoni_usage_last_attempt: datetime | None = None
@@ -648,7 +652,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         markets = (markets or frozenset()) & NAKORDONI_MARKETS
         return ProviderCapabilities(
             supported_countries=frozenset(markets),
-            supported_fuel_types=frozenset({"diesel", "e5", "e10", "lpg"}),
+            supported_fuel_types=frozenset(FUEL_TYPES),
             max_radius_km=MAX_API_RADIUS_KM,
             country_price_coverage={country: CountryPriceCoverage.PER_STATION for country in markets},
         )
@@ -676,6 +680,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.nakordoni_coverage_countries = metadata.coverage_countries
         self.nakordoni_coverage_fuels = metadata.coverage_fuels
         self.nakordoni_coverage_status = metadata.coverage_status
+        self.nakordoni_coverage_station_countries = metadata.coverage_station_countries
+        self.nakordoni_coverage_station_counts = metadata.coverage_station_counts
+        self.nakordoni_response_metadata = metadata
         self._refresh_nakordoni_auto_context()
 
     def _refresh_nakordoni_auto_context(self) -> None:
@@ -703,7 +710,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         values = [raw] if isinstance(raw, str) else raw if isinstance(raw, (list, tuple, set)) else []
         fuels: list[str] = []
         for fuel in values:
-            if isinstance(fuel, str) and fuel in {"e5", "e10", "diesel", "lpg", "hvo100"} and fuel not in fuels:
+            if isinstance(fuel, str) and fuel in FUEL_TYPES and fuel not in fuels:
                 fuels.append(fuel)
         return fuels or ["diesel"]
 
@@ -993,6 +1000,20 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 station = self._station_from_store(raw)
                 if station is None:
                     return None
+                if (
+                    station.provider == PROVIDER_NAKORDONI
+                    and station.price_confirmed_at is not None
+                    and station.price_confirmed_at.tzinfo is not None
+                    and datetime.now().astimezone() - station.price_confirmed_at > timedelta(days=90)
+                ):
+                    station = replace(
+                        station,
+                        price=None,
+                        price_stale=True,
+                        fuel_prices={
+                            fuel: None for fuel in (station.fuel_prices or {})
+                        } or None,
+                    )
                 stations.append(station)
         except (TypeError, ValueError, OverflowError):
             return None
@@ -1039,6 +1060,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "requested_fuel": station.requested_fuel,
             "fallback_used": station.fallback_used,
             "fuel_prices": station.fuel_prices,
+            "fuel_currencies": station.fuel_currencies,
             "fuel_fallbacks": station.fuel_fallbacks,
         }
         return result
@@ -1087,6 +1109,14 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             for key, value in fuel_prices.items()
         ):
             return None
+        fuel_currencies = raw.get("fuel_currencies")
+        if fuel_currencies is not None and not isinstance(fuel_currencies, dict):
+            return None
+        if fuel_currencies is not None and any(
+            not isinstance(key, str) or (value is not None and not isinstance(value, str))
+            for key, value in fuel_currencies.items()
+        ):
+            return None
         fuel_fallbacks = raw.get("fuel_fallbacks")
         if fuel_fallbacks is not None and not isinstance(fuel_fallbacks, dict):
             return None
@@ -1119,7 +1149,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             price_stale=raw.get("price_stale"), fuel_type=raw.get("fuel_type"),
             requested_fuel=raw.get("requested_fuel"),
             fallback_used=bool(raw.get("fallback_used", False)),
-            fuel_prices=fuel_prices, fuel_fallbacks=fuel_fallbacks,
+            fuel_prices=fuel_prices, fuel_currencies=fuel_currencies,
+            fuel_fallbacks=fuel_fallbacks,
         )
 
     def _set_station_data(self, stations: list[Station]) -> None:
@@ -2160,7 +2191,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                             StationSearchQuery(
                                 latitude=position[0],
                                 longitude=position[1],
-                                radius_km=min(float(self.options[CONF_RADIUS]), MAX_API_RADIUS_KM),
+                                radius_km=float(self.options[CONF_RADIUS]),
                                 fuel_type=effective_fuel,
                                 station_count=int(self.options[CONF_STATION_COUNT]),
                             )
