@@ -1,6 +1,6 @@
 {
   "name": "mobile-fuel-stations-card",
-  "version": "0.8.6-beta.1",
+  "version": "0.8.6",
   "private": true,
   "type": "module",
   "scripts": {

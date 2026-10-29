@@ -810,7 +810,7 @@ describe("card", () => {
       card.remove();
     }
   });
-  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.6-beta.1"); });
+  it("exposes a version marker for the cache-busted frontend bundle", () => { expect(FRONTEND_BUILD_VERSION).toBe("0.8.6"); });
   it("keeps the same custom priority labels when the nearest is also cheapest", async () => {
     const card = new MobileFuelStationsCard(); document.body.append(card); const hass = hassFor(2);
     hass.states["sensor.vehicle_station_1"]!.attributes.distance = 1; hass.states["sensor.vehicle_station_1"]!.attributes.fuel_prices = { diesel: 1.2 };
