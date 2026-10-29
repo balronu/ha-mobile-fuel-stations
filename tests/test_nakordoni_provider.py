@@ -166,6 +166,36 @@ def test_nakordoni_request_uses_bearer_header_and_one_page():
     assert cheapest_station(stations).station_id == "stable-ref"
 
 
+def test_nakordoni_v2_diagnostic_metadata_is_additive_and_safe():
+    response = payload()
+    station = response["data"]["stations"][0]
+    station["grades"] = ["diesel", "e10"]
+    station["freshest_age_hours"] = 1.25
+    station["stale"] = False
+    station["prices"]["diesel"].update({"currency_symbol": "€", "local_name": "Diesel", "label": "Diesel (B7)"})
+    response["data"].update({
+        "markets_filtered": 2,
+        "markets_notice": "Some markets were filtered.",
+        "anchor": {"lat": 49.24, "lng": 6.99, "ppid": "anchor-1", "radius_km": 25,
+                   "fuel_type": "diesel", "fuel_type_requested": "diesel", "fuel_type_local": "Diesel", "fuel_type_country": "DE"},
+        "coverage": {"sparse_coverage": ["LU"], "measured_at": "2026-10-29T05:00:00Z", "fuel_type_note": "Coverage is sparse for this fuel."},
+    })
+    provider = NakordoniProvider(Session(Response(response)), "nakordoni-dummy")
+    stations = asyncio.run(provider.async_search(query()))
+    metadata = provider.last_response_metadata
+    assert metadata.sparse_coverage == ("LU",)
+    assert metadata.coverage_measured_at is not None
+    assert metadata.fuel_type_note == "Coverage is sparse for this fuel."
+    assert metadata.markets_filtered == 2
+    assert metadata.anchor["fuel_type_local"] == "Diesel"
+    assert stations[0].fuel_currency_symbols == {"diesel": "€"}
+    assert stations[0].fuel_local_names == {"diesel": "Diesel"}
+    assert stations[0].fuel_labels == {"diesel": "Diesel (B7)"}
+    assert stations[0].fuel_grade_keys == ("diesel", "e10")
+    assert stations[0].freshest_age_hours == 1.25
+    assert stations[0].station_stale is False
+
+
 def test_nakordoni_freshness_uses_confirmation_age_and_parses_empty_metadata():
     response = payload()
     response["data"].update({
@@ -187,6 +217,20 @@ def test_nakordoni_freshness_uses_confirmation_age_and_parses_empty_metadata():
     assert metadata.suggestion == "Try a different fuel type."
     assert metadata.nearest_search_km == 25
     assert metadata.coverage_station_counts == (("DE", 2), ("PL", 4))
+
+
+def test_nakordoni_missing_optional_metadata_is_tolerated():
+    response = payload()
+    response["data"]["coverage"] = {"sparse_coverage": "not-a-list", "measured_at": "invalid"}
+    response["data"]["markets_filtered"] = "unknown"
+    response["data"]["anchor"] = {"lat": "invalid", "fuel_type": 42}
+    provider = NakordoniProvider(Session(Response(response)), "nakordoni-dummy")
+    stations = asyncio.run(provider.async_search(query()))
+    assert stations[0].station_id == "stable-ref"
+    assert provider.last_response_metadata.sparse_coverage == ()
+    assert provider.last_response_metadata.coverage_measured_at is None
+    assert provider.last_response_metadata.markets_filtered is None
+    assert provider.last_response_metadata.anchor is None
 
 
 def test_nakordoni_radius_and_limit_are_capped_without_extra_requests():

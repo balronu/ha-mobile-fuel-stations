@@ -34,6 +34,9 @@ def merge_stations(stations: list[Station]) -> list[Station]:
         prices: dict[str, float | None] = {}
         currencies: dict[str, str | None] = {}
         fallbacks: dict[str, bool] = {}
+        currency_symbols: dict[str, str | None] = {}
+        local_names: dict[str, str | None] = {}
+        labels: dict[str, str | None] = {}
         for station in group:
             fuel = station.requested_fuel or station.fuel_type
             if fuel:
@@ -49,7 +52,12 @@ def merge_stations(stations: list[Station]) -> list[Station]:
                 elif fuel:
                     currencies[fuel] = station.currency
                 fallbacks[fuel] = station.fallback_used
-        merged.append(replace(first, fuel_prices=prices or None, fuel_currencies=currencies or None, fuel_fallbacks=fallbacks or None))
+                for target, source in ((currency_symbols, station.fuel_currency_symbols), (local_names, station.fuel_local_names), (labels, station.fuel_labels)):
+                    if source and fuel in source:
+                        target[fuel] = source[fuel]
+        merged.append(replace(first, fuel_prices=prices or None, fuel_currencies=currencies or None, fuel_fallbacks=fallbacks or None,
+                              fuel_currency_symbols=currency_symbols or None, fuel_local_names=local_names or None,
+                              fuel_labels=labels or None))
     return merged
 
 
@@ -170,6 +178,12 @@ def station_attributes(station: Station | None) -> dict[str, object] | None:
         "fuel_prices": station.fuel_prices,
         "fuel_currencies": station.fuel_currencies,
         "fuel_fallbacks": station.fuel_fallbacks,
+        "fuel_currency_symbols": station.fuel_currency_symbols,
+        "fuel_local_names": station.fuel_local_names,
+        "fuel_labels": station.fuel_labels,
+        "fuel_grade_keys": station.fuel_grade_keys,
+        "freshest_age_hours": station.freshest_age_hours,
+        "station_stale": station.station_stale,
     }
     attributes.update({
         key: value

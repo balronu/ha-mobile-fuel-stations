@@ -81,6 +81,19 @@ def test_station_attributes_preserve_optional_values():
     assert station_attributes(None) is None
 
 
+def test_station_attributes_expose_additive_fuel_metadata():
+    station = Station("id", "Name", "Brand", 1.8, 1.2, None, "", "", "", "", None, None,
+                      fuel_type="diesel", requested_fuel="diesel",
+                      fuel_currency_symbols={"diesel": "€"}, fuel_local_names={"diesel": "Diesel"},
+                      fuel_labels={"diesel": "Diesel (B7)"}, fuel_grade_keys=("diesel", "e10"),
+                      freshest_age_hours=1.0, station_stale=False)
+    attributes = station_attributes(station)
+    assert attributes["fuel_currency_symbols"] == {"diesel": "€"}
+    assert attributes["fuel_local_names"] == {"diesel": "Diesel"}
+    assert attributes["fuel_grade_keys"] == ("diesel", "e10")
+    assert attributes["station_stale"] is False
+
+
 def test_multi_fuel_results_merge_without_cross_fuel_price_comparison():
     diesel = Station("same", "Station", "Brand", 2.079, 4.2, True, "Street", "1", "1", "Town", 50.0, 8.0, provider="demo", fuel_type="diesel", requested_fuel="diesel")
     e10 = Station("same", "Station", "Brand", 2.018, 4.2, True, "Street", "1", "1", "Town", 50.0, 8.0, provider="demo", fuel_type="e10", requested_fuel="e10")

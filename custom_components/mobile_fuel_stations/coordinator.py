@@ -1062,6 +1062,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             "fuel_prices": station.fuel_prices,
             "fuel_currencies": station.fuel_currencies,
             "fuel_fallbacks": station.fuel_fallbacks,
+            "fuel_currency_symbols": station.fuel_currency_symbols,
+            "fuel_local_names": station.fuel_local_names,
+            "fuel_labels": station.fuel_labels,
+            "fuel_grade_keys": station.fuel_grade_keys,
+            "freshest_age_hours": station.freshest_age_hours,
+            "station_stale": station.station_stale,
         }
         return result
 
@@ -1125,6 +1131,17 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             for key, value in fuel_fallbacks.items()
         ):
             return None
+        metadata_maps = {}
+        for key in ("fuel_currency_symbols", "fuel_local_names", "fuel_labels"):
+            value = raw.get(key)
+            if value is not None and (not isinstance(value, dict) or any(not isinstance(k, str) or (v is not None and not isinstance(v, str)) for k, v in value.items())):
+                return None
+            metadata_maps[key] = value
+        grade_keys = raw.get("fuel_grade_keys")
+        if grade_keys is not None and (not isinstance(grade_keys, (list, tuple)) or any(not isinstance(value, str) for value in grade_keys)):
+            return None
+        if raw.get("station_stale") is not None and not isinstance(raw.get("station_stale"), bool):
+            return None
         optional_strings = (
             "currency", "country_code", "provider", "fuel_type", "requested_fuel"
         )
@@ -1151,6 +1168,12 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             fallback_used=bool(raw.get("fallback_used", False)),
             fuel_prices=fuel_prices, fuel_currencies=fuel_currencies,
             fuel_fallbacks=fuel_fallbacks,
+            fuel_currency_symbols=metadata_maps["fuel_currency_symbols"],
+            fuel_local_names=metadata_maps["fuel_local_names"],
+            fuel_labels=metadata_maps["fuel_labels"],
+            fuel_grade_keys=tuple(grade_keys) if grade_keys is not None else None,
+            freshest_age_hours=number("freshest_age_hours"),
+            station_stale=raw.get("station_stale"),
         )
 
     def _set_station_data(self, stations: list[Station]) -> None:
