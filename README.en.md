@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.5"><img src="https://img.shields.io/badge/Stable-v0.8.5-16a34a" alt="Stable v0.8.5"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.6"><img src="https://img.shields.io/badge/Stable-v0.8.6-16a34a" alt="Stable v0.8.6"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -68,11 +68,11 @@ opening status, and destination navigation.
 
 | Channel | Version | Meaning |
 | --- | --- | --- |
-| Stable | `v0.8.5` | Current stable release |
+| Stable | `v0.8.6` | Current stable release |
 | Beta | `v0.8.6-beta.1` | Nakordoni v2 diagnostic metadata |
 | Previous stable | `v0.8.4` | Available rollback version |
 | Historical beta | `v0.8.0-beta.8` | Previous pre-release |
-| Frontend component | `v0.8.6-beta.1` | Independently versioned Lovelace component |
+| Frontend component | `v0.8.6` | Independently versioned Lovelace component |
 
 `v0.8.3` was the previous stable release. It bundles Tankerkönig, Petromap, and
 Nakordoni with automatic provider selection, country- and market-aware
@@ -83,7 +83,7 @@ but has not been confirmed through a live callback. Source, missing per-image
 license, and residual trademark risks are documented in
 [BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
 
-`v0.8.5` is the current stable release. It promotes the tested Nakordoni v2
+`v0.8.6` is the current stable release. It promotes the tested Nakordoni v2
 compatibility with documented fuel types, confirmation-based freshness, safe
 currency comparison, stable station identity, and expanded provider
 diagnostics. Existing configurations and cards remain compatible; `v0.8.4`
@@ -167,7 +167,7 @@ are stored per card; existing integration settings remain the legacy fallback.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.8.5` is the current stable HACS version. `v0.8.4` remains available as the
+`v0.8.6` is the current stable HACS version. `v0.8.5` remains available as the
 previous stable rollback. Historical betas remain in the GitHub archive.
 
 The Lovelace card is supplied and registered by the integration. The
@@ -355,11 +355,11 @@ Nakordoni market coverage and HVO100 prices are not universally guaranteed.
 
 ## Administrator Nakordoni diagnostics
 
-Beta `v0.8.6-beta.1` adds dynamic coverage metadata, market-filter notices,
+Version `v0.8.6` adds dynamic coverage metadata, market-filter notices,
 anchor data, local fuel labels, and station price-freshness details to
 diagnostics. These values are optional and are not permanent country
 permissions; the v2 endpoint and existing fallback logic remain unchanged.
-See the [v0.8.6-beta.1 release notes](docs/releases/RELEASE_NOTES_v0.8.6-beta.1.md).
+See the [v0.8.6 release notes](docs/releases/RELEASE_NOTES_v0.8.6.md).
 
 For a targeted, non-production test, the integration registers the protected
 Home Assistant service `mobile_fuel_stations.probe_nakordoni`. Only an
@@ -433,8 +433,8 @@ Historical release notes are preserved in the
 The historical beta release notes are in
 [`RELEASE_NOTES_v0.8.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md).
 The current Stable release notes are in
-[`RELEASE_NOTES_v0.8.5.md`](docs/releases/RELEASE_NOTES_v0.8.5.md) and the
-[GitHub v0.8.5 release](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.5).
+[`RELEASE_NOTES_v0.8.6.md`](docs/releases/RELEASE_NOTES_v0.8.6.md) and the
+[GitHub v0.8.6 release](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.6).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).

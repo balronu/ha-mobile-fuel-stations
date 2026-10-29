@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.6] - 2026-10-29
+
+### Deutsch
+
+- Veröffentlicht die in `v0.8.6-beta.1` geprüften Nakordoni-v2-Diagnosemetadaten.
+- Bewahrt optionale Feldtoleranz, Preisfrische, Währungsgrenzen, Provider-Fallbacks sowie bestehende Entity- und Config-Entry-Identitäten.
+
+### English
+
+- Releases the Nakordoni v2 diagnostic metadata validated in `v0.8.6-beta.1`.
+- Preserves optional-field tolerance, price freshness, currency boundaries, provider fallbacks, and existing entity/config-entry identities.
+
 ## [0.8.6-beta.1] - 2026-10-29
 
 ### Deutsch

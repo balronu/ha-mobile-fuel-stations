@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.5"><img src="https://img.shields.io/badge/Stable-v0.8.5-16a34a" alt="Stable v0.8.5"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.6"><img src="https://img.shields.io/badge/Stable-v0.8.6-16a34a" alt="Stable v0.8.6"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -67,11 +67,11 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.8.5` | Aktuelle stabile Version |
+| Stable | `v0.8.6` | Aktuelle stabile Version |
 | Beta | `v0.8.6-beta.1` | Nakordoni-v2-Diagnosemetadaten |
 | Vorherige Stable | `v0.8.4` | Verfügbare Rollback-Version |
 | Historische Beta | `v0.8.0-beta.8` | Vorangegangene Pre-release |
-| Frontend-Komponente | `v0.8.6-beta.1` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.8.6` | Unabhängig versionierte Lovelace-Komponente |
 
 `v0.8.3` war die vorherige stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
@@ -83,7 +83,7 @@ experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
 festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
 
-`v0.8.5` ist die aktuelle stabile Veröffentlichung. Sie übernimmt die in der
+`v0.8.6` ist die aktuelle stabile Veröffentlichung. Sie übernimmt die in der
 Beta getestete Nakordoni-v2-Kompatibilität mit dokumentierten Kraftstoffarten,
 bestätigungsbasierter Preisfrische, sicherem Währungsvergleich, stabiler
 Stationsidentifikation und erweiterter Providerdiagnose. Bestehende
@@ -190,7 +190,7 @@ erhalten.
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.8.5` ist die aktuelle stabile HACS-Version. `v0.8.4` bleibt als
+`v0.8.6` ist die aktuelle stabile HACS-Version. `v0.8.5` bleibt als
 vorherige Stable-Rollback-Version verfügbar. Historische Betas bleiben im
 GitHub-Archiv erhalten.
 
@@ -457,11 +457,11 @@ Preis- oder Verfügbarkeitsauskunft.
 
 ## Administrator-Diagnose für Nakordoni
 
-Die Beta `v0.8.6-beta.1` ergänzt die Diagnoseattribute um dynamische Coverage-
+Die Version `v0.8.6` ergänzt die Diagnoseattribute um dynamische Coverage-
 Metadaten, Marktfilter-Hinweise, Anchor-Daten sowie lokale Kraftstofflabels und
 Stations-Preisfrische. Diese Werte sind optional und keine dauerhafte
 Länderfreigabe; der v2-Endpunkt und die bestehende Fallback-Logik bleiben
-unverändert. Details stehen in den [v0.8.6-beta.1 Release Notes](docs/releases/RELEASE_NOTES_v0.8.6-beta.1.md).
+unverändert. Details stehen in den [v0.8.6 Release Notes](docs/releases/RELEASE_NOTES_v0.8.6.md).
 
 Für einen gezielten, nicht produktiven Test steht der geschützte HA-Service
 `mobile_fuel_stations.probe_nakordoni` zur Verfügung. Er ist nur für
@@ -544,8 +544,8 @@ Provider-Mindestabständen, Cache-Reload, Cooldown und Unload-Abbruch geprüft.
 Historische Release Notes liegen unverändert im
 [Release-Archiv auf GitHub](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/).
 Die Stable-Release Notes stehen in
-[`docs/releases/RELEASE_NOTES_v0.8.5.md`](docs/releases/RELEASE_NOTES_v0.8.5.md)
-und im [GitHub-Release v0.8.5](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.5).
+[`docs/releases/RELEASE_NOTES_v0.8.6.md`](docs/releases/RELEASE_NOTES_v0.8.6.md)
+und im [GitHub-Release v0.8.6](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.6).
 Die Beta-Release-Notes stehen in
 [`docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md).
 Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
