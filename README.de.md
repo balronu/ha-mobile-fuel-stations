@@ -24,8 +24,13 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
   einer frei wählbaren Entity gesucht.
 - **Mehrere Datenquellen:** Tankerkönig, Petromap und Nakordoni mit
   capability-basierter Provider-Auswahl.
+- **Mehrere Fahrzeuge:** Jede Config Entry kann unabhängig für ein Fahrzeug,
+  Wohnmobil oder einen anderen Tracker eingerichtet werden.
 - **Kraftstoffpreise:** E5, E10, Diesel, LPG/Autogas und HVO100 mit
   Entfernungs- oder Preis-Sortierung.
+- **Transparente Datenqualität:** Preisalter, veraltete Cache-Daten,
+  Providerstatus, Marktberechtigungen und Kontingent-/Cooldown-Hinweise werden
+  getrennt diagnostiziert.
 - **Lovelace für unterwegs:** Responsive Karte, Erkennung vieler
   Markenschreibweisen, 60 lokale Markenlogos und direkte Navigation zum
   ausgewählten Ziel.
@@ -68,8 +73,7 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.8.7` | Aktuelle stabile Version |
-| Vorherige Stable | `v0.8.4` | Verfügbare Rollback-Version |
-| Historische Beta | `v0.8.0-beta.8` | Vorangegangene Pre-release |
+| Vorherige Stable | `v0.8.6` | Verfügbare unmittelbare Rollback-Version |
 | Frontend-Komponente | `v0.8.7` | Unabhängig versionierte Lovelace-Komponente |
 
 `v0.8.3` war die vorherige stabile Veröffentlichung. Sie bündelt Tankerkönig,
@@ -86,16 +90,16 @@ festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
 Beta getestete Nakordoni-v2-Kompatibilität mit dokumentierten Kraftstoffarten,
 bestätigungsbasierter Preisfrische, sicherem Währungsvergleich, stabiler
 Stationsidentifikation und erweiterter Providerdiagnose. Bestehende
-Konfigurationen und Karten bleiben kompatibel; `v0.8.4` bleibt als Rollback
-verfügbar.
+Konfigurationen und Karten bleiben kompatibel; `v0.8.6` bleibt als unmittelbare
+Rollback-Version verfügbar.
 
-`v0.8.4` ergänzt
+`v0.8.4` ergänzte
 **Ausführlich**, **Kompakt** und **Individuell** sowie kartenbezogene
 Sortierung, Kraftstoff für die Preissortierung, sichtbare Tankstellenanzahl,
 Kopf- und Stationsfelder, Dichte, Trennlinien und das optionale Layout
 **Highlights + Liste**. Sichtbare Kopfbereich-Sektionen erzeugen keine leeren
 Wrapper und zwischen zwei sichtbaren Sektionen erscheint maximal eine
-Trennlinie. Die Stable-Ressource verwendet `v=0.8.6`; bestehende YAML-Karten
+Trennlinie. Die Stable-Ressource verwendet `v=0.8.7`; bestehende YAML-Karten
 und Config Entries bleiben kompatibel.
 
 v0.7.1 verbesserte außerdem die Erkennung integrationszugehöriger Overview-
@@ -187,9 +191,11 @@ gespeichert; bestehende Integrationsoptionen bleiben Legacy-Fallback.
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.8.7` ist die aktuelle stabile HACS-Version. `v0.8.6` bleibt als
-vorherige Stable-Rollback-Version verfügbar. Historische Betas bleiben im
-GitHub-Archiv erhalten.
+`v0.8.7` ist die aktuelle stabile Version. `v0.8.6` bleibt als unmittelbare
+Stable-Rollback-Version verfügbar. Die Aufnahme in den offiziellen HACS-Katalog
+ist mit [hacs/default#12947](https://github.com/hacs/default/pull/12947)
+beantragt und wartet noch auf die Maintainer-Freigabe. Bis dahin funktioniert
+die Installation über **Benutzerdefinierte Repositories** wie oben beschrieben.
 
 Die adaptive Aktualisierung ist standardmäßig deaktiviert und wird nur über
 den Optionsdialog aktiviert. Sie verwendet ausschließlich gültige, aktuelle
@@ -432,8 +438,10 @@ Zugangsdaten, Stationssensoren und kompatible Dashboard-Konfigurationen bleiben
 erhalten. Prüfe nach einem größeren Versionssprung die versionierte Karten-
 Ressource und lösche bei Bedarf einen veralteten Browser-Cache.
 
-Für einen Rücksprung bleibt `v0.6.1` als vorherige Stable-Version verfügbar.
-Historische Releases bleiben im GitHub-Archiv erhalten.
+Für einen Rücksprung bleibt `v0.8.6` als unmittelbare vorherige Stable-Version
+verfügbar. Historische Stable-Releases und Changelog-Einträge bleiben im
+GitHub-Archiv erhalten; entfernte Vorabversionen werden nicht als aktuelle
+Installationsoption beworben.
 
 ## Datenschutz und Einschränkungen
 
@@ -451,6 +459,12 @@ nicht pauschal garantiert. Die Integration ersetzt keine verbindliche
 Preis- oder Verfügbarkeitsauskunft.
 
 ## Administrator-Diagnose für Nakordoni
+
+Die Version `v0.8.6` ergänzt die Diagnoseattribute um dynamische Coverage-
+Metadaten, Marktfilter-Hinweise, Anchor-Daten sowie lokale Kraftstofflabels und
+Stations-Preisfrische. Diese Werte sind optional und keine dauerhafte
+Länderfreigabe; der v2-Endpunkt und die bestehende Fallback-Logik bleiben
+unverändert. Details stehen in den [v0.8.6 Release Notes](docs/releases/RELEASE_NOTES_v0.8.6.md).
 
 Für einen gezielten, nicht produktiven Test steht der geschützte HA-Service
 `mobile_fuel_stations.probe_nakordoni` zur Verfügung. Er ist nur für
@@ -533,10 +547,8 @@ Provider-Mindestabständen, Cache-Reload, Cooldown und Unload-Abbruch geprüft.
 Historische Release Notes liegen unverändert im
 [Release-Archiv auf GitHub](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/).
 Die Stable-Release Notes stehen in
-[`docs/releases/RELEASE_NOTES_v0.8.5.md`](docs/releases/RELEASE_NOTES_v0.8.5.md)
-und im [GitHub-Release v0.8.5](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.5).
-Die Beta-Release-Notes stehen in
-[`docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md).
+[`docs/releases/RELEASE_NOTES_v0.8.7.md`](docs/releases/RELEASE_NOTES_v0.8.7.md)
+und im [GitHub-Release v0.8.7](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.7).
 Weitere Projektinformationen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
 der [Markendokumentation](docs/BRAND_LOGOS.md) und im
 [GitHub-Release-Archiv](https://github.com/balronu/ha-mobile-fuel-stations/releases).

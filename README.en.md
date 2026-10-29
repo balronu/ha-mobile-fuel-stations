@@ -24,8 +24,12 @@ opening status, and destination navigation.
   entity that provides latitude and longitude.
 - **Multiple data sources:** Tankerkönig, Petromap, and Nakordoni with
   capability-aware provider selection.
+- **Multiple vehicles:** Each Config Entry can be configured independently for
+  a vehicle, motorhome, or other tracker.
 - **Fuel prices:** E5, E10, diesel, LPG, and HVO100 with distance or price
   sorting.
+- **Transparent data quality:** Price age, stale cache data, provider status,
+  market permissions, and quota/cooldown hints are diagnosed separately.
 - **Built for Lovelace:** Responsive card, recognition of many brand spellings,
   60 local station-brand logos, and direct navigation to the selected
   destination.
@@ -69,8 +73,7 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.8.7` | Current stable release |
-| Previous stable | `v0.8.4` | Available rollback version |
-| Historical beta | `v0.8.0-beta.8` | Previous pre-release |
+| Previous stable | `v0.8.6` | Immediate rollback version |
 | Frontend component | `v0.8.7` | Independently versioned Lovelace component |
 
 `v0.8.3` was the previous stable release. It bundles Tankerkönig, Petromap, and
@@ -85,10 +88,10 @@ license, and residual trademark risks are documented in
 `v0.8.7` is the current stable release. It carries the tested Nakordoni v2
 compatibility with documented fuel types, confirmation-based freshness, safe
 currency comparison, stable station identity, and expanded provider
-diagnostics. Existing configurations and cards remain compatible; `v0.8.4`
-remains available for rollback.
+diagnostics. Existing configurations and cards remain compatible; `v0.8.6`
+remains available as the immediate rollback.
 
-`v0.8.4` adds **Detailed**, **Compact**, and
+`v0.8.4` added **Detailed**, **Compact**, and
 **Individual** card modes, per-card sorting, fuel selection for price sorting,
 visible station count, header and station fields, density, dividers, and the
 optional **Highlights + list** layout. Visible header sections do not create
@@ -166,8 +169,11 @@ are stored per card; existing integration settings remain the legacy fallback.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.8.7` is the current stable HACS version. `v0.8.6` remains available as the
-previous stable rollback. Historical betas remain in the GitHub archive.
+`v0.8.7` is the current stable version. `v0.8.6` remains available as the
+immediate stable rollback. Admission to the official HACS catalog is requested
+in [hacs/default#12947](https://github.com/hacs/default/pull/12947) and is
+still awaiting maintainer approval. Until then, installation through **Custom
+repositories** remains available as described above.
 
 The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
@@ -337,9 +343,10 @@ Google Maps, Waze, or automatic selection.
 Create a Home Assistant backup before updating. Update through HACS and fully
 restart Home Assistant. Existing config entries, credentials, station sensors,
 and compatible dashboard configurations are retained. Check the versioned card
-resource and browser cache after a major update. `v0.6.1` remains available as
-the previous stable rollback; historical releases remain in the GitHub
-archive.
+resource and browser cache after a major update. `v0.8.6` remains available as
+the immediate previous stable rollback. Historical stable releases and
+changelog entries remain in the GitHub archive; removed pre-releases are not
+advertised as current installation options.
 
 ## Privacy and limitations
 
@@ -429,11 +436,9 @@ recovery tests use mocks and fixtures rather than unverified live credentials.
 Historical release notes are preserved in the
 [GitHub release archive](https://github.com/balronu/ha-mobile-fuel-stations/tree/main/docs/releases/), including the current
 [`v0.7.3 release notes`](docs/releases/RELEASE_NOTES_v0.7.3.md).
-The historical beta release notes are in
-[`RELEASE_NOTES_v0.8.0-beta.6.md`](docs/releases/RELEASE_NOTES_v0.8.0-beta.6.md).
 The current Stable release notes are in
-[`RELEASE_NOTES_v0.8.6.md`](docs/releases/RELEASE_NOTES_v0.8.6.md) and the
-[GitHub v0.8.6 release](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.6).
+[`RELEASE_NOTES_v0.8.7.md`](docs/releases/RELEASE_NOTES_v0.8.7.md) and the
+[GitHub v0.8.7 release](https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.7).
 See also [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/BRAND_LOGOS.md](docs/BRAND_LOGOS.md), and the
 [GitHub releases](https://github.com/balronu/ha-mobile-fuel-stations/releases).
