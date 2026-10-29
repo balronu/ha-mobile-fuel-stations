@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.8.7] - 2026-10-29
+
+### Deutsch
+
+- Wartungsrelease ohne Änderungen an Providern, Datenmodellen, Entity-IDs oder Config Entries.
+- Öffentliche Versionsangaben und Cache-Versionen auf Stable `v0.8.7` ausgerichtet.
+- HACS-Marketplace-Validierung als GitHub-CI-Gate ergänzt.
+- `v0.8.6` bleibt als unmittelbare Stable-Rollback-Version erhalten.
+
+### English
+
+- Maintenance release with no provider, data-model, entity-ID, or Config Entry changes.
+- Public version references and cache versions aligned to Stable `v0.8.7`.
+- HACS Marketplace validation added as a GitHub CI gate.
+- `v0.8.6` remains available as the immediate Stable rollback.
+
 ## [0.8.6] - 2026-10-29
 
 ### Deutsch

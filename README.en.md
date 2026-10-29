@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.6"><img src="https://img.shields.io/badge/Stable-v0.8.6-16a34a" alt="Stable v0.8.6"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.7"><img src="https://img.shields.io/badge/Stable-v0.8.7-16a34a" alt="Stable v0.8.7"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -68,10 +68,10 @@ opening status, and destination navigation.
 
 | Channel | Version | Meaning |
 | --- | --- | --- |
-| Stable | `v0.8.6` | Current stable release |
+| Stable | `v0.8.7` | Current stable release |
 | Previous stable | `v0.8.4` | Available rollback version |
 | Historical beta | `v0.8.0-beta.8` | Previous pre-release |
-| Frontend component | `v0.8.6` | Independently versioned Lovelace component |
+| Frontend component | `v0.8.7` | Independently versioned Lovelace component |
 
 `v0.8.3` was the previous stable release. It bundles Tankerkönig, Petromap, and
 Nakordoni with automatic provider selection, country- and market-aware
@@ -82,7 +82,7 @@ but has not been confirmed through a live callback. Source, missing per-image
 license, and residual trademark risks are documented in
 [BRAND_LOGOS.md](BRAND_LOGOS.md); this is not a trademark license or endorsement.
 
-`v0.8.6` is the current stable release. It promotes the tested Nakordoni v2
+`v0.8.7` is the current stable release. It carries the tested Nakordoni v2
 compatibility with documented fuel types, confirmation-based freshness, safe
 currency comparison, stable station identity, and expanded provider
 diagnostics. Existing configurations and cards remain compatible; `v0.8.4`
@@ -93,7 +93,7 @@ remains available for rollback.
 visible station count, header and station fields, density, dividers, and the
 optional **Highlights + list** layout. Visible header sections do not create
 empty wrappers, and at most one divider appears between two visible sections.
-The Stable resource uses cache key `v=0.8.5`; existing YAML cards and Config
+The Stable resource uses cache key `v=0.8.7`; existing YAML cards and Config
 Entries remain compatible.
 
 v0.7.1 also improved discovery of integration-owned overview sensors in the
@@ -166,14 +166,14 @@ are stored per card; existing integration settings remain the legacy fallback.
 5. Open **Settings → Devices & services → Add integration** and select
    **Mobile Fuel Stations**.
 
-`v0.8.6` is the current stable HACS version. `v0.8.5` remains available as the
+`v0.8.7` is the current stable HACS version. `v0.8.6` remains available as the
 previous stable rollback. Historical betas remain in the GitHub archive.
 
 The Lovelace card is supplied and registered by the integration. The
 independently versioned frontend resource remains:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.5
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.7
 ```
 
 The versioned resource key prevents a new bundle from reusing the old URL.
