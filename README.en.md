@@ -69,10 +69,10 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.8.5` | Current stable release |
-| Beta | `v0.8.5-beta.1` | Historical Nakordoni v2 beta |
+| Beta | `v0.8.6-beta.1` | Nakordoni v2 diagnostic metadata |
 | Previous stable | `v0.8.4` | Available rollback version |
 | Historical beta | `v0.8.0-beta.8` | Previous pre-release |
-| Frontend component | `v0.8.5` | Independently versioned Lovelace component |
+| Frontend component | `v0.8.6-beta.1` | Independently versioned Lovelace component |
 
 `v0.8.3` was the previous stable release. It bundles Tankerkönig, Petromap, and
 Nakordoni with automatic provider selection, country- and market-aware
@@ -354,6 +354,12 @@ Provider coverage, prices, opening hours, quotas, and permissions can change.
 Nakordoni market coverage and HVO100 prices are not universally guaranteed.
 
 ## Administrator Nakordoni diagnostics
+
+Beta `v0.8.6-beta.1` adds dynamic coverage metadata, market-filter notices,
+anchor data, local fuel labels, and station price-freshness details to
+diagnostics. These values are optional and are not permanent country
+permissions; the v2 endpoint and existing fallback logic remain unchanged.
+See the [v0.8.6-beta.1 release notes](docs/releases/RELEASE_NOTES_v0.8.6-beta.1.md).
 
 For a targeted, non-production test, the integration registers the protected
 Home Assistant service `mobile_fuel_stations.probe_nakordoni`. Only an

@@ -138,6 +138,14 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "coverage_countries": getattr(coordinator, "nakordoni_coverage_countries", []),
             "coverage_fuels": getattr(coordinator, "nakordoni_coverage_fuels", []),
             "coverage_status": getattr(coordinator, "nakordoni_coverage_status", "unknown"),
+            "coverage_station_countries": getattr(coordinator, "nakordoni_coverage_station_countries", []),
+            "coverage_station_counts": getattr(coordinator, "nakordoni_coverage_station_counts", {}),
+            "coverage_sparse": list(getattr(getattr(coordinator, "nakordoni_response_metadata", None), "sparse_coverage", ())),
+            "coverage_measured_at": _iso(getattr(getattr(coordinator, "nakordoni_response_metadata", None), "coverage_measured_at", None)),
+            "coverage_fuel_type_note": getattr(getattr(coordinator, "nakordoni_response_metadata", None), "fuel_type_note", None),
+            "markets_filtered": getattr(getattr(coordinator, "nakordoni_response_metadata", None), "markets_filtered", None),
+            "markets_notice": getattr(getattr(coordinator, "nakordoni_response_metadata", None), "markets_notice", None),
+            "anchor": getattr(getattr(coordinator, "nakordoni_response_metadata", None), "anchor", None),
             "quota": getattr(coordinator, "diagnostic_quota", {"limit": None, "remaining": None}),
             "nakordoni_account_usage": (
                 coordinator.nakordoni_account_usage.as_diagnostics()

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.6-beta.1] - 2026-10-29
+
+### Deutsch
+
+- Ergänzt die vorhandenen Nakordoni-v2-Diagnosedaten um dynamische, ausdrücklich nicht dauerhafte Abdeckungsmetadaten (`sparse_coverage`, `measured_at`, `fuel_type_note`) sowie defensive Marktfilter-Hinweise.
+- Reicht Währungssymbole, lokale Kraftstoffnamen, Labels, Stations-Grade, frischestes Preisalter und Stations-Veraltung ergänzend an Home Assistant durch.
+- Bewahrt `confirmed_at`/`age_hours`/`stale`, `station_ref`, Preis-Währungsgrenzen, Provider-Fallbacks und bestehende Entity- und Config-Entry-Identitäten.
+
+### English
+
+- Adds the existing Nakordoni v2 diagnostics with dynamic, explicitly non-permanent coverage metadata (`sparse_coverage`, `measured_at`, `fuel_type_note`) and defensive market-filter notices.
+- Exposes currency symbols, local fuel names, labels, station grades, freshest price age, and station-level staleness as additive Home Assistant data.
+- Preserves `confirmed_at`/`age_hours`/`stale`, `station_ref`, currency-safe price comparisons, provider fallbacks, and existing entity/config-entry identities.
+
 ## [0.8.5] - 2026-10-26
 
 ### Deutsch

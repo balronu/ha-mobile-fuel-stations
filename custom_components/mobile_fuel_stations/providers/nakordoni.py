@@ -80,6 +80,12 @@ class NakordoniResponseMetadata:
     effective_radius_km: float | None = None
     requested_limit: int | None = None
     effective_limit: int | None = None
+    sparse_coverage: tuple[str, ...] = ()
+    coverage_measured_at: datetime | None = None
+    fuel_type_note: str | None = None
+    markets_filtered: int | None = None
+    markets_notice: str | None = None
+    anchor: dict[str, object] | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -205,10 +211,46 @@ def extract_market_access(value: object) -> NakordoniMarketAccess:
     )
 
 
-def _coverage_fields(data: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...], str, tuple[str, ...], tuple[tuple[str, int], ...]]:
+def _safe_timestamp(value: object) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        return _timestamp(value)
+    except ProviderResponseError:
+        return None
+
+
+def _safe_text(value: object) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _grade_keys(value: object, prices: dict[str, Any]) -> tuple[str, ...]:
+    raw = value if isinstance(value, (list, tuple, set, frozenset)) else list(value) if isinstance(value, dict) else list(prices)
+    return tuple(sorted({item.strip() for item in raw if isinstance(item, str) and item.strip()}))
+
+
+def _anchor_fields(value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    result: dict[str, object] = {}
+    for key in ("ppid", "fuel_type", "fuel_type_requested", "fuel_type_local", "fuel_type_country"):
+        text = _safe_text(value.get(key))
+        if text is not None:
+            result[key] = text
+    for key in ("lat", "lng", "radius_km"):
+        try:
+            number = _number(value.get(key), f"anchor.{key}", optional=True)
+        except ProviderResponseError:
+            number = None
+        if number is not None and isfinite(number):
+            result[key] = number
+    return result or None
+
+
+def _coverage_fields(data: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...], str, tuple[str, ...], tuple[tuple[str, int], ...], tuple[str, ...], datetime | None, str | None]:
     coverage = data.get("coverage")
     if not isinstance(coverage, dict):
-        return (), (), "unknown", (), ()
+        return (), (), "unknown", (), (), (), None, None
     countries = _market_codes(coverage.get("countries", coverage.get("markets")))
     fuels = tuple(sorted({item.strip().lower() for item in coverage.get("fuels", ()) if isinstance(item, str) and item.strip()})) if isinstance(coverage.get("fuels", ()), (list, tuple, set)) else ()
     status = coverage.get("status") if isinstance(coverage.get("status"), str) else "confirmed"
@@ -223,7 +265,10 @@ def _coverage_fields(data: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, 
         for item in raw_counts:
             if isinstance(item, dict) and isinstance(item.get("country"), str) and isinstance(item.get("count"), int) and item["count"] >= 0:
                 counts[item["country"].strip().upper()] = item["count"]
-    return countries, fuels, status, station_countries, tuple(sorted(counts.items()))
+    sparse = _market_codes(coverage.get("sparse_coverage"))
+    measured_at = _safe_timestamp(coverage.get("measured_at"))
+    fuel_type_note = _safe_text(coverage.get("fuel_type_note"))
+    return countries, fuels, status, station_countries, tuple(sorted(counts.items())), sparse, measured_at, fuel_type_note
 
 
 _SAFE_ERROR_CODES = frozenset(
@@ -419,6 +464,7 @@ def _parse_station(item: object, fuel_type: str) -> Station:
     prices = prices if isinstance(prices, dict) else {}
     quote = prices.get(fuel_type)
     quote = quote if isinstance(quote, dict) else {}
+    grades = _grade_keys(item.get("grades"), prices)
     street, house_number, postcode, place = _address_fields(item)
     price = _number(quote.get("price"), "prices.price", optional=True)
     age_hours = _number(quote.get("age_hours"), "prices.age_hours", optional=True)
@@ -427,6 +473,13 @@ def _parse_station(item: object, fuel_type: str) -> Station:
     stale = quote.get("stale") if isinstance(quote.get("stale"), bool) else None
     if age_hours is not None and age_hours >= NAKORDONI_STALE_AFTER_HOURS:
         stale = True
+    freshest_age_hours = _number(item.get("freshest_age_hours"), "freshest_age_hours", optional=True)
+    if freshest_age_hours is not None and freshest_age_hours < 0:
+        freshest_age_hours = None
+    station_stale = item.get("stale") if isinstance(item.get("stale"), bool) else None
+    currency_symbol = _safe_text(quote.get("currency_symbol"))
+    local_name = _safe_text(quote.get("local_name"))
+    label = _safe_text(quote.get("label"))
     return Station(
         station_id=station_ref,
         name=_text(item.get("name")),
@@ -451,6 +504,12 @@ def _parse_station(item: object, fuel_type: str) -> Station:
         requested_fuel=fuel_type,
         fuel_prices={fuel_type: price} if price is not None else None,
         fuel_currencies={fuel_type: _text(quote.get("currency")) or None},
+        fuel_currency_symbols={fuel_type: currency_symbol} if currency_symbol is not None else None,
+        fuel_local_names={fuel_type: local_name} if local_name is not None else None,
+        fuel_labels={fuel_type: label} if label is not None else None,
+        fuel_grade_keys=grades or None,
+        freshest_age_hours=freshest_age_hours,
+        station_stale=station_stale,
     )
 
 
@@ -613,7 +672,10 @@ class NakordoniProvider:
                     raise exception
                 notices = data.get("notices")
                 market_access = extract_market_access(payload)
-                coverage_countries, coverage_fuels, coverage_status, station_countries, station_counts = _coverage_fields(data)
+                coverage_countries, coverage_fuels, coverage_status, station_countries, station_counts, sparse_coverage, measured_at, fuel_type_note = _coverage_fields(data)
+                anchor = _anchor_fields(data.get("anchor"))
+                markets_filtered = data.get("markets_filtered") if isinstance(data.get("markets_filtered"), int) and data.get("markets_filtered") >= 0 else None
+                markets_notice = _safe_text(data.get("markets_notice"))
                 if not coverage_countries and data["stations"]:
                     coverage_countries = tuple(
                         sorted({station.country_code for station in (
@@ -654,6 +716,12 @@ class NakordoniProvider:
                     effective_radius_km=radius,
                     requested_limit=int(query.station_count),
                     effective_limit=limit,
+                    sparse_coverage=sparse_coverage,
+                    coverage_measured_at=measured_at,
+                    fuel_type_note=fuel_type_note,
+                    markets_filtered=markets_filtered,
+                    markets_notice=markets_notice,
+                    anchor=anchor,
                 )
                 try:
                     stations = [_parse_station(item, query.fuel_type) for item in data["stations"]]

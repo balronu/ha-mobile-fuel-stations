@@ -68,10 +68,10 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.8.5` | Aktuelle stabile Version |
-| Beta | `v0.8.5-beta.1` | Historische Nakordoni-v2-Beta |
+| Beta | `v0.8.6-beta.1` | Nakordoni-v2-Diagnosemetadaten |
 | Vorherige Stable | `v0.8.4` | Verfügbare Rollback-Version |
 | Historische Beta | `v0.8.0-beta.8` | Vorangegangene Pre-release |
-| Frontend-Komponente | `v0.8.5` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.8.6-beta.1` | Unabhängig versionierte Lovelace-Komponente |
 
 `v0.8.3` war die vorherige stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
@@ -456,6 +456,12 @@ nicht pauschal garantiert. Die Integration ersetzt keine verbindliche
 Preis- oder Verfügbarkeitsauskunft.
 
 ## Administrator-Diagnose für Nakordoni
+
+Die Beta `v0.8.6-beta.1` ergänzt die Diagnoseattribute um dynamische Coverage-
+Metadaten, Marktfilter-Hinweise, Anchor-Daten sowie lokale Kraftstofflabels und
+Stations-Preisfrische. Diese Werte sind optional und keine dauerhafte
+Länderfreigabe; der v2-Endpunkt und die bestehende Fallback-Logik bleiben
+unverändert. Details stehen in den [v0.8.6-beta.1 Release Notes](docs/releases/RELEASE_NOTES_v0.8.6-beta.1.md).
 
 Für einen gezielten, nicht produktiven Test steht der geschützte HA-Service
 `mobile_fuel_stations.probe_nakordoni` zur Verfügung. Er ist nur für

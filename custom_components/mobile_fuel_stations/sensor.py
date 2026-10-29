@@ -303,6 +303,12 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
             "provider_effective_limit": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "effective_limit", None),
             "coverage_station_countries": list(getattr(self.coordinator, "nakordoni_coverage_station_countries", ())),
             "coverage_station_counts": dict(getattr(self.coordinator, "nakordoni_coverage_station_counts", ())),
+            "coverage_sparse": list(getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "sparse_coverage", ())),
+            "coverage_measured_at": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "coverage_measured_at", None).isoformat() if getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "coverage_measured_at", None) else None,
+            "coverage_fuel_type_note": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "fuel_type_note", None),
+            "provider_markets_filtered": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "markets_filtered", None),
+            "provider_markets_notice": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "markets_notice", None),
+            "provider_anchor": getattr(getattr(self.coordinator, "nakordoni_response_metadata", None), "anchor", None),
         }
 
 

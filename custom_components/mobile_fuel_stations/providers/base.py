@@ -39,6 +39,12 @@ class Station:
     fuel_prices: dict[str, float | None] | None = None
     fuel_currencies: dict[str, str | None] | None = None
     fuel_fallbacks: dict[str, bool] | None = None
+    fuel_currency_symbols: dict[str, str | None] | None = None
+    fuel_local_names: dict[str, str | None] | None = None
+    fuel_labels: dict[str, str | None] | None = None
+    fuel_grade_keys: tuple[str, ...] | None = None
+    freshest_age_hours: float | None = None
+    station_stale: bool | None = None
 
 
 @dataclass(slots=True, frozen=True)
