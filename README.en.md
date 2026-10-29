@@ -69,7 +69,6 @@ opening status, and destination navigation.
 | Channel | Version | Meaning |
 | --- | --- | --- |
 | Stable | `v0.8.6` | Current stable release |
-| Beta | `v0.8.6-beta.1` | Nakordoni v2 diagnostic metadata |
 | Previous stable | `v0.8.4` | Available rollback version |
 | Historical beta | `v0.8.0-beta.8` | Previous pre-release |
 | Frontend component | `v0.8.6` | Independently versioned Lovelace component |

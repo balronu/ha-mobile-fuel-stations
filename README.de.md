@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.5"><img src="https://img.shields.io/badge/Stable-v0.8.5-16a34a" alt="Stable v0.8.5"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.6"><img src="https://img.shields.io/badge/Stable-v0.8.6-16a34a" alt="Stable v0.8.6"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -67,11 +67,10 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.8.5` | Aktuelle stabile Version |
-| Beta | `v0.8.5-beta.1` | Historische Nakordoni-v2-Beta |
+| Stable | `v0.8.6` | Aktuelle stabile Version |
 | Vorherige Stable | `v0.8.4` | Verfügbare Rollback-Version |
 | Historische Beta | `v0.8.0-beta.8` | Vorangegangene Pre-release |
-| Frontend-Komponente | `v0.8.5` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.8.6` | Unabhängig versionierte Lovelace-Komponente |
 
 `v0.8.3` war die vorherige stabile Veröffentlichung. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
@@ -83,7 +82,7 @@ experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
 festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
 
-`v0.8.5` ist die aktuelle stabile Veröffentlichung. Sie übernimmt die in der
+`v0.8.6` ist die aktuelle stabile Veröffentlichung. Sie übernimmt die in der
 Beta getestete Nakordoni-v2-Kompatibilität mit dokumentierten Kraftstoffarten,
 bestätigungsbasierter Preisfrische, sicherem Währungsvergleich, stabiler
 Stationsidentifikation und erweiterter Providerdiagnose. Bestehende
@@ -96,7 +95,7 @@ Sortierung, Kraftstoff für die Preissortierung, sichtbare Tankstellenanzahl,
 Kopf- und Stationsfelder, Dichte, Trennlinien und das optionale Layout
 **Highlights + Liste**. Sichtbare Kopfbereich-Sektionen erzeugen keine leeren
 Wrapper und zwischen zwei sichtbaren Sektionen erscheint maximal eine
-Trennlinie. Die Stable-Ressource verwendet `v=0.8.5`; bestehende YAML-Karten
+Trennlinie. Die Stable-Ressource verwendet `v=0.8.6`; bestehende YAML-Karten
 und Config Entries bleiben kompatibel.
 
 v0.7.1 verbesserte außerdem die Erkennung integrationszugehöriger Overview-
@@ -188,7 +187,7 @@ gespeichert; bestehende Integrationsoptionen bleiben Legacy-Fallback.
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.8.5` ist die aktuelle stabile HACS-Version. `v0.8.4` bleibt als
+`v0.8.6` ist die aktuelle stabile HACS-Version. `v0.8.5` bleibt als
 vorherige Stable-Rollback-Version verfügbar. Historische Betas bleiben im
 GitHub-Archiv erhalten.
 
