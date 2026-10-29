@@ -68,7 +68,6 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
 | Stable | `v0.8.6` | Aktuelle stabile Version |
-| Beta | `v0.8.6-beta.1` | Nakordoni-v2-Diagnosemetadaten |
 | Vorherige Stable | `v0.8.4` | Verfügbare Rollback-Version |
 | Historische Beta | `v0.8.0-beta.8` | Vorangegangene Pre-release |
 | Frontend-Komponente | `v0.8.6` | Unabhängig versionierte Lovelace-Komponente |
