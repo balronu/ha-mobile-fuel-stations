@@ -68,6 +68,7 @@ jobs:
 
       - name: Verify the requested plugin source commit
         run: |
+          git fetch --no-tags --depth=1 origin "$PLUGIN_SHA"
           git cat-file -e "$PLUGIN_SHA^{commit}"
           git diff --quiet "$PLUGIN_SHA" -- tessera-plugin
           test -f tessera-plugin/tessera-plugin.yaml
