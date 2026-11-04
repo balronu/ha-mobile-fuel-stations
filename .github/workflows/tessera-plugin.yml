@@ -53,6 +53,7 @@ jobs:
               assert data["app"]["name"] and data["app"]["summary"]
               for key in ("details", "fuel", "open", "closed", "status_unknown", "no_address", "tap_to_switch"):
                   assert data["screen"][key]
+              assert data["app"]["card_stations"]
           preview = yaml.safe_load((p / "preview.yaml").read_text())
           assert "sensor.mobile_fuel_stations_overview" in preview["states"]
           assert "sensor.mobile_fuel_stations_empty" in preview["states"]

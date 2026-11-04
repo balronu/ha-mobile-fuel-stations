@@ -15,13 +15,13 @@
     "closed": "Geschlossen",
     "status_unknown": "Öffnungsstatus unbekannt",
     "no_address": "Adresse nicht verfügbar",
-    "tap_to_switch": "Tippen: Ansicht wechseln; unten: Kraftstoff wechseln",
-    "card_stations": "Tankstellen-Details"
+    "tap_to_switch": "Tippen: Ansicht wechseln; unten: Kraftstoff wechseln"
   },
   "app": {
     "name": "Mobile Fuel Stations",
     "summary": "Tankstellenpreise aus der Mobile-Fuel-Stations-Integration in Home Assistant.",
     "tile_highlights": "Nächste und günstigste Tankstelle",
-    "highlights_example": "Nächste und günstigste Kraftstoffpreise"
+    "highlights_example": "Nächste und günstigste Kraftstoffpreise",
+    "card_stations": "Tankstellen-Details"
   }
 }

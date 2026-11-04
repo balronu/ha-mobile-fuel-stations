@@ -15,13 +15,13 @@
     "closed": "Closed",
     "status_unknown": "Opening status unknown",
     "no_address": "Address unavailable",
-    "tap_to_switch": "Tap: switch view; lower area: switch fuel",
-    "card_stations": "Station details"
+    "tap_to_switch": "Tap: switch view; lower area: switch fuel"
   },
   "app": {
     "name": "Mobile Fuel Stations",
     "summary": "Nearby fuel prices from the Mobile Fuel Stations Home Assistant integration.",
     "tile_highlights": "Nearest and cheapest stations",
-    "highlights_example": "Nearest and cheapest fuel prices"
+    "highlights_example": "Nearest and cheapest fuel prices",
+    "card_stations": "Station details"
   }
 }
