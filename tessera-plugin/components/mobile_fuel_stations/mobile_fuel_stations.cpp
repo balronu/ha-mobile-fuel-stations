@@ -60,6 +60,7 @@ class HighlightsTile : public tessera::Tile {
     ui::set_text(cheapest_, "");
     ui::set_text(status_, "");
     expanded_ = expanded;
+    show_station_titles_(false);
   }
 
   void on_state(JsonObjectConst data) override {
@@ -70,11 +71,13 @@ class HighlightsTile : public tessera::Tile {
       ui::set_text(nearest_, plugin_->text("no_data"));
       ui::set_text(cheapest_, "");
       ui::set_text(status_, "");
+      show_station_titles_(false);
       return;
     }
 
     const int count = attrs["station_count"] | 0;
     const bool stale = attrs["data_stale"] | false;
+    show_station_titles_(count > 0);
     if (count <= 0) {
       ui::set_text(nearest_, plugin_->text("unavailable"));
       ui::set_text(cheapest_, "");
@@ -99,6 +102,16 @@ class HighlightsTile : public tessera::Tile {
   }
 
  private:
+  void show_station_titles_(bool has_stations) {
+    for (auto *title : {nearest_title_, cheapest_title_}) {
+      if (expanded_ && has_stations) {
+        lv_obj_remove_flag(title, LV_OBJ_FLAG_HIDDEN);
+      } else {
+        lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
+      }
+    }
+  }
+
   static std::string station_line(const std::string &label, JsonObjectConst data,
                                   const char *name_key, const char *price_key,
                                   const char *distance_key, const char *currency_key) {
@@ -107,13 +120,14 @@ class HighlightsTile : public tessera::Tile {
     const double distance = data[distance_key] | -1.0;
     const double price = data[price_key] | -1.0;
     char line[160];
+    const char *prefix = label.empty() ? "" : ": ";
     if (std::isfinite(price) && price > 0 && std::isfinite(distance) && distance >= 0) {
-      std::snprintf(line, sizeof(line), "%s: %.30s %.3f %s / %.1f km",
-                    label.c_str(), name, price, currency, distance);
+      std::snprintf(line, sizeof(line), "%s%s%.30s %.3f %s / %.1f km",
+                    label.c_str(), prefix, name, price, currency, distance);
     } else if (std::isfinite(distance) && distance >= 0) {
-      std::snprintf(line, sizeof(line), "%s: %.40s / %.1f km", label.c_str(), name, distance);
+      std::snprintf(line, sizeof(line), "%s%s%.40s / %.1f km", label.c_str(), prefix, name, distance);
     } else {
-      std::snprintf(line, sizeof(line), "%s: %.50s", label.c_str(), name);
+      std::snprintf(line, sizeof(line), "%s%s%.50s", label.c_str(), prefix, name);
     }
     return line;
   }
