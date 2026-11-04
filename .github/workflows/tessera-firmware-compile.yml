@@ -1,0 +1,251 @@
+name: Tessera firmware compile-only
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tessera-firmware-compile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ESPHOME_VERSION: 2026.9.0
+  PLUGIN_SHA: 489c8c477c8b597a43da91ded8cc4d7cc8860f79
+  WASTE_COLLECTION_SHA: d6a93b79c993c7eb908f1d48da41d17147eb31b7
+  DISPLAY_PACKAGE_REF: screens-v0.4.97
+
+jobs:
+  source-checks:
+    name: Tests and Tessera checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out requested development branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run repository tests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pytest-asyncio pytest-homeassistant-custom-component aiohttp homeassistant==2026.10.1
+          pytest -q
+
+      - name: Run frontend tests and build
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Verify generated frontend is clean
+        run: |
+          git diff --exit-code -- custom_components/mobile_fuel_stations/frontend/mobile-fuel-stations-card.js
+          git diff --check
+
+      - name: Verify the requested plugin source commit
+        run: |
+          git cat-file -e "$PLUGIN_SHA^{commit}"
+          git diff --quiet "$PLUGIN_SHA" -- tessera-plugin
+          test -f tessera-plugin/tessera-plugin.yaml
+          test -f tessera-plugin/components/mobile_fuel_stations/mobile_fuel_stations.cpp
+          grep -Fq 'HighlightsTile' tessera-plugin/components/mobile_fuel_stations/mobile_fuel_stations.cpp
+          grep -Fq 'MobileFuelStationsCard' tessera-plugin/components/mobile_fuel_stations/mobile_fuel_stations.cpp
+          grep -Fq 'on_tap()' tessera-plugin/components/mobile_fuel_stations/mobile_fuel_stations.cpp
+          grep -Fq 'open_card' tessera-plugin/components/mobile_fuel_stations/mobile_fuel_stations.cpp
+          grep -Fq '"stations"' tessera-plugin/components/mobile_fuel_stations/mobile_fuel_stations.cpp
+
+      - name: Install Tessera checker dependency
+        run: python -m pip install pyyaml
+
+      - name: Run official Tessera contract checker
+        run: |
+          git clone --depth 1 https://github.com/MaxGramser/tessera-plugins.git /tmp/tessera-plugins
+          python /tmp/tessera-plugins/tools/check.py "$GITHUB_WORKSPACE/tessera-plugin"
+
+      - name: Upload source-check summary
+        if: always()
+        run: |
+          {
+            echo "repository_commit=$(git rev-parse HEAD)"
+            echo "plugin_sha=$PLUGIN_SHA"
+            echo "esphome_version=$ESPHOME_VERSION"
+            echo "checks=pytest,official-tessera-check,component-symbol-check"
+          } > source-check-summary.txt
+
+      - name: Store source-check summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tessera-source-check-summary
+          path: source-check-summary.txt
+
+  firmware:
+    name: Guition compile-only firmware
+    needs: source-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out requested development branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install ESPHome
+        run: python -m pip install --disable-pip-version-check "esphome==$ESPHOME_VERSION"
+
+      - name: Create isolated compile-test configuration
+        env:
+          BUILD_ROOT: ${{ runner.temp }}/tessera-build-only
+        run: |
+          python - <<'PY'
+          import os
+          import textwrap
+          from pathlib import Path
+
+          root = Path(os.environ["BUILD_ROOT"])
+          root.mkdir(parents=True, exist_ok=True)
+          (root / "secrets.yaml").write_text(
+              'wifi_ssid: "build-only-no-network"\n'
+              'wifi_password: "build-only-no-network-password"\n',
+              encoding="utf-8",
+          )
+          (root / "esszimmer-build-only.local.yaml").write_text("{}\n", encoding="utf-8")
+          (root / "esszimmer-build-only.plugins.yaml").write_text(
+              textwrap.dedent(f'''# Disposable compile-only sidecar; never used for upload.
+          packages:
+            plugin_waste_collection:
+              url: https://github.com/maxgramser/tessera-plugins
+              ref: {os.environ["WASTE_COLLECTION_SHA"]}
+              refresh: never
+              files:
+                - path: plugins/waste_collection/plugin.yaml
+                  vars:
+                    CALENDAR: calendar.restabfalltonne
+            plugin_mobile_fuel_stations:
+              url: https://github.com/balronu/ha-mobile-fuel-stations
+              ref: {os.environ["PLUGIN_SHA"]}
+              refresh: never
+              files:
+                - path: tessera-plugin/plugin.yaml
+          external_components:
+            - source:
+                type: git
+                url: https://github.com/maxgramser/tessera-plugins
+                ref: {os.environ["WASTE_COLLECTION_SHA"]}
+                path: plugins/waste_collection/components
+              refresh: never
+            - source:
+                type: git
+                url: https://github.com/balronu/ha-mobile-fuel-stations
+                ref: {os.environ["PLUGIN_SHA"]}
+                path: tessera-plugin/components
+              refresh: never
+          '''), encoding="utf-8")
+          (root / "esszimmer-build.yaml").write_text(
+              textwrap.dedent(f'''# Disposable compile-only copy. No device address or upload command is configured.
+          substitutions:
+            DEVICE_NAME: esszimmer-build-only
+            DEVICE_FRIENDLY_NAME: Büro build-only
+            LANGUAGE: de
+            SWIPE_PAGES_DEFAULT: "1"
+            GITHUB_REF: {os.environ["DISPLAY_PACKAGE_REF"]}
+          esphome:
+            name: esszimmer-build-only
+            friendly_name: Büro build-only
+          packages:
+            display:
+              url: https://github.com/MaxGramser/homeassistant_espscreen
+              ref: {os.environ["DISPLAY_PACKAGE_REF"]}
+              files: [packages/guition.yaml]
+              refresh: 0s
+            local_overrides: !include esszimmer-build-only.local.yaml
+            tessera_plugins: !include esszimmer-build-only.plugins.yaml
+          api:
+            encryption:
+              key: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+          ota:
+            - platform: esphome
+              password: build-only-ota-placeholder
+          wifi:
+            ssid: !secret wifi_ssid
+            password: !secret wifi_password
+            power_save_mode: none
+            ap:
+              ssid: build-only-not-for-use
+              password: build-only-ap-placeholder
+          captive_portal:
+          '''), encoding="utf-8")
+          print(f"Wrote isolated configuration to {root}")
+          PY
+
+      - name: Validate generated ESPHome configuration
+        env:
+          BUILD_ROOT: ${{ runner.temp }}/tessera-build-only
+        run: |
+          esphome config "$BUILD_ROOT/esszimmer-build.yaml" | tee "$BUILD_ROOT/config.log"
+
+      - name: Compile firmware only
+        env:
+          BUILD_ROOT: ${{ runner.temp }}/tessera-build-only
+          ESPHOME_DATA_DIR: ${{ runner.temp }}/tessera-build-only/esphome-data
+          ESPHOME_BUILD_PATH: ${{ runner.temp }}/tessera-build-only/build
+          PLATFORMIO_CORE_DIR: ${{ runner.temp }}/tessera-build-only/platformio
+          ESPHOME_DEFAULT_COMPILE_PROCESS_LIMIT: '2'
+        run: |
+          set -o pipefail
+          esphome compile "$BUILD_ROOT/esszimmer-build.yaml" 2>&1 | tee "$BUILD_ROOT/compile.log"
+
+      - name: Verify and hash firmware artefacts
+        env:
+          BUILD_ROOT: ${{ runner.temp }}/tessera-build-only
+        run: |
+          set -euo pipefail
+          mapfile -t images < <(find "$BUILD_ROOT/build" -type f \( -name 'firmware.factory.bin' -o -name 'firmware.ota.bin' -o -name 'firmware.bin' \) -print | sort)
+          test "${#images[@]}" -gt 0
+          {
+            echo "repository_commit=$(git rev-parse HEAD)"
+            echo "plugin_sha=$PLUGIN_SHA"
+            echo "esphome_version=$ESPHOME_VERSION"
+            echo "platform=ESP32-S3 / ESP-IDF"
+            echo "display=Guition 480x480, technical compile-test only"
+            echo "upload_command=none"
+            for image in "${images[@]}"; do
+              stat --format='file=%n size_bytes=%s' "$image"
+              sha256sum "$image"
+            done
+          } | tee "$BUILD_ROOT/build-metadata.txt"
+
+      - name: Upload compile-test firmware artefact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tessera-firmware-compile-test
+          path: |
+            ${{ runner.temp }}/tessera-build-only/build/**/firmware.factory.bin
+            ${{ runner.temp }}/tessera-build-only/build/**/firmware.ota.bin
+            ${{ runner.temp }}/tessera-build-only/build/**/firmware.bin
+            ${{ runner.temp }}/tessera-build-only/build-metadata.txt
+            ${{ runner.temp }}/tessera-build-only/config.log
+            ${{ runner.temp }}/tessera-build-only/compile.log
+          if-no-files-found: error
