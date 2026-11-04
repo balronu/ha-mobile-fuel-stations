@@ -90,6 +90,7 @@ class HighlightsTile : public tessera::Tile {
     const int count = attrs["station_count"] | 0;
     const bool stale = attrs["data_stale"] | false;
     show_station_titles_(count > 0);
+    show_cheapest_ = false;
     if (count <= 0) {
       nearest_line_ = plugin_->text("unavailable");
       cheapest_line_.clear();
@@ -112,7 +113,7 @@ class HighlightsTile : public tessera::Tile {
   // A tap cycles the highlighted station when only one row fits.
   // Tessera dispatches tile taps through on_tap(), not LVGL label callbacks.
   void on_tap() override {
-    if (!single_row_) return;
+    if (!single_row_ || cheapest_line_.empty()) return;
     show_cheapest_ = !show_cheapest_;
     ui::set_text(nearest_, show_cheapest_ ? cheapest_line_ : nearest_line_);
   }
