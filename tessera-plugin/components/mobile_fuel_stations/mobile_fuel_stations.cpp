@@ -53,10 +53,12 @@ class HighlightsTile : public tessera::Tile {
       ui::set_text(nearest_, plugin_->text("unavailable"));
       ui::set_text(cheapest_, "");
     } else {
-      ui::set_text(nearest_, station_line(plugin_->text("nearest"),
-                                          attrs["nearest_station"].as<JsonObjectConst>()));
-      ui::set_text(cheapest_, station_line(plugin_->text("cheapest"),
-                                           attrs["cheapest_station"].as<JsonObjectConst>()));
+      ui::set_text(nearest_, station_line(plugin_->text("nearest"), data,
+                                         "nearest_name", "nearest_price",
+                                         "nearest_distance", "nearest_currency"));
+      ui::set_text(cheapest_, station_line(plugin_->text("cheapest"), data,
+                                          "cheapest_name", "cheapest_price",
+                                          "cheapest_distance", "cheapest_currency"));
     }
     ui::set_text(status_, stale ? plugin_->text("stale") : "");
   }
@@ -69,12 +71,13 @@ class HighlightsTile : public tessera::Tile {
   }
 
  private:
-  static std::string station_line(const char *label, JsonObjectConst station) {
-    if (!station) return std::string(label) + ": --";
-    const char *name = station["station_name"] | "--";
-    const char *currency = station["currency"] | "";
-    const double distance = station["distance"] | -1.0;
-    const double price = station["price"] | -1.0;
+  static std::string station_line(const char *label, JsonObjectConst data,
+                                  const char *name_key, const char *price_key,
+                                  const char *distance_key, const char *currency_key) {
+    const char *name = data[name_key] | "--";
+    const char *currency = data[currency_key] | "";
+    const double distance = data[distance_key] | -1.0;
+    const double price = data[price_key] | -1.0;
     char line[160];
     if (std::isfinite(price) && price > 0 && std::isfinite(distance) && distance >= 0) {
       std::snprintf(line, sizeof(line), "%s: %.30s %.3f %s / %.1f km",
