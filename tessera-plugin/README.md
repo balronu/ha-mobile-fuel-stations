@@ -8,7 +8,11 @@ This **beta-stage** Tessera plugin shows the nearest and cheapest station from t
 
 The plugin reads the Mobile Fuel Stations overview sensor's `nearest_station`, `cheapest_station`, `station_count` and `data_stale` attributes. It does **not** call Tankerkönig, Petromap or Nakordoni directly and never accesses provider credentials. All API quotas and GPS updates remain controlled by Home Assistant.
 
-## Install the beta from GitHub
+## Set up
+
+Install this read-only beta using the steps below. No additional Home Assistant template sensor is required.
+
+### Install the beta from GitHub
 
 This is a **development-branch beta test**, not a published GitHub Release or a Tessera community-index listing.
 
