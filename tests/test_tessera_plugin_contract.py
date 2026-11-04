@@ -17,10 +17,12 @@ def test_tessera_manifest_exposes_supported_resize_range_and_card():
 
 
 def test_highlights_tile_opens_detail_card_for_every_supported_size():
-    method = SOURCE.split("  void on_tap() override {", 1)[1].split("  void on_theme() override", 1)[0]
+    tile_source = SOURCE.split("class HighlightsTile", 1)[1].split("class MobileFuelStationsCard", 1)[0]
+    method = tile_source.split("  void on_tap() override {", 1)[1].split("  void on_theme() override", 1)[0]
 
     assert 'tessera::open_card(plugin_->plugin_id(), "stations", entity_, tile_);' in method
     assert "single_row_" not in method
+    assert "show_cheapest_" not in tile_source
 
 
 def test_plugin_setup_registers_matching_tile_and_card_ids():

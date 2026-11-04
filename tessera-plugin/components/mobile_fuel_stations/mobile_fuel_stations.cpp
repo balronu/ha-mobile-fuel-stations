@@ -177,7 +177,7 @@ class HighlightsTile : public tessera::Tile {
     }
     if (!snapshot_.fuels.empty() && selected_fuel_ >= snapshot_.fuels.size()) selected_fuel_ = 0;
     nearest_line_ = station_line(snapshot_.nearest); cheapest_line_ = station_line(selected_station());
-    ui::set_text(nearest_, fit(single_row_ && show_cheapest_ ? cheapest_line_ : nearest_line_, lv_obj_get_width(nearest_), Font::BODY_LARGE));
+    ui::set_text(nearest_, fit(nearest_line_, lv_obj_get_width(nearest_), Font::BODY_LARGE));
     ui::set_text(cheapest_, fit(cheapest_line_, lv_obj_get_width(cheapest_), Font::BODY_LARGE));
     std::string status = snapshot_.stale ? plugin_->text("stale") : "";
     if (selected_fuel_ < snapshot_.fuels.size()) status = snapshot_.fuels[selected_fuel_] + (status.empty() ? "" : " - " + status);
