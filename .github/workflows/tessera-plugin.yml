@@ -25,7 +25,15 @@ jobs:
           git clone --depth 1 https://github.com/MaxGramser/tessera-plugins.git /tmp/tessera-plugins
       - name: Validate plugin against Tessera's official checker
         run: |
-          python /tmp/tessera-plugins/tools/check.py "$GITHUB_WORKSPACE/tessera-plugin"
+          set -o pipefail
+          python /tmp/tessera-plugins/tools/check.py "$GITHUB_WORKSPACE/tessera-plugin" 2>&1 | tee tessera-check.log
+      - name: Upload validator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tessera-validator-log
+          path: tessera-check.log
+          if-no-files-found: ignore
       - name: Parse local YAML and translation JSON
         run: |
           python - <<'PY'
@@ -82,12 +90,15 @@ jobs:
         env:
           TESSERA_REF: dev
         run: |
-          python /tmp/tessera-plugins/tools/preview.py "$GITHUB_WORKSPACE/tessera-plugin" --board guition --strict
+          set -o pipefail
+          python /tmp/tessera-plugins/tools/preview.py "$GITHUB_WORKSPACE/tessera-plugin" --board guition --strict 2>&1 | tee tessera-preview.log
       - name: Upload preview diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tessera-preview
-          path: tessera-plugin/.preview/
-          if-no-files-found: error
+          path: |
+            tessera-plugin/.preview/
+            tessera-preview.log
+          if-no-files-found: warn
           include-hidden-files: true
