@@ -1,0 +1,25 @@
+id: mobile_fuel_stations
+version: 0.1.0
+api: "0.24"
+icon: gas-station
+maintainer: balronu
+license: MIT
+stage: beta
+topics: [travel, money]
+requires:
+  esphome: 2026.6.2
+boards: any
+flash_kb: 8
+
+permissions:
+  read_entities: ["{overview}"]
+
+tiles:
+  - id: highlights
+    name: tile_highlights
+    icon: gas-station
+    sizes: { min: 2x1, max: 3x2 }
+    memory: 1400
+    domains: [sensor]
+    attributes: [nearest_station, cheapest_station, data_stale, fuel_type, station_count]
+    example: highlights_example
