@@ -11,9 +11,6 @@ requires:
 boards: any
 flash_kb: 8
 
-permissions:
-  read_entities: ["{overview}"]
-
 tiles:
   - id: highlights
     name: tile_highlights
