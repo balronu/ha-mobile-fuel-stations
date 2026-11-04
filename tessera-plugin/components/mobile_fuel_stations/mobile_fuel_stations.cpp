@@ -225,7 +225,7 @@ class MobileFuelStationsCard : public tessera::Card {
     ui::set_text(address_, station.open_known ? (station.open ? plugin_->text("open") : plugin_->text("closed")) : plugin_->text("status_unknown"));
     std::string status = snapshot_.fuels.empty() ? std::string() : std::string(plugin_->text("fuel")) + ": " + snapshot_.fuels[selected_fuel_];
     if (station.age_hours >= 0) { char age[48]; std::snprintf(age, sizeof(age), " - %.1f h", station.age_hours); status += age; }
-    if (station.stale || snapshot_.stale) status += " - " + plugin_->text("stale");
+    if (station.stale || snapshot_.stale) status += std::string(" - ") + plugin_->text("stale");
     ui::set_text(status_, fit(status, lv_obj_get_width(status_), Font::BODY));
   }
   const MobileFuelStations *plugin_; lv_obj_t *parent_{nullptr}, *title_{nullptr}, *nearest_{nullptr}, *cheapest_{nullptr}, *address_{nullptr}, *status_{nullptr};
