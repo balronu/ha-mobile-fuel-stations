@@ -44,10 +44,20 @@ jobs:
           manifest = yaml.safe_load((p / "tessera-plugin.yaml").read_text())
           assert manifest["id"] == "mobile_fuel_stations"
           assert len(manifest["tiles"][0]["fields"]) == 8
+          assert manifest["tiles"][0]["sizes"] == {"min": "1x1", "max": "4x4"}
+          assert "cheapest_stations_by_fuel" in manifest["tiles"][0]["has_attributes"]
+          assert "fuel_types" in manifest["tiles"][0]["attributes"]
+          assert any(card["id"] == "stations" for card in manifest["cards"])
           for language in ("de", "en"):
               data = json.loads((p / "translations" / f"{language}.json").read_text())
               assert data["app"]["name"] and data["app"]["summary"]
-          yaml.safe_load((p / "preview.yaml").read_text())
+              for key in ("details", "fuel", "open", "closed", "status_unknown", "no_address", "tap_to_switch"):
+                  assert data["screen"][key]
+          preview = yaml.safe_load((p / "preview.yaml").read_text())
+          assert "sensor.mobile_fuel_stations_overview" in preview["states"]
+          assert "sensor.mobile_fuel_stations_empty" in preview["states"]
+          assert "sensor.mobile_fuel_stations_stale" in preview["states"]
+          assert preview["states"]["sensor.mobile_fuel_stations_overview"]["attributes"]["fuel_types"]
           print("YAML and translations parsed")
           PY
 

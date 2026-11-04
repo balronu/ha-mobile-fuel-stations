@@ -7,7 +7,16 @@
     "nearest": "Nearest",
     "cheapest": "Cheapest",
     "stale": "Cached data",
-    "unavailable": "No current stations"
+    "unavailable": "No current stations",
+    "name": "Mobile Fuel Stations",
+    "details": "Stations",
+    "fuel": "Fuel",
+    "open": "Open",
+    "closed": "Closed",
+    "status_unknown": "Opening status unknown",
+    "no_address": "Address unavailable",
+    "tap_to_switch": "Tap: switch view; lower area: switch fuel",
+    "card_stations": "Station details"
   },
   "app": {
     "name": "Mobile Fuel Stations",

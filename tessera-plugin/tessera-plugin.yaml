@@ -18,8 +18,8 @@ tiles:
     sizes: { min: 1x1, max: 4x4 }
     memory: 1400
     domains: [sensor]
-    has_attributes: [nearest_station, cheapest_station]
-    attributes: [data_stale, station_count]
+    has_attributes: [nearest_station, cheapest_station, cheapest_stations_by_fuel]
+    attributes: [data_stale, station_count, fuel_types, last_successful_update]
     fields:
       nearest_name: nearest_station.station_name
       nearest_price: { path: nearest_station.price, as: number }
@@ -30,3 +30,6 @@ tiles:
       cheapest_distance: { path: cheapest_station.distance, as: number }
       cheapest_currency: cheapest_station.currency
     example: highlights_example
+
+cards:
+  - { id: stations, name: card_stations, wide: false }
