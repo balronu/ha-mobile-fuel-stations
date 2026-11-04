@@ -58,6 +58,8 @@ jobs:
       - name: Fetch upstream Tessera plugin bench
         run: |
           git clone --depth 1 https://github.com/MaxGramser/tessera-plugins.git /tmp/tessera-plugins
+      - name: Prepare Tessera host bench
+        run: python /tmp/tessera-plugins/tools/preview.py --setup
       - name: Work around ESPHome 2026.9 host-output scaling regression
         run: |
           python - <<'PY'
@@ -75,7 +77,6 @@ jobs:
         env:
           TESSERA_REF: dev
         run: |
-          python /tmp/tessera-plugins/tools/preview.py --setup
           python /tmp/tessera-plugins/tools/preview.py "$GITHUB_WORKSPACE/tessera-plugin" --screen 480x320@3.5 --grid max
       - name: Upload preview diagnostics
         if: always()
