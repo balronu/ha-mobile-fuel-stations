@@ -24,6 +24,8 @@ This is a **development-branch beta test**, not a published GitHub Release or a 
 4. Check the plugin details and add it to a test display. Building a Tessera plugin recompiles the display firmware; do not overwrite a production display without reviewing the proposed build.
 5. Add the **Nearest and cheapest stations** tile in Tessera's layout editor, select the Mobile Fuel Stations overview sensor, and check the results.
 
+The Screen Manager shows the live tile preview and its resize/remove controls only after this overview sensor is assigned. Without an assignment it intentionally shows the manifest example text.
+
 The plugin requires a Tessera firmware/app build supporting **plugin API 0.24** (currently tested against Tessera's `dev` firmware). If your installed Tessera version does not support that API, do not force installation: update to a compatible Tessera release first.
 
 In Tessera's layout editor, choose the Mobile Fuel Stations **overview sensor** (not a station-slot sensor). The manifest requests only the nested station objects and selected diagnostic attributes. No changes to HA entity IDs or integrations are required.

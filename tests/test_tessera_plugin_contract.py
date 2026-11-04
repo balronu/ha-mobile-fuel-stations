@@ -13,6 +13,7 @@ def test_tessera_manifest_exposes_supported_resize_range_and_card():
     tile = manifest["tiles"][0]
 
     assert tile["sizes"] == {"min": "1x1", "max": "4x4"}
+    assert tile["preview"] == {"title": "{cheapest_name}", "value": "{cheapest_price} {currency}"}
     assert any(card["id"] == "stations" for card in manifest["cards"])
 
 

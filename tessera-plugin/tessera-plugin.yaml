@@ -29,6 +29,7 @@ tiles:
       cheapest_distance: { path: cheapest_station.distance, as: number }
       currency: cheapest_station.currency
       cheapest_fuel_prices: { path: "cheapest_station.fuel_prices[*]", as: numbers }
+    preview: { title: "{cheapest_name}", value: "{cheapest_price} {currency}" }
     example: highlights_example
 
 cards:

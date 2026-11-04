@@ -20,6 +20,8 @@ Installiere diese lesende Beta ohne zusätzlichen Template-Sensor in Home Assist
 4. Prüfe die Plugin-Details und füge es nur einem Testdisplay hinzu. Der Build eines Tessera-Plugins kompiliert die Display-Firmware neu.
 5. Füge die Kachel **Nächste und günstigste Tankstelle** hinzu und wähle den Übersichtssensor von Mobile Fuel Stations.
 
+Der Screen Manager zeigt die echte Kachelvorschau und die Größen-/Entfernen-Steuerung erst, wenn dieser Übersichtssensor zugewiesen ist. Ohne Zuordnung erscheint bewusst nur der Manifest-Beispieltext.
+
 Das Plugin benötigt einen Tessera-Build mit Plugin-API **0.24**. Wenn die installierte Tessera-Version diese API nicht unterstützt, darf die Installation nicht erzwungen werden.
 
 ## Bekannte Einschränkungen
