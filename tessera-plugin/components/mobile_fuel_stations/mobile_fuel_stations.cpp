@@ -25,6 +25,7 @@ class HighlightsTile : public tessera::Tile {
     const int available = std::max(1, context.height - padding * 2);
     const bool expanded = available >= row * 4 + value_row * 2 + gap * 2;
     const bool compact = available < row * 3 + value_row * 2 + gap;
+    const bool single_line = available < value_row * 2 + gap;
 
     heading_ = ui::label(context.parent, Font::BODY, theme::INK_SOFT);
     nearest_title_ = ui::label(context.parent, Font::BODY, theme::MUTED);
@@ -53,6 +54,7 @@ class HighlightsTile : public tessera::Tile {
     y += value_row;
     lv_obj_set_pos(status_, padding, y);
     if (compact) lv_obj_add_flag(heading_, LV_OBJ_FLAG_HIDDEN);
+    if (single_line) lv_obj_add_flag(cheapest_, LV_OBJ_FLAG_HIDDEN);
     if (!expanded) {
       lv_obj_add_flag(nearest_title_, LV_OBJ_FLAG_HIDDEN);
       lv_obj_add_flag(cheapest_title_, LV_OBJ_FLAG_HIDDEN);
@@ -66,6 +68,7 @@ class HighlightsTile : public tessera::Tile {
     ui::set_text(status_, "");
     expanded_ = expanded;
     compact_ = compact;
+    single_line_ = single_line;
     show_station_titles_(false);
   }
 
@@ -128,10 +131,12 @@ class HighlightsTile : public tessera::Tile {
     char line[160];
     const char *prefix = label.empty() ? "" : ": ";
     if (std::isfinite(price) && price > 0 && std::isfinite(distance) && distance >= 0) {
-      std::snprintf(line, sizeof(line), "%s%s%.30s %.3f %s / %.1f km",
-                    label.c_str(), prefix, name, price, currency, distance);
+      std::snprintf(line, sizeof(line), "%.3f %s / %.1f km - %.30s",
+                    price, currency, distance, name);
+    } else if (std::isfinite(price) && price > 0) {
+      std::snprintf(line, sizeof(line), "%.3f %s - %.40s", price, currency, name);
     } else if (std::isfinite(distance) && distance >= 0) {
-      std::snprintf(line, sizeof(line), "%s%s%.40s / %.1f km", label.c_str(), prefix, name, distance);
+      std::snprintf(line, sizeof(line), "%.1f km - %.40s", distance, name);
     } else {
       std::snprintf(line, sizeof(line), "%s%s%.50s", label.c_str(), prefix, name);
     }
@@ -141,6 +146,7 @@ class HighlightsTile : public tessera::Tile {
   const tessera::Plugin *plugin_;
   bool expanded_{false};
   bool compact_{false};
+  bool single_line_{false};
   lv_obj_t *heading_{nullptr};
   lv_obj_t *nearest_title_{nullptr};
   lv_obj_t *nearest_{nullptr};
