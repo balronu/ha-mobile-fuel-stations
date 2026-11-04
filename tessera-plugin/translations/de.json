@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "name": "Deutsch"
+  },
+  "screen": {
+    "no_data": "Mobile Fuel Stations wählen",
+    "nearest": "Nächste",
+    "cheapest": "Günstigste",
+    "stale": "Zwischengespeicherte Daten",
+    "unavailable": "Keine aktuellen Tankstellen"
+  },
+  "app": {
+    "name": "Mobile Fuel Stations",
+    "summary": "Tankstellenpreise aus der Mobile-Fuel-Stations-Integration in Home Assistant.",
+    "tile_highlights": "Nächste und günstigste Tankstelle",
+    "highlights_example": "Nächste und günstigste Kraftstoffpreise"
+  }
+}
