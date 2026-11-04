@@ -17,30 +17,49 @@ class HighlightsTile : public tessera::Tile {
   explicit HighlightsTile(const tessera::Plugin *plugin) : plugin_(plugin) {}
 
   void create(const tessera::TileContext &context) override {
-    width_ = context.width;
-    height_ = context.height;
     const int padding = ui::mm(2);
-    const int row_height = ui::line_height(Font::BODY);
-    const int available = std::max(1, height_ - padding * 2);
-    const int line_count = std::max(1, std::min(4, available / row_height));
+    const int row = ui::line_height(Font::BODY);
+    const int gap = std::max(2, ui::mm(1));
+    const int usable = std::max(1, context.width - padding * 2);
+    const int available = std::max(1, context.height - padding * 2);
+    const bool expanded = available >= row * 6 + gap * 2;
+
     heading_ = ui::label(context.parent, Font::BODY, theme::INK_SOFT);
+    nearest_title_ = ui::label(context.parent, Font::BODY, theme::MUTED);
     nearest_ = ui::label(context.parent, Font::BODY, theme::INK);
+    cheapest_title_ = ui::label(context.parent, Font::BODY, theme::MUTED);
     cheapest_ = ui::label(context.parent, Font::BODY, theme::INK);
     status_ = ui::label(context.parent, Font::BODY, theme::MUTED);
-    for (auto *label : {heading_, nearest_, cheapest_, status_}) {
-      lv_obj_set_size(label, std::max(1, width_ - padding * 2), row_height);
+
+    for (auto *label : {heading_, nearest_title_, nearest_, cheapest_title_, cheapest_, status_}) {
+      lv_obj_set_size(label, usable, row);
       lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     }
-    lv_obj_set_pos(heading_, padding, padding);
-    lv_obj_set_pos(nearest_, padding, padding + row_height);
-    lv_obj_set_pos(cheapest_, padding, padding + row_height * 2);
-    lv_obj_set_pos(status_, padding, padding + row_height * 3);
-    if (line_count < 4) lv_obj_add_flag(status_, LV_OBJ_FLAG_HIDDEN);
-    if (line_count < 3) lv_obj_add_flag(cheapest_, LV_OBJ_FLAG_HIDDEN);
+
+    int y = padding;
+    lv_obj_set_pos(heading_, padding, y);
+    y += row + gap;
+    lv_obj_set_pos(nearest_title_, padding, y);
+    if (expanded) y += row;
+    lv_obj_set_pos(nearest_, padding, y);
+    y += row + gap;
+    lv_obj_set_pos(cheapest_title_, padding, y);
+    if (expanded) y += row;
+    lv_obj_set_pos(cheapest_, padding, y);
+    y += row;
+    lv_obj_set_pos(status_, padding, y);
+    if (!expanded) {
+      lv_obj_add_flag(nearest_title_, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(cheapest_title_, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (y + row > context.height - padding) lv_obj_add_flag(status_, LV_OBJ_FLAG_HIDDEN);
     ui::set_text(heading_, "Mobile Fuel Stations");
+    ui::set_text(nearest_title_, plugin_->text("nearest"));
+    ui::set_text(cheapest_title_, plugin_->text("cheapest"));
     ui::set_text(nearest_, plugin_->text("no_data"));
     ui::set_text(cheapest_, "");
     ui::set_text(status_, "");
+    expanded_ = expanded;
   }
 
   void on_state(JsonObjectConst data) override {
@@ -60,10 +79,10 @@ class HighlightsTile : public tessera::Tile {
       ui::set_text(nearest_, plugin_->text("unavailable"));
       ui::set_text(cheapest_, "");
     } else {
-      ui::set_text(nearest_, station_line(plugin_->text("nearest"), attrs,
+      ui::set_text(nearest_, station_line(expanded_ ? "" : plugin_->text("nearest"), attrs,
                                          "nearest_name", "nearest_price",
                                          "nearest_distance", "nearest_currency"));
-      ui::set_text(cheapest_, station_line(plugin_->text("cheapest"), attrs,
+      ui::set_text(cheapest_, station_line(expanded_ ? "" : plugin_->text("cheapest"), attrs,
                                           "cheapest_name", "cheapest_price",
                                           "cheapest_distance", "cheapest_currency"));
     }
@@ -72,13 +91,15 @@ class HighlightsTile : public tessera::Tile {
 
   void on_theme() override {
     ui::set_color(heading_, theme::INK_SOFT);
+    ui::set_color(nearest_title_, theme::MUTED);
     ui::set_color(nearest_, theme::INK);
+    ui::set_color(cheapest_title_, theme::MUTED);
     ui::set_color(cheapest_, theme::INK);
     ui::set_color(status_, theme::MUTED);
   }
 
  private:
-  static std::string station_line(const char *label, JsonObjectConst data,
+  static std::string station_line(const std::string &label, JsonObjectConst data,
                                   const char *name_key, const char *price_key,
                                   const char *distance_key, const char *currency_key) {
     const char *name = data[name_key] | "--";
@@ -88,20 +109,21 @@ class HighlightsTile : public tessera::Tile {
     char line[160];
     if (std::isfinite(price) && price > 0 && std::isfinite(distance) && distance >= 0) {
       std::snprintf(line, sizeof(line), "%s: %.30s %.3f %s / %.1f km",
-                    label, name, price, currency, distance);
+                    label.c_str(), name, price, currency, distance);
     } else if (std::isfinite(distance) && distance >= 0) {
-      std::snprintf(line, sizeof(line), "%s: %.40s / %.1f km", label, name, distance);
+      std::snprintf(line, sizeof(line), "%s: %.40s / %.1f km", label.c_str(), name, distance);
     } else {
-      std::snprintf(line, sizeof(line), "%s: %.50s", label, name);
+      std::snprintf(line, sizeof(line), "%s: %.50s", label.c_str(), name);
     }
     return line;
   }
 
   const tessera::Plugin *plugin_;
-  int width_{0};
-  int height_{0};
+  bool expanded_{false};
   lv_obj_t *heading_{nullptr};
+  lv_obj_t *nearest_title_{nullptr};
   lv_obj_t *nearest_{nullptr};
+  lv_obj_t *cheapest_title_{nullptr};
   lv_obj_t *cheapest_{nullptr};
   lv_obj_t *status_{nullptr};
 };
