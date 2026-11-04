@@ -59,12 +59,17 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/MaxGramser/tessera-plugins.git /tmp/tessera-plugins
       - name: Prepare Tessera host bench
+        env:
+          TESSERA_REF: dev
         run: python /tmp/tessera-plugins/tools/preview.py --setup
       - name: Work around ESPHome 2026.9 host-output scaling regression
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('/tmp/tessera-plugins/tools/.cache/tessera-dev/tools/render/host.py')
+          candidates = list(Path('/tmp/tessera-plugins/tools/.cache').glob('tessera-*/tools/render/host.py'))
+          if len(candidates) != 1:
+              raise SystemExit(f'Expected exactly one Tessera host source, found: {candidates}')
+          path = candidates[0]
           source = path.read_text()
           old = '    type: float\\n    write_action:'
           new = '    type: float\\n    min_power: 0%\\n    write_action:'
