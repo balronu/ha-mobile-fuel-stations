@@ -68,7 +68,7 @@ class HighlightsTile : public tessera::Tile {
     ui::set_text(status_, "");
     expanded_ = expanded;
     compact_ = compact;
-    single_line_ = single_line;
+    single_row_ = single_line;
     show_station_titles_(false);
   }
 
@@ -77,7 +77,10 @@ class HighlightsTile : public tessera::Tile {
     JsonObjectConst attrs = data["attributes"].as<JsonObjectConst>();
     if (!attrs || !state[0] || std::string(state) == "unknown" ||
         std::string(state) == "unavailable") {
-      ui::set_text(nearest_, plugin_->text("no_data"));
+      nearest_line_ = plugin_->text("no_data");
+      cheapest_line_.clear();
+      show_cheapest_ = false;
+      ui::set_text(nearest_, nearest_line_);
       ui::set_text(cheapest_, "");
       ui::set_text(status_, "");
       show_station_titles_(false);
@@ -88,17 +91,30 @@ class HighlightsTile : public tessera::Tile {
     const bool stale = attrs["data_stale"] | false;
     show_station_titles_(count > 0);
     if (count <= 0) {
-      ui::set_text(nearest_, plugin_->text("unavailable"));
+      nearest_line_ = plugin_->text("unavailable");
+      cheapest_line_.clear();
+      show_cheapest_ = false;
+      ui::set_text(nearest_, nearest_line_);
       ui::set_text(cheapest_, "");
     } else {
-      ui::set_text(nearest_, station_line(expanded_ || compact_ ? "" : plugin_->text("nearest"), attrs,
+      nearest_line_ = station_line(expanded_ || compact_ ? "" : plugin_->text("nearest"), attrs,
                                          "nearest_name", "nearest_price",
-                                         "nearest_distance", "nearest_currency"));
-      ui::set_text(cheapest_, station_line(expanded_ || compact_ ? "" : plugin_->text("cheapest"), attrs,
+                                         "nearest_distance", "nearest_currency");
+      cheapest_line_ = station_line(expanded_ || compact_ ? "" : plugin_->text("cheapest"), attrs,
                                           "cheapest_name", "cheapest_price",
-                                          "cheapest_distance", "cheapest_currency"));
+                                          "cheapest_distance", "cheapest_currency");
+      ui::set_text(nearest_, single_row_ && show_cheapest_ ? cheapest_line_ : nearest_line_);
+      ui::set_text(cheapest_, cheapest_line_);
     }
     ui::set_text(status_, stale ? plugin_->text("stale") : "");
+  }
+
+  // A tap cycles the highlighted station when only one row fits.
+  // Tessera dispatches tile taps through on_tap(), not LVGL label callbacks.
+  void on_tap() override {
+    if (!single_row_) return;
+    show_cheapest_ = !show_cheapest_;
+    ui::set_text(nearest_, show_cheapest_ ? cheapest_line_ : nearest_line_);
   }
 
   void on_theme() override {
@@ -146,7 +162,10 @@ class HighlightsTile : public tessera::Tile {
   const tessera::Plugin *plugin_;
   bool expanded_{false};
   bool compact_{false};
-  bool single_line_{false};
+  bool single_row_{false};
+  bool show_cheapest_{false};
+  std::string nearest_line_;
+  std::string cheapest_line_;
   lv_obj_t *heading_{nullptr};
   lv_obj_t *nearest_title_{nullptr};
   lv_obj_t *nearest_{nullptr};
