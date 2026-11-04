@@ -24,6 +24,7 @@ class HighlightsTile : public tessera::Tile {
     const int usable = std::max(1, context.width - padding * 2);
     const int available = std::max(1, context.height - padding * 2);
     const bool expanded = available >= row * 4 + value_row * 2 + gap * 2;
+    const bool compact = available < row * 3 + value_row * 2 + gap;
 
     heading_ = ui::label(context.parent, Font::BODY, theme::INK_SOFT);
     nearest_title_ = ui::label(context.parent, Font::BODY, theme::MUTED);
@@ -41,7 +42,7 @@ class HighlightsTile : public tessera::Tile {
     lv_obj_set_height(nearest_, value_row);
     lv_obj_set_height(cheapest_, value_row);
     lv_obj_set_pos(heading_, padding, y);
-    y += row + gap;
+    if (!compact) y += row + gap;
     lv_obj_set_pos(nearest_title_, padding, y);
     if (expanded) y += row;
     lv_obj_set_pos(nearest_, padding, y);
@@ -51,6 +52,7 @@ class HighlightsTile : public tessera::Tile {
     lv_obj_set_pos(cheapest_, padding, y);
     y += value_row;
     lv_obj_set_pos(status_, padding, y);
+    if (compact) lv_obj_add_flag(heading_, LV_OBJ_FLAG_HIDDEN);
     if (!expanded) {
       lv_obj_add_flag(nearest_title_, LV_OBJ_FLAG_HIDDEN);
       lv_obj_add_flag(cheapest_title_, LV_OBJ_FLAG_HIDDEN);
@@ -63,6 +65,7 @@ class HighlightsTile : public tessera::Tile {
     ui::set_text(cheapest_, "");
     ui::set_text(status_, "");
     expanded_ = expanded;
+    compact_ = compact;
     show_station_titles_(false);
   }
 
@@ -85,10 +88,10 @@ class HighlightsTile : public tessera::Tile {
       ui::set_text(nearest_, plugin_->text("unavailable"));
       ui::set_text(cheapest_, "");
     } else {
-      ui::set_text(nearest_, station_line(expanded_ ? "" : plugin_->text("nearest"), attrs,
+      ui::set_text(nearest_, station_line(expanded_ || compact_ ? "" : plugin_->text("nearest"), attrs,
                                          "nearest_name", "nearest_price",
                                          "nearest_distance", "nearest_currency"));
-      ui::set_text(cheapest_, station_line(expanded_ ? "" : plugin_->text("cheapest"), attrs,
+      ui::set_text(cheapest_, station_line(expanded_ || compact_ ? "" : plugin_->text("cheapest"), attrs,
                                           "cheapest_name", "cheapest_price",
                                           "cheapest_distance", "cheapest_currency"));
     }
@@ -137,6 +140,7 @@ class HighlightsTile : public tessera::Tile {
 
   const tessera::Plugin *plugin_;
   bool expanded_{false};
+  bool compact_{false};
   lv_obj_t *heading_{nullptr};
   lv_obj_t *nearest_title_{nullptr};
   lv_obj_t *nearest_{nullptr};
