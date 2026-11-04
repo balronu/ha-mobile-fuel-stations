@@ -28,7 +28,7 @@ tiles:
       cheapest_price: { path: cheapest_station.price, as: number }
       cheapest_distance: { path: cheapest_station.distance, as: number }
       currency: cheapest_station.currency
-      cheapest_fuel_prices: { path: cheapest_station.fuel_prices[*], as: numbers }
+      cheapest_fuel_prices: { path: "cheapest_station.fuel_prices[*]", as: numbers }
     example: highlights_example
 
 cards:
