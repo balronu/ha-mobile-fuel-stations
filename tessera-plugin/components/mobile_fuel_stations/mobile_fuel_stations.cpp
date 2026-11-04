@@ -1,5 +1,6 @@
 #include "mobile_fuel_stations.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -17,19 +18,25 @@ class HighlightsTile : public tessera::Tile {
 
   void create(const tessera::TileContext &context) override {
     width_ = context.width;
+    height_ = context.height;
     const int padding = ui::mm(2);
     const int row_height = ui::line_height(Font::BODY);
+    const int available = std::max(1, height_ - padding * 2);
+    const int line_count = std::max(1, std::min(4, available / row_height));
     heading_ = ui::label(context.parent, Font::BODY, theme::INK_SOFT);
     nearest_ = ui::label(context.parent, Font::BODY, theme::INK);
     cheapest_ = ui::label(context.parent, Font::BODY, theme::INK);
     status_ = ui::label(context.parent, Font::BODY, theme::MUTED);
     for (auto *label : {heading_, nearest_, cheapest_, status_}) {
-      lv_obj_set_width(label, width_ - padding * 2);
+      lv_obj_set_size(label, std::max(1, width_ - padding * 2), row_height);
+      lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     }
     lv_obj_set_pos(heading_, padding, padding);
     lv_obj_set_pos(nearest_, padding, padding + row_height);
     lv_obj_set_pos(cheapest_, padding, padding + row_height * 2);
     lv_obj_set_pos(status_, padding, padding + row_height * 3);
+    if (line_count < 4) lv_obj_add_flag(status_, LV_OBJ_FLAG_HIDDEN);
+    if (line_count < 3) lv_obj_add_flag(cheapest_, LV_OBJ_FLAG_HIDDEN);
     ui::set_text(heading_, "Mobile Fuel Stations");
     ui::set_text(nearest_, plugin_->text("no_data"));
     ui::set_text(cheapest_, "");
@@ -53,10 +60,10 @@ class HighlightsTile : public tessera::Tile {
       ui::set_text(nearest_, plugin_->text("unavailable"));
       ui::set_text(cheapest_, "");
     } else {
-      ui::set_text(nearest_, station_line(plugin_->text("nearest"), data,
+      ui::set_text(nearest_, station_line(plugin_->text("nearest"), attrs,
                                          "nearest_name", "nearest_price",
                                          "nearest_distance", "nearest_currency"));
-      ui::set_text(cheapest_, station_line(plugin_->text("cheapest"), data,
+      ui::set_text(cheapest_, station_line(plugin_->text("cheapest"), attrs,
                                           "cheapest_name", "cheapest_price",
                                           "cheapest_distance", "cheapest_currency"));
     }
@@ -92,6 +99,7 @@ class HighlightsTile : public tessera::Tile {
 
   const tessera::Plugin *plugin_;
   int width_{0};
+  int height_{0};
   lv_obj_t *heading_{nullptr};
   lv_obj_t *nearest_{nullptr};
   lv_obj_t *cheapest_{nullptr};
