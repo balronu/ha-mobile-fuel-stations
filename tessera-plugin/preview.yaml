@@ -1,0 +1,92 @@
+# Offline-only preview fixtures. These are fictitious example prices, not live station data.
+tiles:
+  - tile: highlights
+    name: Mobile Fuel Stations
+    entity: sensor.mobile_fuel_stations_overview
+    sizes: [1x1, 2x1, 2x2, 3x2, 4x4]
+  - tile: highlights
+    name: No current data
+    entity: sensor.mobile_fuel_stations_empty
+    sizes: [2x2]
+  - tile: highlights
+    name: Stale data
+    entity: sensor.mobile_fuel_stations_stale
+    sizes: [2x2]
+
+states:
+  sensor.mobile_fuel_stations_overview:
+    state: "3"
+    attributes:
+      station_count: 3
+      data_stale: false
+      nearest_station:
+        station_name: Example A
+        price: 1.659
+        distance: 2.4
+        currency: EUR
+      cheapest_station:
+        station_name: Example B
+        price: 1.629
+        distance: 5.8
+        currency: EUR
+      fuel_types: [E5, E10, Diesel]
+      last_successful_update: "2026-11-04T09:00:00+00:00"
+      cheapest_stations_by_fuel:
+        E5:
+          station_name: Example B
+          price: 1.629
+          distance: 5.8
+          currency_symbol: "€"
+          street: Hauptstraße
+          house_number: "2"
+          postcode: "12345"
+          place: Beispielstadt
+          is_open: true
+          price_age_hours: 1.2
+          station_stale: false
+        E10:
+          station_name: Example C
+          price: 1.579
+          distance: 4.1
+          currency_symbol: "€"
+          is_open: false
+          price_age_hours: 2.4
+          station_stale: true
+        Diesel:
+          station_name: Example D
+          price: 1.489
+          distance: 3.3
+          currency_symbol: "€"
+          is_open: true
+          price_age_hours: 0.7
+          station_stale: false
+  sensor.mobile_fuel_stations_empty:
+    state: "0"
+    attributes:
+      station_count: 0
+      data_stale: false
+      nearest_station: null
+      cheapest_station: null
+      fuel_types: []
+      cheapest_stations_by_fuel: {}
+  sensor.mobile_fuel_stations_stale:
+    state: "1"
+    attributes:
+      station_count: 1
+      data_stale: true
+      fuel_types: [Diesel]
+      nearest_station:
+        station_name: Old Data Station
+        price: 1.599
+        distance: 1.1
+        currency: EUR
+        price_age_hours: 96
+        station_stale: true
+      cheapest_station:
+        station_name: Old Data Station
+        price: 1.599
+        distance: 1.1
+        currency: EUR
+        price_age_hours: 96
+        station_stale: true
+      cheapest_stations_by_fuel: {}
