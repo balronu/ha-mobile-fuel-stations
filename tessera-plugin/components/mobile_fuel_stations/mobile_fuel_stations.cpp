@@ -184,7 +184,6 @@ class HighlightsTile : public tessera::Tile {
     ui::set_text(status_, status); show_titles_(true);
   }
   void on_tap() override {
-    if (single_row_ && !cheapest_line_.empty()) { show_cheapest_ = !show_cheapest_; ui::set_text(nearest_, show_cheapest_ ? cheapest_line_ : nearest_line_); return; }
     tessera::open_card(plugin_->plugin_id(), "stations", entity_, tile_);
   }
   void on_theme() override {
@@ -204,7 +203,7 @@ class HighlightsTile : public tessera::Tile {
   }
   void show_titles_(bool visible) { for (auto *label : {nearest_title_, cheapest_title_}) if (expanded_ && visible) lv_obj_remove_flag(label, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN); }
   const MobileFuelStations *plugin_;
-  Snapshot snapshot_; size_t selected_fuel_{0}; bool expanded_{false}, compact_{false}, single_row_{false}, show_cheapest_{false};
+  Snapshot snapshot_; size_t selected_fuel_{0}; bool expanded_{false}, compact_{false}, single_row_{false};
   std::string nearest_line_, cheapest_line_, entity_; int tile_{-1};
   lv_obj_t *heading_{nullptr}, *nearest_title_{nullptr}, *nearest_{nullptr}, *cheapest_title_{nullptr}, *cheapest_{nullptr}, *status_{nullptr};
 };

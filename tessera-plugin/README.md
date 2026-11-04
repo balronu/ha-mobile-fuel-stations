@@ -8,7 +8,7 @@ This **beta-stage** Tessera plugin shows the nearest and cheapest station from t
 
 The plugin reads the Mobile Fuel Stations overview sensor's station, fuel and freshness attributes. It does **not** call Tankerkönig, Petromap or Nakordoni directly and never accesses provider credentials. All API quotas and GPS updates remain controlled by Home Assistant.
 
-The highlights tile adapts from 1×1 to 4×4. Larger tiles open an official Tessera detail card with nearest/cheapest station, address, opening status, fuel selection and freshness. The compact 1×1 view uses a tap to switch between the nearest and selected-fuel cheapest station. Fuel selection is display-local and never changes the HA configuration or starts another request.
+The highlights tile adapts from 1×1 to 4×4. Tapping any supported size opens an official Tessera detail card with nearest/cheapest station, address, opening status, fuel selection and freshness. Fuel selection is display-local and never changes the HA configuration or starts another request.
 
 ## Set up
 
@@ -19,8 +19,8 @@ Install this read-only beta using the steps below. No additional Home Assistant 
 This is a **development-branch beta test**, not a published GitHub Release or a Tessera community-index listing.
 
 1. Open Tessera's **Plugins** page and choose **Add with a link**.
-2. Enter the plugin folder URL: `https://github.com/balronu/ha-mobile-fuel-stations/tree/feature/tessera-display-plugin-prototype/tessera-plugin`.
-3. If Tessera offers **Test a branch**, choose `feature/tessera-display-plugin-prototype` for this repository and use `tessera-plugin` as the folder.
+2. Enter the repository folder URL: `https://github.com/balronu/ha-mobile-fuel-stations/tree/main/tessera-plugin`.
+3. If Tessera offers **Test a branch**, choose `feature/tessera-display-plugin-prototype` in the branch field. The folder is already encoded in the URL; do not put the slash-containing branch name into the URL path.
 4. Check the plugin details and add it to a test display. Building a Tessera plugin recompiles the display firmware; do not overwrite a production display without reviewing the proposed build.
 5. Add the **Nearest and cheapest stations** tile in Tessera's layout editor, select the Mobile Fuel Stations overview sensor, and check the results.
 

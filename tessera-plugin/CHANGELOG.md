@@ -10,3 +10,4 @@
 - Offline fixtures for populated, empty, stale and multi-fuel responses plus contract assertions.
 - Passed official Tessera manifest validation and strict Guition firmware preview.
 - Available for test installation by linking directly to the plugin folder on the development branch; not yet a GitHub Release.
+- Tapping the highlights tile now opens the detail card at every supported tile size, including 1x1; nearest/cheapest and fuel selection remain available in the card.
