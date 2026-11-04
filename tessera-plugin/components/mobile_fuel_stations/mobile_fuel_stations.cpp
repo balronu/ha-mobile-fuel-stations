@@ -19,16 +19,17 @@ class HighlightsTile : public tessera::Tile {
   void create(const tessera::TileContext &context) override {
     const int padding = ui::mm(2);
     const int row = ui::line_height(Font::BODY);
+    const int value_row = ui::line_height(Font::BODY_LARGE);
     const int gap = std::max(2, ui::mm(1));
     const int usable = std::max(1, context.width - padding * 2);
     const int available = std::max(1, context.height - padding * 2);
-    const bool expanded = available >= row * 6 + gap * 2;
+    const bool expanded = available >= row * 4 + value_row * 2 + gap * 2;
 
     heading_ = ui::label(context.parent, Font::BODY, theme::INK_SOFT);
     nearest_title_ = ui::label(context.parent, Font::BODY, theme::MUTED);
-    nearest_ = ui::label(context.parent, Font::BODY, theme::INK);
+    nearest_ = ui::label(context.parent, Font::BODY_LARGE, theme::INK);
     cheapest_title_ = ui::label(context.parent, Font::BODY, theme::MUTED);
-    cheapest_ = ui::label(context.parent, Font::BODY, theme::INK);
+    cheapest_ = ui::label(context.parent, Font::BODY_LARGE, theme::INK);
     status_ = ui::label(context.parent, Font::BODY, theme::MUTED);
 
     for (auto *label : {heading_, nearest_title_, nearest_, cheapest_title_, cheapest_, status_}) {
@@ -37,16 +38,18 @@ class HighlightsTile : public tessera::Tile {
     }
 
     int y = padding;
+    lv_obj_set_height(nearest_, value_row);
+    lv_obj_set_height(cheapest_, value_row);
     lv_obj_set_pos(heading_, padding, y);
     y += row + gap;
     lv_obj_set_pos(nearest_title_, padding, y);
     if (expanded) y += row;
     lv_obj_set_pos(nearest_, padding, y);
-    y += row + gap;
+    y += value_row + gap;
     lv_obj_set_pos(cheapest_title_, padding, y);
     if (expanded) y += row;
     lv_obj_set_pos(cheapest_, padding, y);
-    y += row;
+    y += value_row;
     lv_obj_set_pos(status_, padding, y);
     if (!expanded) {
       lv_obj_add_flag(nearest_title_, LV_OBJ_FLAG_HIDDEN);
