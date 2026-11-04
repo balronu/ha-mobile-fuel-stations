@@ -2,6 +2,12 @@ name: Tessera firmware compile-only
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/tessera-firmware-compile.yml'
+      - 'tessera-plugin/**'
+      - 'custom_components/mobile_fuel_stations/**'
+      - 'tests/**'
 
 permissions:
   contents: read
