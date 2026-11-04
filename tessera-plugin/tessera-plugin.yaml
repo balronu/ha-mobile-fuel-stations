@@ -5,7 +5,7 @@ icon: gas-station
 maintainer: balronu
 license: MIT
 stage: beta
-topics: [travel, money]
+topics: [travel]
 requires:
   esphome: 2026.6.2
 boards: any
@@ -18,5 +18,15 @@ tiles:
     sizes: { min: 2x1, max: 3x2 }
     memory: 1400
     domains: [sensor]
-    attributes: [nearest_station, cheapest_station, data_stale, fuel_type, station_count]
+    has_attributes: [nearest_station, cheapest_station]
+    attributes: [data_stale, station_count]
+    fields:
+      nearest_name: nearest_station.station_name
+      nearest_price: { path: nearest_station.price, as: number }
+      nearest_distance: { path: nearest_station.distance, as: number }
+      nearest_currency: nearest_station.currency
+      cheapest_name: cheapest_station.station_name
+      cheapest_price: { path: cheapest_station.price, as: number }
+      cheapest_distance: { path: cheapest_station.distance, as: number }
+      cheapest_currency: cheapest_station.currency
     example: highlights_example
