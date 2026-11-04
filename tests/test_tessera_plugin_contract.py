@@ -28,3 +28,7 @@ def test_highlights_tile_opens_detail_card_for_every_supported_size():
 def test_plugin_setup_registers_matching_tile_and_card_ids():
     assert 'add_tile("highlights"' in SOURCE
     assert 'add_card("stations"' in SOURCE
+
+
+def test_plugin_has_german_description_for_screen_manager():
+    assert (PLUGIN / "README.de.md").is_file()
