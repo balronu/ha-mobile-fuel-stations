@@ -1,0 +1,44 @@
+name: Tessera plugin contract
+on:
+  pull_request:
+    paths:
+      - 'tessera-plugin/**'
+      - '.github/workflows/tessera-plugin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tessera-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install YAML dependency
+        run: python -m pip install pyyaml
+      - name: Fetch official Tessera plugin validation
+        run: |
+          git clone --depth 1 https://github.com/MaxGramser/tessera-plugins.git /tmp/tessera-plugins
+      - name: Validate plugin against Tessera's official checker
+        run: |
+          python /tmp/tessera-plugins/tools/check.py "$GITHUB_WORKSPACE/tessera-plugin"
+      - name: Parse local YAML and translation JSON
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import yaml
+          p = Path("tessera-plugin")
+          manifest = yaml.safe_load((p / "tessera-plugin.yaml").read_text())
+          assert manifest["id"] == "mobile_fuel_stations"
+          assert len(manifest["tiles"][0]["fields"]) == 8
+          for language in ("de", "en"):
+              data = json.loads((p / "translations" / f"{language}.json").read_text())
+              assert data["app"]["name"] and data["app"]["summary"]
+          yaml.safe_load((p / "preview.yaml").read_text())
+          print("YAML and translations parsed")
+          PY
