@@ -42,3 +42,32 @@ jobs:
           yaml.safe_load((p / "preview.yaml").read_text())
           print("YAML and translations parsed")
           PY
+
+  tessera-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install host preview dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libsdl2-dev build-essential pkg-config
+      - name: Fetch upstream Tessera plugin bench
+        run: |
+          git clone --depth 1 https://github.com/MaxGramser/tessera-plugins.git /tmp/tessera-plugins
+      - name: Compile and render Tessera plugin preview
+        env:
+          TESSERA_REF: dev
+        run: |
+          python /tmp/tessera-plugins/tools/preview.py --setup
+          python /tmp/tessera-plugins/tools/preview.py "$GITHUB_WORKSPACE/tessera-plugin" --screen 480x320@3.5 --grid max
+      - name: Upload preview diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tessera-preview
+          path: tessera-plugin/.preview/
+          if-no-files-found: ignore
