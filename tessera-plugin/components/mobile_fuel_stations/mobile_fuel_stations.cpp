@@ -23,6 +23,8 @@ struct Snapshot {
   Station nearest, cheapest;
   std::vector<std::string> fuel_names;
   std::vector<Station> fuel_cheapest;
+  std::vector<double> fuel_prices;
+  std::string currency;
 };
 
 std::string string_value(JsonVariantConst value) {
@@ -84,6 +86,24 @@ Snapshot snapshot_from(JsonObjectConst data) {
       result.fuel_names.push_back(fuel);
       result.fuel_cheapest.push_back(station_from(pair.value().as<JsonObjectConst>()));
     }
+  }
+  // Tessera sends explicit fields for entity tiles; nested object attributes are
+  // used by the offline fixture but are not assumed to cross the wire.
+  if (result.nearest.name.empty()) {
+    result.nearest.name = string_value(attrs["nearest_name"]);
+    result.nearest.price = attrs["nearest_price"] | -1.0;
+    result.nearest.distance = attrs["nearest_distance"] | -1.0;
+  }
+  if (result.cheapest.name.empty()) {
+    result.cheapest.name = string_value(attrs["cheapest_name"]);
+    result.cheapest.price = attrs["cheapest_price"] | -1.0;
+    result.cheapest.distance = attrs["cheapest_distance"] | -1.0;
+  }
+  result.currency = string_value(attrs["currency"]);
+  if (result.nearest.currency.empty()) result.nearest.currency = result.currency;
+  if (result.cheapest.currency.empty()) result.cheapest.currency = result.currency;
+  if (attrs["cheapest_fuel_prices"].is<JsonArrayConst>()) {
+    for (JsonVariantConst price : attrs["cheapest_fuel_prices"].as<JsonArrayConst>()) result.fuel_prices.push_back(price | -1.0);
   }
   return result;
 }
@@ -172,12 +192,15 @@ class HighlightsTile : public tessera::Tile {
     ui::set_color(cheapest_title_, theme::MUTED); ui::set_color(cheapest_, theme::INK); ui::set_color(status_, theme::MUTED);
   }
  private:
-  const Station &selected_station() const {
+  Station selected_station() const {
     if (selected_fuel_ < snapshot_.fuels.size()) {
       for (size_t i = 0; i < snapshot_.fuel_names.size(); ++i)
         if (snapshot_.fuel_names[i] == snapshot_.fuels[selected_fuel_] && i < snapshot_.fuel_cheapest.size()) return snapshot_.fuel_cheapest[i];
     }
-    return snapshot_.cheapest;
+    Station station = snapshot_.cheapest;
+    if (selected_fuel_ < snapshot_.fuel_prices.size() && snapshot_.fuel_prices[selected_fuel_] > 0)
+      station.price = snapshot_.fuel_prices[selected_fuel_];
+    return station;
   }
   void show_titles_(bool visible) { for (auto *label : {nearest_title_, cheapest_title_}) if (expanded_ && visible) lv_obj_remove_flag(label, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN); }
   const MobileFuelStations *plugin_;
@@ -209,12 +232,15 @@ class MobileFuelStationsCard : public tessera::Card {
   }
   void on_theme() override { ui::set_color(title_, theme::INK); ui::set_color(nearest_, theme::INK); ui::set_color(cheapest_, theme::INK); ui::set_color(address_, theme::MUTED); ui::set_color(status_, theme::MUTED); }
  private:
-  const Station &selected_station() const {
+  Station selected_station() const {
     if (selected_fuel_ < snapshot_.fuels.size()) {
       for (size_t i = 0; i < snapshot_.fuel_names.size(); ++i)
         if (snapshot_.fuel_names[i] == snapshot_.fuels[selected_fuel_] && i < snapshot_.fuel_cheapest.size()) return snapshot_.fuel_cheapest[i];
     }
-    return snapshot_.cheapest;
+    Station station = snapshot_.cheapest;
+    if (selected_fuel_ < snapshot_.fuel_prices.size() && snapshot_.fuel_prices[selected_fuel_] > 0)
+      station.price = snapshot_.fuel_prices[selected_fuel_];
+    return station;
   }
   void render_() {
     if (!snapshot_.valid || snapshot_.count <= 0) { ui::set_text(nearest_, plugin_->text("no_data")); ui::set_text(cheapest_, ""); ui::set_text(address_, ""); ui::set_text(status_, plugin_->text("unavailable")); return; }
