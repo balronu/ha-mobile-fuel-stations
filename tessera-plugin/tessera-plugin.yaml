@@ -15,7 +15,7 @@ tiles:
   - id: highlights
     name: tile_highlights
     icon: gas-station
-    sizes: { min: 2x1, max: 3x2 }
+    sizes: { min: 2x2, max: 3x2 }
     memory: 1400
     domains: [sensor]
     has_attributes: [nearest_station, cheapest_station]
