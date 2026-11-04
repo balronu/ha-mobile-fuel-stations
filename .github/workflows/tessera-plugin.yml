@@ -58,6 +58,19 @@ jobs:
       - name: Fetch upstream Tessera plugin bench
         run: |
           git clone --depth 1 https://github.com/MaxGramser/tessera-plugins.git /tmp/tessera-plugins
+      - name: Work around ESPHome 2026.9 host-output scaling regression
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/tessera-plugins/tools/.cache/tessera-dev/tools/render/host.py')
+          source = path.read_text()
+          old = '    type: float\\n    write_action:'
+          new = '    type: float\\n    min_power: 0%\\n    write_action:'
+          if source.count(old) != 1:
+              raise SystemExit('Host template output shape changed; refuse to patch')
+          path.write_text(source.replace(old, new, 1))
+          print('Host-only template outputs now request ESPHome float power scaling')
+          PY
       - name: Compile and render Tessera plugin preview
         env:
           TESSERA_REF: dev
