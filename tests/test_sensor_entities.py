@@ -65,7 +65,11 @@ def test_overview_attributes_keep_existing_fields_and_add_station_entities(monke
         lambda hass, entry, count: ["sensor.vehicle_station_1", "sensor.vehicle_station_2"],
     )
     coordinator = SimpleNamespace(
-        data=[object()],
+        data=[Station(
+            "test-id", "Test Station", "Test Brand", 1.799, 2.4, True,
+            "Test Road", "1", "12345", "Test Town", 49.0, 7.0,
+            currency="EUR", fuel_type="diesel",
+        )],
         config={
             "radius": 20,
             "fuel_type": "diesel",
@@ -96,6 +100,9 @@ def test_overview_attributes_keep_existing_fields_and_add_station_entities(monke
         "sensor.vehicle_station_1",
         "sensor.vehicle_station_2",
     ]
+    assert attributes["tessera_names"] == ["Test Station"]
+    assert attributes["tessera_places"] == ["2.4 km · Test Town"]
+    assert attributes["tessera_diesel"] == [1.799]
     assert attributes["nearest_station"] is None
     assert attributes["cheapest_station"] is None
 
