@@ -172,3 +172,72 @@ def test_device_manufacturer_follows_mode_without_changing_identifier(
 
     assert info["manufacturer"] == manufacturer
     assert info["identifiers"] == {(sensor.DOMAIN, "entry-a")}
+
+
+def test_tessera_vehicle_feed_isolated_and_fresh():
+    vehicle_a = Station(
+        "a", "JET", "JET", 1.799, 2.4, True,
+        "Road", "12", "12345", "Saarbrücken", 49.0, 7.0,
+        currency="EUR", fuel_type="diesel",
+        fuel_prices={"diesel": 1.799, "e10": 1.699, "e5": 1.759},
+    )
+    vehicle_b = Station(
+        "b", "Shell", "Shell", 1.899, 5.0, None,
+        "Other", "1", "23456", "Berlin", 52.0, 13.0,
+        currency="EUR", fuel_type="diesel",
+    )
+    a = sensor._tessera_station_attributes([vehicle_a], vehicle="Wohnmobil", data_stale=False)
+    b = sensor._tessera_station_attributes([vehicle_b], vehicle="PKW", data_stale=False)
+    assert a["tessera_vehicle"] == "Wohnmobil"
+    assert b["tessera_vehicle"] == "PKW"
+    assert a["tessera_names"] == ["JET"]
+    assert b["tessera_names"] == ["Shell"]
+    assert a["tessera_places"] == ["2.4 km · Saarbrücken"]
+    assert a["tessera_open"] == [1]
+    assert b["tessera_open"] == [-1]
+    assert a["tessera_diesel"] == [1.799]
+    assert a["tessera_e10"] == [1.699]
+    assert b["tessera_diesel"] == [1.899]
+    assert sensor._tessera_station_attributes([vehicle_a], vehicle="Wohnmobil", data_stale=True)["tessera_diesel"] == [0.0]
+
+
+def test_tessera_feed_rejects_wrong_currency_fallback_invalid_and_old_prices():
+    fallback = Station(
+        "x", "Fallback", "Fallback", 1.9, None, True,
+        "", "", "", "", None, None,
+        currency="EUR",
+        fuel_prices={"e10": 1.9, "diesel": -1},
+        fuel_fallbacks={"e10": True},
+    )
+    foreign = Station(
+        "y", "Foreign", "Foreign", 4.5, None, False,
+        "", "", "", "", None, None,
+        currency="PLN", fuel_type="diesel",
+    )
+    old = Station(
+        "z", "Old", "Old", 1.5, None, True,
+        "", "", "", "", None, None,
+        currency="EUR", fuel_type="diesel", price_stale=True,
+    )
+    output = sensor._tessera_station_attributes([fallback, foreign, old], vehicle="Van", data_stale=False)
+    assert output["tessera_diesel"] == [0.0, 0.0, 0.0]
+    assert output["tessera_e10"] == [0.0, 0.0, 0.0]
+    assert output["tessera_open"] == [1, 0, 1]
+
+
+def test_tessera_station_feed_bounded_and_parallel():
+    many = [
+        Station(
+            str(index), f"Station {index}", "", 1.8, None, True,
+            "", "", "", "", None, None,
+            currency="EUR", fuel_type="diesel"
+        )
+        for index in range(14)
+    ]
+    values = sensor._tessera_station_attributes(many, vehicle="Test", data_stale=False)
+    for key in ("tessera_names", "tessera_places", "tessera_open", "tessera_diesel", "tessera_e10", "tessera_e5"):
+        assert len(values[key]) == 10
+    assert values["tessera_names"][-1] == "Station 9"
+    assert sensor._tessera_station_attributes([], vehicle="Empty", data_stale=False)["tessera_names"] == []
+
+
