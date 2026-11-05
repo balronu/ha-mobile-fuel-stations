@@ -166,6 +166,70 @@ class NakordoniTripPassSensor(_NakordoniUsageSensor):
         return "active" if usage.pass_active else "inactive"
 
 
+
+# Tessera's entity-tile transport accepts short scalar lists, not nested objects.
+# Keep this presentation-only contract on each vehicle's existing overview entity,
+# so its registry-assigned entity id remains the vehicle selector.
+_TESSERA_STATION_LIMIT = 10
+_TESSERA_FUELS = ("diesel", "e10", "e5")
+
+
+def _tessera_price(station: Station, fuel: str, *, data_stale: bool) -> float:
+    """Return an explicitly comparable, fresh EUR price or 0 (not available)."""
+    from math import isfinite
+
+    if data_stale or station.price_stale is True or station.station_stale is True:
+        return 0.0
+    if (station.fuel_fallbacks or {}).get(fuel, False):
+        # Do not mislabel an E5 fallback as E10, etc.
+        return 0.0
+
+    prices = station.fuel_prices or {}
+    raw = prices.get(fuel)
+    currency = (station.fuel_currencies or {}).get(fuel) or station.currency
+    if raw is None and station.fuel_type == fuel and not station.fallback_used:
+        raw = station.price
+    if currency is not None and currency.upper() != "EUR":
+        return 0.0
+    try:
+        value = float(raw)
+    except (ValueError, TypeError):
+        return 0.0
+    return round(value, 3) if isfinite(value) and value > 0 else 0.0
+
+
+def _tessera_station_attributes(
+    stations: list[Station] | None, *, vehicle: str, data_stale: bool
+) -> dict[str, object]:
+    """Compact, aligned, per-vehicle arrays for Tessera's 2.6 KB tile payload."""
+    from math import isfinite
+
+    result: dict[str, object] = {
+        "tessera_vehicle": vehicle[:48],
+        "tessera_names": [],
+        "tessera_places": [],
+        "tessera_open": [],
+    }
+    for fuel in _TESSERA_FUELS:
+        result[f"tessera_{fuel}"] = []
+    for station in (stations or [])[:_TESSERA_STATION_LIMIT]:
+        result["tessera_names"].append((station.name or station.brand or "?")[:40])
+        parts: list[str] = []
+        if station.distance is not None and isfinite(station.distance) and station.distance >= 0:
+            parts.append(f"{station.distance:.1f} km")
+        if station.place:
+            parts.append(station.place)
+        result["tessera_places"].append(" · ".join(parts)[:48])
+        result["tessera_open"].append(
+            1 if station.is_open is True else 0 if station.is_open is False else -1
+        )
+        for fuel in _TESSERA_FUELS:
+            result[f"tessera_{fuel}"].append(
+                _tessera_price(station, fuel, data_stale=data_stale)
+            )
+    return result
+
+
 class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEntity):
     """Number of current nearby stations."""
 
@@ -194,6 +258,11 @@ class OverviewSensor(CoordinatorEntity[MobileFuelStationsCoordinator], SensorEnt
         options = getattr(self.coordinator, "options", {}) or {}
         configured_fuels = getattr(self.coordinator, "fuel_types", None)
         return {
+            **_tessera_station_attributes(
+                self.coordinator.data,
+                vehicle=getattr(self._entry, "title", "Mobile Fuel Stations"),
+                data_stale=bool(getattr(self.coordinator, "data_stale", False)),
+            ),
             "radius": self.coordinator.config["radius"],
             "fuel_type": self.coordinator.config["fuel_type"],
             "fuel_types": getattr(self.coordinator, "fuel_types", [self.coordinator.config["fuel_type"]]),
