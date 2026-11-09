@@ -249,12 +249,13 @@ Wähle bei der Einrichtung eine oder mehrere Kraftstoffarten. Die Option
 Sortierung **Kraftstoffpreis – günstigste zuerst** verwendet wird. Bei
 mehreren Kraftstoffen werden die Preise nicht miteinander vermischt.
 
-**Bekannte Einschränkung der Ersteinrichtung:** In der aktuellen Stable
-`v0.8.8` kann der Sortierkraftstoff beim ersten Öffnen des Formulars noch
-**Diesel** anzeigen, obwohl oben ausschließlich **E5** ausgewählt wurde.
-Nach dem Speichern wird die Auswahl normalisiert; beim erneuten Öffnen der
-Konfiguration erscheint der gespeicherte Kraftstoff. Ein Fix ist in Arbeit.
-Vor der Bestätigung der Einrichtung daher die Kraftstoffauswahl prüfen.
+**Seit Stable v0.8.8:** Die Preissortierung wird in einem eigenen
+Konfigurationsschritt festgelegt. Dort stehen nur die zuvor ausgewählten
+Kraftstoffarten zur Auswahl. Wird beispielsweise ausschließlich **E5**
+ausgewählt, erscheint **E5** statt des früheren Diesel-Standardwerts.
+Ungültige gespeicherte Sortierkraftstoffe werden auf den ersten gültigen
+Kraftstoff korrigiert. Bestehende Konfigurationen und Optionen bleiben
+kompatibel.
 
 ## Provider, Länder und Kraftstoffe
 
