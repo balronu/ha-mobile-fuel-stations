@@ -596,6 +596,8 @@ class MobileFuelStationsConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHa
                 errors[CONF_LOCATION_ENTITY] = "invalid_location"
             if not errors:
                 if CONF_SORT_FUEL in user_input:
+                    self._legacy_provider_mode = user_input.get(CONF_PROVIDER_MODE)
+                    self._legacy_provider_modes_supplied = CONF_PROVIDER_MODES in user_input
                     self._pending_user_input = _normalize_sorting_input(dict(user_input))
                     return await self._continue_user_setup()
                 self._pending_user_input = dict(user_input)
@@ -618,14 +620,17 @@ class MobileFuelStationsConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHa
         provider_modes = _normalize_provider_modes(
             user_input.get(CONF_PROVIDER_MODES), user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
         )
-        legacy_mode = user_input.get(CONF_PROVIDER_MODE)
-        if legacy_mode == PROVIDER_TANKERKOENIG and CONF_PROVIDER_MODES not in user_input:
+        legacy_mode = getattr(self, "_legacy_provider_mode", user_input.get(CONF_PROVIDER_MODE))
+        legacy_provider_modes_supplied = getattr(
+            self, "_legacy_provider_modes_supplied", CONF_PROVIDER_MODES in user_input
+        )
+        if legacy_mode == PROVIDER_TANKERKOENIG and not legacy_provider_modes_supplied:
             return self.async_show_form(step_id="tankerkoenig_credentials", data_schema=_credential_schema([PROVIDER_TANKERKOENIG]))
-        if legacy_mode == PROVIDER_PETROMAP and CONF_PROVIDER_MODES not in user_input:
+        if legacy_mode == PROVIDER_PETROMAP and not legacy_provider_modes_supplied:
             return self.async_show_form(step_id="petromap_privacy", data_schema=vol.Schema({}))
-        if legacy_mode == PROVIDER_NAKORDONI and CONF_PROVIDER_MODES not in user_input:
+        if legacy_mode == PROVIDER_NAKORDONI and not legacy_provider_modes_supplied:
             return self.async_show_form(step_id="nakordoni_privacy", data_schema=vol.Schema({}))
-        if legacy_mode == PROVIDER_AUTO and CONF_PROVIDER_MODES not in user_input:
+        if legacy_mode == PROVIDER_AUTO and not legacy_provider_modes_supplied:
             return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
         if PROVIDER_PETROMAP in provider_modes or PROVIDER_NAKORDONI in provider_modes:
             return self.async_show_form(step_id="provider_privacy", data_schema=vol.Schema({}))
