@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
+import voluptuous as vol
 
 import mobile_fuel_stations as integration
 from mobile_fuel_stations.config_flow import MobileFuelStationsConfigFlow, _credential_status_placeholders, _sorting_schema

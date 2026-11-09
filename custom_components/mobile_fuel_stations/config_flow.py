@@ -595,6 +595,9 @@ class MobileFuelStationsConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHa
             if not _validate_location(self.hass, user_input[CONF_LOCATION_ENTITY]):
                 errors[CONF_LOCATION_ENTITY] = "invalid_location"
             if not errors:
+                if CONF_SORT_FUEL in user_input:
+                    self._pending_user_input = _normalize_sorting_input(dict(user_input))
+                    return await self._continue_user_setup()
                 self._pending_user_input = dict(user_input)
                 return self.async_show_form(
                     step_id="sorting",
@@ -608,17 +611,9 @@ class MobileFuelStationsConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHa
             step_id="user", data_schema=_schema(defaults, False, True, include_sorting=False), errors=errors
         )
 
-    async def async_step_sorting(self, user_input=None):
-        """Select a sort fuel from the fuels chosen in the previous step."""
+    async def _continue_user_setup(self):
+        """Continue setup after sorting is selected."""
 
-        if user_input is None:
-            return self.async_show_form(
-                step_id="sorting",
-                data_schema=vol.Schema(_sorting_schema(getattr(self, "_pending_user_input", {}))),
-            )
-        self._pending_user_input = _normalize_sorting_input(
-            {**getattr(self, "_pending_user_input", {}), **user_input}
-        )
         user_input = self._pending_user_input
         provider_modes = _normalize_provider_modes(
             user_input.get(CONF_PROVIDER_MODES), user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
@@ -638,6 +633,19 @@ class MobileFuelStationsConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHa
             step_id="provider_credentials",
             data_schema=_provider_credentials_schema(provider_modes),
         )
+
+    async def async_step_sorting(self, user_input=None):
+        """Select a sort fuel from the fuels chosen in the previous step."""
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="sorting",
+                data_schema=vol.Schema(_sorting_schema(getattr(self, "_pending_user_input", {}))),
+            )
+        self._pending_user_input = _normalize_sorting_input(
+            {**getattr(self, "_pending_user_input", {}), **user_input}
+        )
+        return await self._continue_user_setup()
 
     async def async_step_provider_privacy(self, user_input=None):
         if user_input is None:
