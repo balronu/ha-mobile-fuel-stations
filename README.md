@@ -41,8 +41,7 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 ### Schnellstart
 
-1. Repository über [HACS](https://github.com/balronu/ha-mobile-fuel-stations)
-   installieren oder als benutzerdefiniertes Repository hinzufügen.
+1. Das Repository in HACS als **benutzerdefiniertes Repository vom Typ Integration** hinzufügen und anschließend **Mobile Fuel Stations** installieren. Die Aufnahme in den offiziellen HACS-Katalog ist noch nicht bestätigt.
 2. Integration unter **Einstellungen → Geräte & Dienste** einrichten.
 3. Eine Entity mit `latitude` und `longitude`, Kraftstoffarten, Suchradius und
    Provider auswählen.
@@ -76,7 +75,7 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 | Vorherige Stable | `v0.8.6` | Verfügbare unmittelbare Rollback-Version |
 | Frontend-Komponente | `v0.8.8` | Unabhängig versionierte Lovelace-Komponente |
 
-`v0.8.3` war die vorherige stabile Veröffentlichung. Sie bündelt Tankerkönig,
+`v0.8.3` führte wichtige Grundlagen der aktuellen Integration ein. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
 marktberechtigtem Fallback, Quota-/Trip-Pass-Diagnose, OAuth2-PKCE und manuellen
 API-Keys. Die feste Kartenpriorisierung zeigt die nächste Tankstelle, danach die günstigste unterschiedliche Tankstelle für den konfigurierten Kraftstoff; beide Ansichten verwenden dieselbe deterministische Reihenfolge. Die 60 lokalen PNG-Logos stammen aus der bereitgestellten ZIP; die
@@ -119,9 +118,7 @@ für das günstigste Highlight. Strukturierte und formatierte Provider-Adressen
 werden übernommen, sofern geliefert; fehlende Adressen bleiben leer. Explizit
 veraltete Preise werden nicht als aktueller Bestpreis ausgewählt.
 
-Die Version `v0.8.3` priorisiert die vollständige Tankstellenliste in beiden Ansichten; die lokale
-Ländererkennung aus `v0.8.0` bleibt enthalten. Die
-eintreffenden GPS-Positionen im manuellen Modus. Gültige Positionen aktualisieren
+Die in `v0.8.3` eingeführte Priorisierung der Tankstellenliste gilt für beide Ansichten. Die lokale Ländererkennung aus `v0.8.0` bleibt erhalten und berücksichtigt auch später eintreffende GPS-Positionen im manuellen Modus. Gültige Positionen aktualisieren
 den Länder-Kontext und die Providerstatus ohne Provider- oder Usage-Abfrage.
 Die Erweiterungen der v0.8.0-Betas bleiben enthalten: ein pro Config Entry
 gespeicherter Abrufmodus. **Automatisch** nutzt weiterhin Zeitplan, GPS-Bewegung,
@@ -185,9 +182,9 @@ erhalten.
 ## Installation über HACS
 
 1. Öffne **HACS → Integrationen**.
-2. Suche nach **Mobile Fuel Stations**. Falls das Repository nicht gelistet
-   ist, füge `https://github.com/balronu/ha-mobile-fuel-stations` unter
-   **Benutzerdefinierte Repositories** als Typ **Integration** hinzu.
+2. Öffne das Menü für **Benutzerdefinierte Repositories**, füge
+   `https://github.com/balronu/ha-mobile-fuel-stations` als Typ **Integration**
+   hinzu und suche anschließend nach **Mobile Fuel Stations**.
 3. Installiere die Integration.
 4. Starte Home Assistant vollständig neu, wie von HACS verlangt.
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
@@ -244,6 +241,21 @@ Stadtverkehr bis 30 km/h = 5 Minuten, Landstraße über 30 bis 70 km/h =
 2 Minuten und Autobahn über 70 km/h = 1 Minute. Provider-Mindestabstände
 haben Vorrang; das adaptive Intervall darf keine Provider-Quote umgehen.
 
+
+### Kraftstoffauswahl und Preissortierung
+
+Wähle bei der Einrichtung eine oder mehrere Kraftstoffarten. Die Option
+**Kraftstoff für Preissortierung** legt fest, welcher Preis bei der
+Sortierung **Kraftstoffpreis – günstigste zuerst** verwendet wird. Bei
+mehreren Kraftstoffen werden die Preise nicht miteinander vermischt.
+
+**Bekannte Einschränkung der Ersteinrichtung:** In der aktuellen Stable
+`v0.8.8` kann der Sortierkraftstoff beim ersten Öffnen des Formulars noch
+**Diesel** anzeigen, obwohl oben ausschließlich **E5** ausgewählt wurde.
+Nach dem Speichern wird die Auswahl normalisiert; beim erneuten Öffnen der
+Konfiguration erscheint der gespeicherte Kraftstoff. Ein Fix ist in Arbeit.
+Vor der Bestätigung der Einrichtung daher die Kraftstoffauswahl prüfen.
+
 ## Provider, Länder und Kraftstoffe
 
 Die folgende Matrix beschreibt die im Code und in den Tests belegte
@@ -256,8 +268,10 @@ tatsächliche Verfügbarkeit einschränken.
 | [Petromap](https://developer.petromap.eu/) | API-Key und gegebenenfalls Freigabe | Stationspreise in Deutschland und Österreich für Diesel, E5 und LPG; weitere Länder beziehungsweise nationale Daten hängen von Petromap ab |
 | [Nakordoni](https://nakordoni.eu/en/developers) | OAuth2-PKCE oder API-Key, Markt-/Zugangsfreigabe | Diesel, E5, E10 und LPG; DE, AT, PL, CZ, SK, HU, SI, HR, IT, FR, BE, NL und LU werden nur bei bestätigter Marktfreigabe berücksichtigt |
 
-Die auswählbaren Kraftstoffschlüssel sind `e5`, `e10`, `diesel`, `lpg` und
-`hvo100`. Ein Provider wird nur dann für einen Kraftstoff verwendet, wenn seine
+Die Konfigurationsoberfläche unterstützt die Kraftstoffschlüssel `e5`, `e10`,
+`diesel`, `lpg`, `hvo100`, `superplus`, `super100`, `premdiesel`, `truckdiesel`,
+`hvo`, `cng`, `adblue`, `e85` und `lng`. Die tatsächliche Preisabdeckung hängt
+vom ausgewählten Provider, Land und freigegebenen API-Produkt ab. Ein Provider wird nur dann für einen Kraftstoff verwendet, wenn seine
 Capability und die konkrete Antwort dies erlauben. HVO100 ist auswählbar, wird
 aber nicht pauschal als Diesel ausgegeben; Preise erscheinen nur bei verifizierter
 Provider-/Länder-Capability.
