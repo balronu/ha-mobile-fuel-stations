@@ -33,6 +33,7 @@
           "sort_fuel": "Fuel type used for price sorting."
         }
       },
+      "sorting": {"title": "Sorting preferences", "description": "Choose the order and the selected fuel used for price sorting.", "data": {"sort_mode": "Station sorting", "sort_fuel": "Price sorting fuel"}},
       "tankerkoenig_credentials": {"title": "Tankerkönig credentials", "description": "Enter the Tankerkönig API key."},
       "petromap_credentials": {"title": "Petromap credentials", "description": "Enter the Petromap API key."},
       "nakordoni_credentials": {"title": "Nakordoni credentials", "description": "Connect automatically with OAuth2 or enter a Nakordoni API key.", "data": {"nakordoni_auth_method": "Nakordoni sign-in method", "nakordoni_api_key": "Nakordoni API key"}},
@@ -94,6 +95,7 @@
           "sort_fuel": "Fuel type used for price sorting."
         }
       },
+      "sorting": {"title": "Sorting preferences", "description": "Choose the order and the selected fuel used for price sorting.", "data": {"sort_mode": "Station sorting", "sort_fuel": "Price sorting fuel"}},
       "options_petromap_privacy": {"title": "Petromap privacy", "description": "Location coordinates, radius, and fuel types may be sent to Petromap."},
       "options_nakordoni_privacy": {"title": "Nakordoni privacy", "description": "Location coordinates, radius, and fuel types may be sent to Nakordoni."},
       "options_provider_privacy": {"title": "Provider privacy", "description": "Selected providers may receive the vehicle location, radius, and fuel types."},

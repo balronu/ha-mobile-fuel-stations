@@ -118,16 +118,10 @@ def _provider_key(provider: str) -> str:
 
 def _schema(
     defaults: dict[str, Any], include_key: bool, include_provider: bool = False,
-    include_credentials_management: bool = False,
+    include_credentials_management: bool = False, include_sorting: bool = True,
 ) -> vol.Schema:
     schema: dict[Any, Any] = {}
     radius_default = min(float(defaults.get(CONF_RADIUS, DEFAULT_RADIUS)), MAX_API_RADIUS_KM)
-    selected_fuels = _normalize_fuel_types(
-        defaults.get(CONF_FUEL_TYPES, defaults.get(CONF_FUEL_TYPE, DEFAULT_FUEL_TYPE))
-    )
-    sort_fuel_default = defaults.get(CONF_SORT_FUEL, selected_fuels[0])
-    if sort_fuel_default not in selected_fuels:
-        sort_fuel_default = selected_fuels[0]
     if include_provider:
         provider_modes = _normalize_provider_modes(
             defaults.get(CONF_PROVIDER_MODES), defaults.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
@@ -194,19 +188,30 @@ def _schema(
                 CONF_ADAPTIVE_UPDATES,
                 default=defaults.get(CONF_ADAPTIVE_UPDATES, DEFAULT_ADAPTIVE_UPDATES),
             ): bool,
-            vol.Required(CONF_SORT_MODE, default=defaults.get(CONF_SORT_MODE, DEFAULT_SORT_MODE)): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=["distance", "price"], translation_key=CONF_SORT_MODE
-                )
-            ),
-            vol.Required(CONF_SORT_FUEL, default=sort_fuel_default): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=list(selected_fuels), translation_key=CONF_SORT_FUEL
-                )
-            ),
         }
     )
+    if include_sorting:
+        schema.update(_sorting_schema(defaults))
     return vol.Schema(schema)
+
+
+def _sorting_schema(defaults: dict[str, Any]) -> dict[Any, Any]:
+    """Build sorting fields after the selected fuels are known."""
+
+    selected_fuels = _normalize_fuel_types(
+        defaults.get(CONF_FUEL_TYPES, defaults.get(CONF_FUEL_TYPE, DEFAULT_FUEL_TYPE))
+    )
+    sort_fuel_default = defaults.get(CONF_SORT_FUEL, selected_fuels[0])
+    if sort_fuel_default not in selected_fuels:
+        sort_fuel_default = selected_fuels[0]
+    return {
+        vol.Required(CONF_SORT_MODE, default=defaults.get(CONF_SORT_MODE, DEFAULT_SORT_MODE)): selector.SelectSelector(
+            selector.SelectSelectorConfig(options=["distance", "price"], translation_key=CONF_SORT_MODE)
+        ),
+        vol.Required(CONF_SORT_FUEL, default=sort_fuel_default): selector.SelectSelector(
+            selector.SelectSelectorConfig(options=list(selected_fuels), translation_key=CONF_SORT_FUEL)
+        ),
+    }
 
 
 def _normalize_fuel_types(value: object) -> list[str]:
@@ -590,28 +595,48 @@ class MobileFuelStationsConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHa
             if not _validate_location(self.hass, user_input[CONF_LOCATION_ENTITY]):
                 errors[CONF_LOCATION_ENTITY] = "invalid_location"
             if not errors:
-                self._pending_user_input = _normalize_sorting_input(dict(user_input))
-                legacy_mode = user_input.get(CONF_PROVIDER_MODE)
-                if legacy_mode == PROVIDER_TANKERKOENIG and CONF_PROVIDER_MODES not in user_input:
-                    return self.async_show_form(step_id="tankerkoenig_credentials", data_schema=_credential_schema([PROVIDER_TANKERKOENIG]))
-                if legacy_mode == PROVIDER_PETROMAP and CONF_PROVIDER_MODES not in user_input:
-                    return self.async_show_form(step_id="petromap_privacy", data_schema=vol.Schema({}))
-                if legacy_mode == PROVIDER_NAKORDONI and CONF_PROVIDER_MODES not in user_input:
-                    return self.async_show_form(step_id="nakordoni_privacy", data_schema=vol.Schema({}))
-                if legacy_mode == PROVIDER_AUTO and CONF_PROVIDER_MODES not in user_input:
-                    return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
-                if PROVIDER_PETROMAP in provider_modes or PROVIDER_NAKORDONI in provider_modes:
-                    return self.async_show_form(step_id="provider_privacy", data_schema=vol.Schema({}))
+                self._pending_user_input = dict(user_input)
                 return self.async_show_form(
-                    step_id="provider_credentials",
-                    data_schema=_provider_credentials_schema(provider_modes),
+                    step_id="sorting",
+                    data_schema=vol.Schema(_sorting_schema(self._pending_user_input)),
                 )
         defaults = {CONF_RADIUS: DEFAULT_RADIUS, CONF_FUEL_TYPE: DEFAULT_FUEL_TYPE, CONF_FUEL_TYPES: [DEFAULT_FUEL_TYPE], CONF_STATION_COUNT: DEFAULT_STATION_COUNT,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL, CONF_MOVEMENT_UPDATES: DEFAULT_MOVEMENT_UPDATES,
                     CONF_MOVEMENT_THRESHOLD: DEFAULT_MOVEMENT_THRESHOLD, CONF_COOLDOWN: DEFAULT_COOLDOWN,
                     CONF_ADAPTIVE_UPDATES: DEFAULT_ADAPTIVE_UPDATES, CONF_FETCH_MODE: DEFAULT_FETCH_MODE}
         return self.async_show_form(
-            step_id="user", data_schema=_schema(defaults, False, True), errors=errors
+            step_id="user", data_schema=_schema(defaults, False, True, include_sorting=False), errors=errors
+        )
+
+    async def async_step_sorting(self, user_input=None):
+        """Select a sort fuel from the fuels chosen in the previous step."""
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="sorting",
+                data_schema=vol.Schema(_sorting_schema(getattr(self, "_pending_user_input", {}))),
+            )
+        self._pending_user_input = _normalize_sorting_input(
+            {**getattr(self, "_pending_user_input", {}), **user_input}
+        )
+        user_input = self._pending_user_input
+        provider_modes = _normalize_provider_modes(
+            user_input.get(CONF_PROVIDER_MODES), user_input.get(CONF_PROVIDER_MODE, PROVIDER_TANKERKOENIG)
+        )
+        legacy_mode = user_input.get(CONF_PROVIDER_MODE)
+        if legacy_mode == PROVIDER_TANKERKOENIG and CONF_PROVIDER_MODES not in user_input:
+            return self.async_show_form(step_id="tankerkoenig_credentials", data_schema=_credential_schema([PROVIDER_TANKERKOENIG]))
+        if legacy_mode == PROVIDER_PETROMAP and CONF_PROVIDER_MODES not in user_input:
+            return self.async_show_form(step_id="petromap_privacy", data_schema=vol.Schema({}))
+        if legacy_mode == PROVIDER_NAKORDONI and CONF_PROVIDER_MODES not in user_input:
+            return self.async_show_form(step_id="nakordoni_privacy", data_schema=vol.Schema({}))
+        if legacy_mode == PROVIDER_AUTO and CONF_PROVIDER_MODES not in user_input:
+            return self.async_show_form(step_id="auto_privacy", data_schema=vol.Schema({}))
+        if PROVIDER_PETROMAP in provider_modes or PROVIDER_NAKORDONI in provider_modes:
+            return self.async_show_form(step_id="provider_privacy", data_schema=vol.Schema({}))
+        return self.async_show_form(
+            step_id="provider_credentials",
+            data_schema=_provider_credentials_schema(provider_modes),
         )
 
     async def async_step_provider_privacy(self, user_input=None):

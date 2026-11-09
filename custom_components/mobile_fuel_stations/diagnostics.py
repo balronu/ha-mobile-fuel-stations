@@ -12,6 +12,13 @@ from .const import (
 )
 
 
+def _diagnostic_anchor(anchor: object) -> dict | None:
+    """Exclude precise search coordinates from exported diagnostics."""
+    if not isinstance(anchor, dict):
+        return None
+    return {key: value for key, value in anchor.items() if key not in {"lat", "lng"}}
+
+
 def _iso(value) -> str | None:
     return value.isoformat() if value is not None else None
 
@@ -145,7 +152,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "coverage_fuel_type_note": getattr(getattr(coordinator, "nakordoni_response_metadata", None), "fuel_type_note", None),
             "markets_filtered": getattr(getattr(coordinator, "nakordoni_response_metadata", None), "markets_filtered", None),
             "markets_notice": getattr(getattr(coordinator, "nakordoni_response_metadata", None), "markets_notice", None),
-            "anchor": getattr(getattr(coordinator, "nakordoni_response_metadata", None), "anchor", None),
+            "anchor": _diagnostic_anchor(getattr(getattr(coordinator, "nakordoni_response_metadata", None), "anchor", None)),
             "quota": getattr(coordinator, "diagnostic_quota", {"limit": None, "remaining": None}),
             "nakordoni_account_usage": (
                 coordinator.nakordoni_account_usage.as_diagnostics()

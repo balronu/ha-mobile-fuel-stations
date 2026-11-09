@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 import mobile_fuel_stations as integration
-from mobile_fuel_stations.config_flow import MobileFuelStationsConfigFlow, _credential_status_placeholders
+from mobile_fuel_stations.config_flow import MobileFuelStationsConfigFlow, _credential_status_placeholders, _sorting_schema
 from mobile_fuel_stations.const import (
     CONF_API_KEY,
     CONF_COOLDOWN,
@@ -152,6 +152,23 @@ def test_provider_selector_is_multi_select_and_excludes_legacy_auto_option():
     provider = _validator(result, CONF_PROVIDER_MODES)
     assert provider.config["multiple"] is True
     assert provider.config["options"] == [PROVIDER_TANKERKOENIG, PROVIDER_PETROMAP, PROVIDER_NAKORDONI]
+
+
+@pytest.mark.parametrize(
+    ("selected", "expected"),
+    [
+        ("e5", ["e5"]),
+        ("diesel", ["diesel"]),
+        (["e5", "e10"], ["e5", "e10"]),
+    ],
+)
+def test_sorting_step_only_offers_selected_fuels_and_repairs_default(selected, expected):
+    schema = vol.Schema(_sorting_schema({CONF_FUEL_TYPE: selected, CONF_SORT_FUEL: "diesel"}))
+    sort_fuel = _validator({"data_schema": schema}, CONF_SORT_FUEL)
+    values = schema({})
+
+    assert sort_fuel.config["options"] == expected
+    assert values[CONF_SORT_FUEL] == expected[0]
 
 
 def test_options_multi_provider_mode_uses_only_selected_providers_and_shows_safe_status():

@@ -33,6 +33,11 @@
           "sort_fuel": "Fuel type used for price sorting."
         }
       },
+      "sorting": {
+        "title": "Sorting preferences",
+        "description": "Choose the order and the selected fuel used for price sorting.",
+        "data": {"sort_mode": "Station sorting", "sort_fuel": "Price sorting fuel"}
+      },
       "tankerkoenig_credentials": {
         "title": "Tankerkönig credentials",
         "description": "Enter the Tankerkönig API key.",
@@ -125,6 +130,11 @@
           "sort_mode": "Order of the displayed stations.",
           "sort_fuel": "Fuel type used for price sorting."
         }
+      },
+      "sorting": {
+        "title": "Sorting preferences",
+        "description": "Choose the order and the selected fuel used for price sorting.",
+        "data": {"sort_mode": "Station sorting", "sort_fuel": "Price sorting fuel"}
       },
       "options_petromap_privacy": {
         "title": "Petromap privacy",
