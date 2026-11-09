@@ -161,6 +161,8 @@ def _user_input(provider_mode):
         CONF_MOVEMENT_UPDATES: True,
         CONF_MOVEMENT_THRESHOLD: 2.0,
         CONF_COOLDOWN: 5,
+        "sort_mode": "distance",
+        "sort_fuel": "diesel",
     }
 
 

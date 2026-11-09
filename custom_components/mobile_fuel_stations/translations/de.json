@@ -33,6 +33,7 @@
           "sort_fuel": "Kraftstoffart für die Preissortierung."
         }
       },
+      "sorting": {"title": "Sortierung", "description": "Reihenfolge und Kraftstoff für die Preissortierung auswählen.", "data": {"sort_mode": "Sortierung", "sort_fuel": "Kraftstoff für Preissortierung"}},
       "tankerkoenig_credentials": {"title": "Tankerkönig-Zugangsdaten", "description": "Tankerkönig-API-Key eingeben."},
       "petromap_credentials": {"title": "Petromap-Zugangsdaten", "description": "Petromap-API-Key eingeben."},
       "nakordoni_credentials": {"title": "Nakordoni-Zugangsdaten", "description": "Automatisch per OAuth2 verbinden oder einen Nakordoni-API-Key eingeben.", "data": {"nakordoni_auth_method": "Nakordoni-Anmeldemethode", "nakordoni_api_key": "Nakordoni-API-Key"}},
@@ -94,6 +95,7 @@
           "sort_fuel": "Kraftstoffart für die Preissortierung."
         }
       },
+      "sorting": {"title": "Sortierung", "description": "Reihenfolge und Kraftstoff für die Preissortierung auswählen.", "data": {"sort_mode": "Sortierung", "sort_fuel": "Kraftstoff für Preissortierung"}},
       "options_petromap_privacy": {"title": "Petromap-Datenschutz", "description": "Standortkoordinaten, Radius und Kraftstoffarten können an Petromap übertragen werden."},
       "options_nakordoni_privacy": {"title": "Nakordoni-Datenschutz", "description": "Standortkoordinaten, Radius und Kraftstoffarten können an Nakordoni übertragen werden."},
       "options_provider_privacy": {"title": "Datenschutz der Anbieter", "description": "Ausgewählte Anbieter können Standort, Radius und Kraftstoffarten erhalten."},

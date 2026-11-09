@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.8.8] - 2026-11-09
+
+### Deutsch
+
+- Die Erstkonfiguration zeigt die Sortierkraftstoff-Auswahl in einem eigenen
+  Schritt und bietet ausschließlich die zuvor gewählten Kraftstoffe an.
+- E5-, Diesel- und Mehrfachauswahl korrigieren einen ungültigen bisherigen
+  Sortierkraftstoff automatisch, ohne gespeicherte Config Entries zu brechen.
+- Nakordoni-Diagnosen enthalten keine präzisen `lat`-/`lng`-Koordinaten mehr;
+  `radius_km` und die Standortberechnung bleiben unverändert.
+
+### English
+
+- Initial setup shows price-sorting fuel in a dedicated step and offers only the
+  fuels selected in the preceding form.
+- E5, diesel, and multi-fuel selections automatically repair an invalid prior
+  sorting fuel without breaking stored Config Entries.
+- Nakordoni diagnostics no longer contain precise `lat`/`lng` coordinates;
+  `radius_km` and location calculation remain unchanged.
+
 ## [0.8.7] - 2026-10-29
 
 ### Deutsch
