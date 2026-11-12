@@ -1,0 +1,36 @@
+id: mobile_fuel_stations
+version: 0.1.0
+api: "0.24"
+icon: gas-station
+maintainer: balronu
+license: MIT
+stage: beta
+topics: [travel]
+requires:
+  esphome: 2026.6.2
+boards: any
+flash_kb: 8
+
+tiles:
+  - id: highlights
+    name: tile_highlights
+    icon: gas-station
+    sizes: { min: 1x1, max: 4x4 }
+    memory: 1400
+    domains: [sensor]
+    has_attributes: [nearest_station, cheapest_station, cheapest_stations_by_fuel]
+    attributes: [data_stale, station_count, fuel_types, last_successful_update]
+    fields:
+      nearest_name: nearest_station.station_name
+      nearest_price: { path: nearest_station.price, as: number }
+      nearest_distance: { path: nearest_station.distance, as: number }
+      cheapest_name: cheapest_station.station_name
+      cheapest_price: { path: cheapest_station.price, as: number }
+      cheapest_distance: { path: cheapest_station.distance, as: number }
+      currency: cheapest_station.currency
+      cheapest_fuel_prices: { path: "cheapest_station.fuel_prices[*]", as: numbers }
+    preview: { title: "{cheapest_name}", value: "{cheapest_price} {currency}" }
+    example: highlights_example
+
+cards:
+  - { id: stations, name: card_stations, wide: false }

@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "name": "Deutsch"
+  },
+  "screen": {
+    "no_data": "Mobile Fuel Stations wählen",
+    "nearest": "Nächste",
+    "cheapest": "Günstigste",
+    "stale": "Zwischengespeicherte Daten",
+    "unavailable": "Keine aktuellen Tankstellen",
+    "name": "Mobile Fuel Stations",
+    "details": "Tankstellen",
+    "fuel": "Kraftstoff",
+    "open": "Geöffnet",
+    "closed": "Geschlossen",
+    "status_unknown": "Öffnungsstatus unbekannt",
+    "no_address": "Adresse nicht verfügbar",
+    "tap_to_switch": "Tippen: Ansicht wechseln; unten: Kraftstoff wechseln"
+  },
+  "app": {
+    "name": "Mobile Fuel Stations",
+    "summary": "Tankstellenpreise aus der Mobile-Fuel-Stations-Integration in Home Assistant.",
+    "tile_highlights": "Nächste und günstigste Tankstelle",
+    "highlights_example": "Nächste und günstigste Kraftstoffpreise",
+    "card_stations": "Tankstellen-Details"
+  }
+}
