@@ -1980,6 +1980,26 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if self.is_manual and not getattr(self, "_manual_refresh_in_progress", False):
             self.last_update_result = "manual_mode"
             return self._previous_result()
+        # Protect metered Nakordoni searches while the vehicle is parked.
+        # Reuse a successful same-provider result across periodic polling and
+        # GPS state reports; manual fetches explicitly bypass this guard.
+        if (
+            not self.is_manual
+            and getattr(self, "_cache_provider", None) == PROVIDER_NAKORDONI
+            and getattr(self, "_has_valid_provider_result", False)
+            and self.reference_position is not None
+            and self.last_successful_update is not None
+        ):
+            stationary_position = _valid_position(
+                self.hass, self.options[CONF_LOCATION_ENTITY]
+            )
+            if (
+                stationary_position is not None
+                and haversine_km(self.reference_position, stationary_position) < 3.0
+                and now - self.last_successful_update < timedelta(hours=24)
+            ):
+                self.last_update_result = "stationary_cache"
+                return self._previous_result()
         await self.async_update_nakordoni_usage()
         if self._retry_not_before and now < self._retry_not_before:
             if _valid_position(self.hass, self.options[CONF_LOCATION_ENTITY]):
