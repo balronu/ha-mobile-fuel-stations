@@ -1,6 +1,6 @@
 # Changelog
 
-## Next Stable (planned `0.8.9`)
+## [0.8.9] - 2026-11-21
 
 ### Deutsch
 

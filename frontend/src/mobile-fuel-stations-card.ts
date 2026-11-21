@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 
-export const FRONTEND_BUILD_VERSION = "0.8.8";
+export const FRONTEND_BUILD_VERSION = "0.8.9";
 
 type HassState = {
   state: string;
