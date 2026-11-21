@@ -948,6 +948,7 @@ def test_nakordoni_failure_metadata_is_published_before_recovery_retry(monkeypat
         "quota_remaining": 999,
         "request_success": False,
         "response_ok": False,
+        "reset_at": None,
     }
 
 

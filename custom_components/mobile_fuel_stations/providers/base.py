@@ -70,6 +70,7 @@ class ProviderRequestDiagnostics:
     quota_remaining: int | None
     request_success: bool
     response_ok: bool | None
+    reset_at: datetime | None = None
 
     def as_dict(self) -> dict[str, object]:
         """Return only the approved diagnostic fields."""
@@ -83,6 +84,7 @@ class ProviderRequestDiagnostics:
             "quota_remaining": self.quota_remaining,
             "request_success": self.request_success,
             "response_ok": self.response_ok,
+            "reset_at": self.reset_at.isoformat() if self.reset_at else None,
         }
 
 

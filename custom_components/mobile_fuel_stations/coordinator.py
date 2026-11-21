@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from datetime import datetime, timedelta
 from dataclasses import dataclass, replace
 import json
@@ -38,6 +39,7 @@ from .const import (
     CONF_PROVIDER_MODE,
     CONF_PROVIDER_MODES,
     CONF_NAKORDONI_AUTH_METHOD,
+    CONF_NAKORDONI_API_KEY,
     AUTH_METHOD_OAUTH2,
     CONF_SORT_FUEL,
     CONF_SORT_MODE,
@@ -68,6 +70,7 @@ from .providers.base import (
     NoSuitableProviderError,
     ProviderAuthError,
     ProviderCreditError,
+    ProviderDailyBudgetError,
     ProviderError,
     ProviderNetworkError,
     ProviderRateLimitError,
@@ -129,6 +132,7 @@ _PROVIDER_RETRY_UNTIL_KEY = "provider_retry_not_before"
 _NAKORDONI_USAGE_KEY = "nakordoni_usage"
 _COUNTRY_CONTEXT_KEY = "country_context"
 _COUNTRY_CONTEXT_MAX_AGE = timedelta(minutes=15)
+_NAKORDONI_SHARED_USAGE_KEY = "nakordoni_shared_usage"
 
 
 @dataclass(slots=True, frozen=True)
@@ -217,6 +221,10 @@ def _retry_after_seconds(error: ProviderError) -> int | None:
     value = getattr(diagnostics, "retry_after", None)
     if value is None:
         value = getattr(error, "retry_after", None)
+    if value is None:
+        reset_at = getattr(diagnostics, "reset_at", None) or getattr(error, "reset_at", None)
+        if isinstance(reset_at, datetime):
+            value = max(0, int((reset_at - datetime.now().astimezone()).total_seconds()))
     try:
         parsed = int(value)
     except (TypeError, ValueError):
@@ -495,46 +503,38 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
 
         return PROVIDER_NAKORDONI in self.provider_modes and self._provider_configured(PROVIDER_NAKORDONI)
 
-    async def async_update_nakordoni_usage(self, *, force: bool = False) -> None:
-        """Refresh account usage without coupling its errors to station data."""
+    def _nakordoni_credential_fingerprint(self) -> str:
+        """Identify a shared credential without retaining or logging its value."""
 
-        if not self.nakordoni_usage_enabled:
-            return
-        now = datetime.now().astimezone()
-        last_attempt = self.nakordoni_usage_last_attempt
-        if not force and last_attempt and now - last_attempt < _NAKORDONI_USAGE_INTERVAL:
-            return
-        self.nakordoni_usage_last_attempt = now
-        try:
-            provider = self._get_provider(PROVIDER_NAKORDONI)
-            get_usage = getattr(provider, "async_get_account_usage", None)
-            if not callable(get_usage):
-                return
-            usage = await get_usage()
-        except ProviderError as err:
-            diagnostics = getattr(err, "diagnostics", None)
-            self.nakordoni_usage_error = getattr(diagnostics, "error_code", None) or type(err).__name__
-            self.nakordoni_usage_error_at = now
-            self.nakordoni_usage_upgrade_url = getattr(err, "upgrade_url", None)
-            self.nakordoni_usage_pass_url = getattr(err, "pass_url", None)
-            self.nakordoni_usage_reset_at = getattr(err, "reset_at", None)
-            _LOGGER.warning(
-                "Nakordoni account usage failed: code=%s reset_at=%s",
-                self.nakordoni_usage_error,
-                self.nakordoni_usage_reset_at.isoformat() if self.nakordoni_usage_reset_at else None,
-            )
-            return
+        credential = self.options.get(CONF_NAKORDONI_API_KEY)
+        if not credential:
+            token = getattr(self.entry, "data", {}).get("token", {})
+            if isinstance(token, dict):
+                credential = token.get("access_token")
+        if not credential:
+            credential = f"entry:{getattr(self.entry, 'entry_id', 'unknown')}"
+        return hashlib.sha256(str(credential).encode("utf-8")).hexdigest()
+
+    def _nakordoni_shared_usage_state(self) -> dict[str, object] | None:
+        """Return the process-wide usage/budget state for this credential."""
+
+        hass = getattr(self, "hass", None)
+        data = getattr(hass, "data", None)
+        if not isinstance(data, dict):
+            return None
+        domain_data = data.setdefault(DOMAIN, {})
+        states = domain_data.setdefault(_NAKORDONI_SHARED_USAGE_KEY, {})
+        key = self._nakordoni_credential_fingerprint()
+        return states.setdefault(key, {"lock": asyncio.Lock()})
+
+    def _apply_nakordoni_usage(self, usage: NakordoniAccountUsage, now: datetime) -> None:
         self.nakordoni_account_usage = usage
         self.nakordoni_usage_last_success = now
         self.nakordoni_usage_error = None
         self.nakordoni_usage_error_at = None
         self.nakordoni_usage_upgrade_url = usage.upgrade_url
         self.nakordoni_usage_pass_url = usage.pass_url
-        self.nakordoni_usage_reset_at = usage.cheap.reset_at
-        # ``markets.allowed`` in account/usage is numeric (a count), not a
-        # country list.  Only the explicit approved country list can add
-        # permission here; ``available`` describes endpoint coverage and is
-        # deliberately retained as diagnostics, not treated as permission.
+        self.nakordoni_usage_reset_at = usage.fuel.reset_at or usage.cheap.reset_at
         self._merge_nakordoni_market_access(
             NakordoniMarketAccess(
                 markets_approved=usage.markets_approved,
@@ -543,6 +543,53 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             source="usage",
             checked_at=now,
         )
+
+    async def async_update_nakordoni_usage(self, *, force: bool = False) -> None:
+        """Refresh account usage without coupling its errors to station data."""
+
+        if not self.nakordoni_usage_enabled:
+            return
+        now = datetime.now().astimezone()
+        shared = self._nakordoni_shared_usage_state()
+        lock = shared.get("lock") if shared else None
+        if not isinstance(lock, asyncio.Lock):
+            lock = asyncio.Lock()
+        async with lock:
+            now = datetime.now().astimezone()
+            last_attempt = shared.get("last_attempt") if shared else self.nakordoni_usage_last_attempt
+            if not force and last_attempt and now - last_attempt < _NAKORDONI_USAGE_INTERVAL:
+                usage = shared.get("usage") if shared else None
+                if isinstance(usage, NakordoniAccountUsage):
+                    self._apply_nakordoni_usage(usage, shared.get("last_success") or now)
+                return
+            self.nakordoni_usage_last_attempt = now
+            if shared is not None:
+                shared["last_attempt"] = now
+            try:
+                provider = self._get_provider(PROVIDER_NAKORDONI)
+                get_usage = getattr(provider, "async_get_account_usage", None)
+                if not callable(get_usage):
+                    return
+                usage = await get_usage()
+            except ProviderError as err:
+                diagnostics = getattr(err, "diagnostics", None)
+                self.nakordoni_usage_error = getattr(diagnostics, "error_code", None) or type(err).__name__
+                self.nakordoni_usage_error_at = now
+                self.nakordoni_usage_upgrade_url = getattr(err, "upgrade_url", None)
+                self.nakordoni_usage_pass_url = getattr(err, "pass_url", None)
+                self.nakordoni_usage_reset_at = getattr(diagnostics, "reset_at", None) or getattr(err, "reset_at", None)
+                if shared is not None:
+                    shared["error"] = self.nakordoni_usage_error
+                    shared["error_at"] = now
+                _LOGGER.warning(
+                    "Nakordoni account usage failed: code=%s reset_at=%s",
+                    self.nakordoni_usage_error,
+                    self.nakordoni_usage_reset_at.isoformat() if self.nakordoni_usage_reset_at else None,
+                )
+                return
+            self._apply_nakordoni_usage(usage, now)
+            if shared is not None:
+                shared.update({"usage": usage, "last_success": now, "error": None})
 
     def _nakordoni_usage_to_store(self) -> dict[str, object] | None:
         """Serialize the last known usage without credentials or raw payloads."""
@@ -768,6 +815,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         domain_data = self.hass.data.setdefault(DOMAIN, {})
         records = domain_data.setdefault("last_request_diagnostics", {})
         records[self.entry.entry_id] = diagnostics.as_dict()
+        self._update_nakordoni_fuel_quota(diagnostics)
         fields = [
             f"status={diagnostics.http_status}",
             f"code={diagnostics.error_code}",
@@ -783,9 +831,32 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         diagnostics = getattr(provider, "last_request_diagnostics", None)
         if not isinstance(diagnostics, ProviderRequestDiagnostics):
             return
+        self._update_nakordoni_fuel_quota(diagnostics)
         self.hass.data.setdefault(DOMAIN, {}).setdefault(
             "last_request_diagnostics", {}
-        )[self.entry.entry_id] = diagnostics.as_dict()
+            )[self.entry.entry_id] = diagnostics.as_dict()
+
+    def _update_nakordoni_fuel_quota(self, diagnostics: ProviderRequestDiagnostics) -> None:
+        """Carry the provider's current fuel header into the shared budget."""
+
+        if diagnostics.provider != PROVIDER_NAKORDONI or diagnostics.quota_remaining is None:
+            return
+        usage = getattr(self, "nakordoni_account_usage", None)
+        quotas = dict(usage.quotas or {}) if usage is not None else {}
+        previous = quotas.get("fuel", NakordoniQuota())
+        quotas["fuel"] = replace(
+            previous,
+            limit=diagnostics.quota_limit if diagnostics.quota_limit is not None else previous.limit,
+            remaining=diagnostics.quota_remaining,
+        )
+        if usage is None:
+            usage = NakordoniAccountUsage(quotas=quotas)
+        else:
+            usage = replace(usage, quotas=quotas)
+        self.nakordoni_account_usage = usage
+        shared = self._nakordoni_shared_usage_state()
+        if shared is not None:
+            shared["usage"] = usage
 
     def _nakordoni_error_message(self, error: ProviderError) -> str:
         """Return a bounded, provider-specific message without raw response text."""
@@ -1515,8 +1586,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             return {"available": False, "status": "unsupported_country"}
         if provider == PROVIDER_NAKORDONI:
             usage = getattr(self, "nakordoni_account_usage", None)
-            cheap = usage.cheap if usage is not None else None
-            remaining = getattr(cheap, "remaining", None)
+            quota = None
+            if usage is not None:
+                quota = usage.fuel if "fuel" in (usage.quotas or {}) else usage.cheap
+            remaining = getattr(quota, "remaining", None)
             if remaining == 0:
                 return {"available": False, "status": "quota_exhausted"}
             country = getattr(self.country_auto_context, "confirmed_country", None)
@@ -1525,7 +1598,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 status = "market_not_allowed" if market_status == "not_allowed" else "coverage_unknown"
                 return {"available": False, "status": status}
             usage_status = "quota_unknown"
-            if cheap is not None and remaining is not None:
+            if quota is not None and remaining is not None:
                 usage_updated = getattr(self, "nakordoni_usage_last_success", None)
                 age = (
                     (datetime.now().astimezone() - usage_updated).total_seconds()
@@ -1536,6 +1609,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                     if age is None or age > _NAKORDONI_USAGE_INTERVAL.total_seconds()
                     else "available"
                 )
+            if for_auto and usage_status != "available":
+                return {"available": False, "status": usage_status}
             return {"available": True, "status": usage_status}
         return {"available": True, "status": "available"}
 
@@ -1575,15 +1650,15 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 country,
                 fuel,
                 tankerkoenig_enabled=self._provider_availability(
-                    PROVIDER_TANKERKOENIG, for_auto=True, now=now
+                    PROVIDER_TANKERKOENIG, for_auto=False, now=now
                 )["available"],
                 tankerkoenig_capabilities=PROVIDER_REGISTRY[PROVIDER_TANKERKOENIG].capabilities,
                 petromap_enabled=self._provider_availability(
-                    PROVIDER_PETROMAP, for_auto=True, now=now
+                    PROVIDER_PETROMAP, for_auto=False, now=now
                 )["available"],
                 petromap_capabilities=PROVIDER_REGISTRY[PROVIDER_PETROMAP].capabilities,
                 nakordoni_enabled=self._provider_availability(
-                    PROVIDER_NAKORDONI, for_auto=True, now=now
+                    PROVIDER_NAKORDONI, for_auto=False, now=now
                 )["available"],
                 nakordoni_capabilities=self._nakordoni_auto_capabilities(),
             )
@@ -2106,6 +2181,25 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                         f"{provider_mode} does not support configured fuels"
                     ))
                 )
+        nakordoni_requests = sum(
+            request_mode == PROVIDER_NAKORDONI for request_mode, *_ in requests
+        )
+        if nakordoni_requests:
+            usage = getattr(self, "nakordoni_account_usage", None)
+            quota = None
+            if usage is not None:
+                quota = usage.fuel if "fuel" in (usage.quotas or {}) else usage.cheap
+            remaining = getattr(quota, "remaining", None)
+            # Never spend the last unit on a partial multi-fuel cycle.  A
+            # known exhausted quota is a hard stop for automatic and manual
+            # paths; unknown quota remains usable only on an explicit manual
+            # request, preserving the documented manual escape hatch.
+            if remaining is not None and remaining < nakordoni_requests:
+                self.last_update_result = "provider_quota_exhausted"
+                self.last_update_error_provider = PROVIDER_NAKORDONI
+                self.recovery_status = "quota_exhausted"
+                self.data_stale = bool(self._previous_result()) and not self.is_manual
+                return self._previous_result()
         cache_provider = getattr(self, "_cache_provider", None)
         if cache_provider is not None and cache_provider != provider_mode:
             # A provider-bound cache must never be presented as the new
@@ -2229,6 +2323,36 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 skipped_modes: set[str] = set()
                 while True:
                     active_provider_mode = request_mode
+                    shared_nakordoni_lock = None
+                    if request_mode == PROVIDER_NAKORDONI:
+                        shared_state = self._nakordoni_shared_usage_state()
+                        candidate_lock = shared_state.get("lock") if shared_state else None
+                        if isinstance(candidate_lock, asyncio.Lock):
+                            shared_nakordoni_lock = candidate_lock
+                            await shared_nakordoni_lock.acquire()
+                            shared_usage = shared_state.get("usage") if shared_state else None
+                            if isinstance(shared_usage, NakordoniAccountUsage):
+                                shared_quota = (
+                                    shared_usage.fuel
+                                    if "fuel" in (shared_usage.quotas or {})
+                                    else shared_usage.cheap
+                                )
+                                if shared_quota.remaining == 0:
+                                    blocked = ProviderDailyBudgetError("quota_exceeded")
+                                    blocked.diagnostics = ProviderRequestDiagnostics(
+                                        PROVIDER_NAKORDONI,
+                                        429,
+                                        "quota_exceeded",
+                                        None,
+                                        shared_quota.limit,
+                                        0,
+                                        False,
+                                        False,
+                                        shared_quota.reset_at,
+                                    )
+                                    shared_nakordoni_lock.release()
+                                    shared_nakordoni_lock = None
+                                    raise blocked
                     try:
                         found = await request_provider.async_search(
                             StationSearchQuery(
@@ -2239,6 +2363,8 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                                 station_count=int(self.options[CONF_STATION_COUNT]),
                             )
                         )
+                        if request_mode == PROVIDER_NAKORDONI:
+                            self._record_nakordoni_success(request_provider)
                         break
                     except ProviderError as err:
                         if not self._is_auto:
@@ -2305,6 +2431,9 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                             effective_provider=request_mode,
                             reason=f"fallback_after_{active_provider_mode}_failure",
                         )
+                    finally:
+                        if shared_nakordoni_lock is not None and shared_nakordoni_lock.locked():
+                            shared_nakordoni_lock.release()
                 if request_mode == PROVIDER_NAKORDONI:
                     self._update_nakordoni_metadata(request_provider)
                 if self.fallback_attempted and request_mode == self.fallback_provider:

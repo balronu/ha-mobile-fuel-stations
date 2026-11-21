@@ -120,6 +120,12 @@ class NakordoniAccountUsage:
     def cheap(self) -> NakordoniQuota:
         return (self.quotas or {}).get("cheap", NakordoniQuota())
 
+    @property
+    def fuel(self) -> NakordoniQuota:
+        """The current fuel-product quota, introduced by Nakordoni in v2."""
+
+        return (self.quotas or {}).get("fuel", NakordoniQuota())
+
     def as_diagnostics(self) -> dict[str, object]:
         return {
             "plan": {"slug": self.plan_slug, "name": self.plan_name},
@@ -325,7 +331,7 @@ def _parse_account_usage(payload: object) -> NakordoniAccountUsage:
     plan = data.get("plan") if isinstance(data.get("plan"), dict) else {}
     raw_quotas = data.get("quotas") if isinstance(data.get("quotas"), dict) else {}
     quotas: dict[str, NakordoniQuota] = {}
-    for name in ("cheap", "heavy", "route"):
+    for name in ("cheap", "heavy", "route", "fuel"):
         raw = raw_quotas.get(name)
         if not isinstance(raw, dict):
             continue
@@ -447,6 +453,7 @@ def _error(
         quota_remaining=_header_nonnegative_int(headers, "X-Devapi-Remaining"),
         request_success=False,
         response_ok=response_ok,
+        reset_at=_safe_timestamp(error.get("reset_at")) if isinstance(error, dict) else None,
     )
     return exception
 

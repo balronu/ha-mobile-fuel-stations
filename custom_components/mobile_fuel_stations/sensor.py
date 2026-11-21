@@ -122,7 +122,7 @@ class _NakordoniUsageSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Se
 
 
 class NakordoniCallsRemainingSensor(_NakordoniUsageSensor):
-    """Cheap daily calls remaining, as documented by Nakordoni."""
+    """Fuel-product calls remaining, as documented by Nakordoni."""
 
     _attr_icon = "mdi:counter"
 
@@ -132,11 +132,14 @@ class NakordoniCallsRemainingSensor(_NakordoniUsageSensor):
     @property
     def native_value(self) -> int | None:
         usage = self.coordinator.nakordoni_account_usage
-        return usage.cheap.remaining if usage else None
+        if usage is None:
+            return None
+        quota = usage.fuel if "fuel" in (usage.quotas or {}) else usage.cheap
+        return quota.remaining
 
 
 class NakordoniQuotaResetSensor(_NakordoniUsageSensor):
-    """Timestamp at which the cheap quota resets."""
+    """Timestamp at which the fuel quota resets."""
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_icon = "mdi:calendar-refresh"
@@ -147,7 +150,10 @@ class NakordoniQuotaResetSensor(_NakordoniUsageSensor):
     @property
     def native_value(self):
         usage = self.coordinator.nakordoni_account_usage
-        return usage.cheap.reset_at if usage else None
+        if usage is None:
+            return None
+        quota = usage.fuel if "fuel" in (usage.quotas or {}) else usage.cheap
+        return quota.reset_at
 
 
 class NakordoniTripPassSensor(_NakordoniUsageSensor):
