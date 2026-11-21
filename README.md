@@ -5,7 +5,7 @@
 <p align="center"><img src="assets/branding/logo.png" alt="Mobile Fuel Stations" width="220"></p>
 
 <p align="center">
-  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.8"><img src="https://img.shields.io/badge/Stable-v0.8.8-16a34a" alt="Stable v0.8.8"></a>
+  <a href="https://github.com/balronu/ha-mobile-fuel-stations/releases/tag/v0.8.9"><img src="https://img.shields.io/badge/Stable-v0.8.9-16a34a" alt="Stable v0.8.9"></a>
   <a href="https://www.home-assistant.io/integrations/"><img src="https://img.shields.io/badge/Home%20Assistant-Custom%20integration-41bdf5" alt="Home Assistant custom integration"></a>
   <a href="https://www.hacs.xyz/docs/faq/custom_repositories/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-18a999" alt="HACS custom repository"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0f766e" alt="MIT License"></a>
@@ -71,9 +71,9 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.8.8` | Aktuelle stabile Version |
+| Stable | `v0.8.9` | Aktuelle stabile Version |
 | Vorherige Stable | `v0.8.6` | Verfügbare unmittelbare Rollback-Version |
-| Frontend-Komponente | `v0.8.8` | Unabhängig versionierte Lovelace-Komponente |
+| Frontend-Komponente | `v0.8.9` | Unabhängig versionierte Lovelace-Komponente |
 
 `v0.8.3` führte wichtige Grundlagen der aktuellen Integration ein. Sie bündelt Tankerkönig,
 Petromap und Nakordoni mit automatischer Provider-Auswahl, länder- und
@@ -85,7 +85,7 @@ experimentelle Nakordoni-OAuth-Anmeldung wurde statisch geprüft, aber nicht
 verbleibende Markenrechtsrisiken sind in [BRAND_LOGOS.md](BRAND_LOGOS.md)
 festgehalten; dies ist keine Markenlizenz oder Herstellerempfehlung.
 
-`v0.8.8` ist die aktuelle stabile Veröffentlichung. Sie übernimmt die in der
+`v0.8.9` ist die aktuelle stabile Veröffentlichung. Sie übernimmt die in der
 Beta getestete Nakordoni-v2-Kompatibilität mit dokumentierten Kraftstoffarten,
 bestätigungsbasierter Preisfrische, sicherem Währungsvergleich, stabiler
 Stationsidentifikation und erweiterter Providerdiagnose. Bestehende
@@ -98,7 +98,7 @@ kartenbezogene Sortierung, Kraftstoff für die Preissortierung, sichtbare
 Tankstellenanzahl, Kopf- und Stationsfelder, Dichte, Trennlinien und das
 optionale Layout **Highlights + Liste**. Sichtbare Kopfbereich-Sektionen
 erzeugen keine leeren Wrapper und zwischen zwei sichtbaren Sektionen erscheint
-maximal eine Trennlinie. Die Stable-Ressource verwendet `v=0.8.8`; bestehende
+maximal eine Trennlinie. Die Stable-Ressource verwendet `v=0.8.9`; bestehende
 YAML-Karten und Config Entries bleiben kompatibel.
 
 v0.7.1 verbesserte außerdem die Erkennung integrationszugehöriger Overview-
@@ -190,7 +190,7 @@ erhalten.
 5. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und
    wähle **Mobile Fuel Stations**.
 
-`v0.8.8` ist die aktuelle stabile Version. `v0.8.6` bleibt als unmittelbare
+`v0.8.9` ist die aktuelle stabile Version. `v0.8.6` bleibt als unmittelbare
 Stable-Rollback-Version verfügbar. Die Aufnahme in den offiziellen HACS-Katalog
 ist mit [hacs/default#12947](https://github.com/hacs/default/pull/12947)
 beantragt und wartet noch auf die Maintainer-Freigabe. Bis dahin funktioniert
@@ -204,7 +204,7 @@ Die Lovelace-Karte wird von der Integration bereitgestellt und automatisch
 registriert. Die Frontend-Ressource lautet:
 
 ```text
-/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.8
+/mobile_fuel_stations/mobile-fuel-stations-card.js?v=0.8.9
 ```
 
 Der versionsabhängige Resource-Key verhindert, dass ein neues Bundle unter

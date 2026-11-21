@@ -72,7 +72,7 @@ anderen Trackers und liefert Tankstellen, Kraftstoffpreise, Entfernung,
 
 | Kanal | Version | Bedeutung |
 | --- | --- | --- |
-| Stable | `v0.8.7` | Aktuelle stabile Version |
+| Stable | `v0.8.9` | Aktuelle stabile Version |
 | Vorherige Stable | `v0.8.6` | Verfügbare unmittelbare Rollback-Version |
 | Frontend-Komponente | `v0.8.7` | Unabhängig versionierte Lovelace-Komponente |
 
