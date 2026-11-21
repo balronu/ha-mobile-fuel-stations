@@ -339,6 +339,18 @@ Attribute und in den geheimnisfreien Diagnostics bereit. `quota_exceeded`,
 `market_not_allowed` und `integration_product_not_allowed` werden getrennt
 klassifiziert. Es gibt keine eigene Zahlungsabwicklung.
 
+Für die aktuellen Nakordoni-v2-Fuel-Produkte wird die bestätigte `fuel`-Quote
+verwendet. E5 und E10 benötigen bei `fuel-stations` jeweils eine getrennte
+Anfrage; die Integration prüft deshalb das gemeinsame Budget vor einem
+Mehrfachabruf und startet keinen Teilzyklus, wenn das Kontingent nicht für alle
+gewählten Kraftstoffe reicht. Bei Stillstand werden erfolgreiche Nakordoni-
+Ergebnisse bis zu 24 Stunden und unterhalb von 3 km wiederverwendet. GPS-
+Rauschen, Attribut-Events und mehrere Config Entries mit demselben Schlüssel
+lösen dadurch keine zusätzlichen automatischen Stationsabfragen aus. Ein
+bekannter Quota-Verbrauch bis zum Reset blockiert weitere kostenpflichtige
+Abrufe; manuelle Abrufe bleiben bei verfügbarem Kontingent als ausdrücklich
+angeforderter Pfad möglich.
+
 ## GPS, Polling und Startup-Recovery
 
 Die Integration benötigt gültige Koordinaten der konfigurierten Entity. Nach

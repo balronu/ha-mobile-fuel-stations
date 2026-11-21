@@ -1,5 +1,33 @@
 # Changelog
 
+## Next Stable (planned `0.8.9`)
+
+### Deutsch
+
+- Schützt automatische Nakordoni-Fuel-Abfragen bei GPS-Rauschen und Stillstand:
+  erfolgreiche Ergebnisse werden unterhalb von 3 km bis zu 24 Stunden aus dem
+  Cache verwendet.
+- Berücksichtigt die aktuelle Nakordoni-`fuel`-Tagesquote, Reset-Zeitpunkte und
+  Quota-Header; bekannte erschöpfte Kontingente blockieren weitere automatische
+  Abrufe ohne Retry-Schleife.
+- Prüft Mehrfachkraftstoff-Zyklen vorab und dedupliziert `/account/usage` über
+  Config Entries mit demselben Zugang, ohne Credentials oder private
+  Koordinaten zu diagnostizieren.
+- Ergänzt Regressionen für GPS-Events, Neustart-/Cache-Grenzen, E5/E10,
+  gemeinsame Zugänge, Quota-Erschöpfung und manuelle Abrufe.
+
+### English
+
+- Protects automatic Nakordoni fuel requests from GPS noise and stationary
+  polling by reusing successful results below 3 km for up to 24 hours.
+- Uses Nakordoni's current `fuel` daily quota, reset times, and quota headers;
+  known exhausted budgets block further automatic requests without retry loops.
+- Pre-checks multi-fuel cycles and deduplicates `/account/usage` across Config
+  Entries sharing a credential without exposing credentials or private
+  coordinates in diagnostics.
+- Adds regressions for GPS events, restart/cache boundaries, E5/E10, shared
+  credentials, quota exhaustion, and manual refreshes.
+
 ## [0.8.8] - 2026-11-09
 
 ### Deutsch

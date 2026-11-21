@@ -138,6 +138,16 @@ quota, payload, and configuration errors are not hidden by a silent provider
 switch. Nakordoni is used only when market permission is proven; an API key
 alone is not sufficient.
 
+The current Nakordoni v2 fuel products use the confirmed `fuel` quota. E5 and
+E10 require separate `fuel-stations` requests, so the integration checks the
+shared budget before a multi-fuel cycle and does not start a partial cycle when
+the quota cannot cover all selected grades. While parked, successful Nakordoni
+results are reused for up to 24 hours and below 3 km of movement. GPS noise,
+attribute-only events, and multiple Config Entries using the same credential do
+not create extra automatic station requests. A known exhausted quota blocks
+further paid requests until reset; explicit manual requests remain available
+as a user-directed path while quota allows.
+
 Features include nearby stations based on a tracker entity, E5/E10/diesel/LPG
 and HVO100 selection, multi-fuel station sensors, distance and fuel-price
 sorting, automatic provider selection, startup recovery, regular coordinator

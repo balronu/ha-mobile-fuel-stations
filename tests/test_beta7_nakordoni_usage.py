@@ -1,4 +1,5 @@
 import asyncio
+from types import SimpleNamespace
 
 from mobile_fuel_stations.const import CONF_NAKORDONI_API_KEY, PROVIDER_NAKORDONI
 from mobile_fuel_stations.coordinator import MobileFuelStationsCoordinator
@@ -79,3 +80,21 @@ def test_numeric_markets_allowed_is_not_treated_as_a_country_list():
         "quotas": {},
     })
     assert coordinator.nakordoni_market_access.permitted_markets == frozenset({"DE"})
+
+
+def test_shared_credential_usage_is_deduplicated_across_entries():
+    first_provider = UsageProvider()
+    second_provider = UsageProvider()
+    hass = SimpleNamespace(data={})
+    first = coordinator_for_usage(first_provider)
+    second = coordinator_for_usage(second_provider)
+    for coordinator, entry_id in ((first, "entry-first"), (second, "entry-second")):
+        coordinator.hass = hass
+        coordinator.entry = SimpleNamespace(entry_id=entry_id, data={})
+
+    asyncio.run(first.async_update_nakordoni_usage())
+    asyncio.run(second.async_update_nakordoni_usage())
+
+    assert first_provider.calls == 1
+    assert second_provider.calls == 0
+    assert second.nakordoni_account_usage.cheap.remaining == 99

@@ -78,6 +78,28 @@ def test_zero_nakordoni_quota_is_not_available_but_unknown_quota_is_allowed():
     assert unknown.diagnostic_provider_availability[PROVIDER_NAKORDONI]["status"] == "quota_unknown"
 
 
+def test_auto_nakordoni_requires_known_fresh_quota():
+    coordinator = _coordinator(markets=("DE",), usage_present=False)
+
+    status = coordinator._provider_availability(PROVIDER_NAKORDONI, for_auto=True)
+
+    assert status == {"available": False, "status": "quota_unknown"}
+
+
+def test_fuel_quota_takes_precedence_over_legacy_cheap_quota():
+    coordinator = _coordinator(markets=("DE",), remaining=10)
+    coordinator.nakordoni_account_usage = NakordoniAccountUsage(
+        quotas={
+            "cheap": NakordoniQuota(100, 1, 99),
+            "fuel": NakordoniQuota(100, 100, 0),
+        }
+    )
+
+    status = coordinator._provider_availability(PROVIDER_NAKORDONI, for_auto=True)
+
+    assert status == {"available": False, "status": "quota_exhausted"}
+
+
 def test_stale_usage_market_metadata_is_conservative():
     coordinator = _coordinator(markets=("DE",), remaining=10)
     coordinator.nakordoni_market_access_checked_at = (

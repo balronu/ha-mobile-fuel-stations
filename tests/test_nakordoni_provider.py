@@ -109,6 +109,7 @@ def usage_payload():
                 "cheap": {"limit": 1000, "used": 42, "remaining": 958, "reset_at": "2026-10-20T00:00:00Z"},
                 "heavy": {"limit": 200, "used": 3, "remaining": 197, "reset_at": "2026-10-20T00:00:00Z"},
                 "route": {"limit": 10, "used": 0, "remaining": 10, "reset_at": "2026-10-20T00:00:00Z"},
+                "fuel": {"limit": 100, "used": 4, "remaining": 96, "reset_at": "2026-10-20T00:00:00Z"},
             },
             "markets": {"approved": ["DE"], "allowed": 1, "available": ["AT"], "key_bound": True},
             "pass": {"active": True, "expires_at": "2026-10-22T14:05:00Z", "days_left": 3},
@@ -334,6 +335,7 @@ def test_nakordoni_account_usage_uses_documented_shape_without_station_params():
     assert usage.plan_slug == "explorer"
     assert usage.cheap.remaining == 958
     assert usage.cheap.reset_at.isoformat() == "2026-10-20T00:00:00+00:00"
+    assert usage.fuel.remaining == 96
     assert usage.markets_approved == ("DE",)
     assert usage.markets_allowed == 1
     assert usage.pass_active is True
@@ -388,6 +390,7 @@ def test_nakordoni_rate_failure_preserves_only_safe_metadata():
         "quota_remaining": 999,
         "request_success": False,
         "response_ok": False,
+        "reset_at": None,
     }
     assert "SECRET_MUST_NOT_APPEAR" not in repr(diagnostics)
     assert "do not expose" not in repr(diagnostics)
