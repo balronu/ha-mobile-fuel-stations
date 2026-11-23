@@ -1071,20 +1071,22 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 station = self._station_from_store(raw)
                 if station is None:
                     return None
-                if (
-                    station.provider == PROVIDER_NAKORDONI
-                    and station.price_confirmed_at is not None
-                    and station.price_confirmed_at.tzinfo is not None
-                    and datetime.now().astimezone() - station.price_confirmed_at > timedelta(days=90)
-                ):
-                    station = replace(
-                        station,
-                        price=None,
-                        price_stale=True,
-                        fuel_prices={
-                            fuel: None for fuel in (station.fuel_prices or {})
-                        } or None,
-                    )
+                if station.provider == PROVIDER_NAKORDONI:
+                    # The provider's fuel-price cache window starts at the
+                    # original confirmation time, not at our fetch time.
+                    # Fall back to updated_at only when confirmation is absent.
+                    # Missing or expired timestamps must fail closed.
+                    price_time = station.price_confirmed_at or station.price_updated_at
+                    now = datetime.now().astimezone()
+                    if (
+                        price_time is None
+                        or price_time.tzinfo is None
+                        or price_time > now
+                        or now - price_time >= timedelta(days=8)
+                    ):
+                        # Do not restore expired provider data from disk.
+                        # A fresh search can repopulate this cache.
+                        return None
                 stations.append(station)
         except (TypeError, ValueError, OverflowError):
             return None
