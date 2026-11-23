@@ -1326,7 +1326,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         ]
         if price_expiries:
             expiry = min(expiry, *price_expiries)
-        delay = max(0, (expiry - datetime.now().astimezone()).total_seconds())
+        delay = max(1.0, (expiry - datetime.now().astimezone()).total_seconds() + 0.1)
 
         @callback
         def _expire(_now: datetime) -> None:
