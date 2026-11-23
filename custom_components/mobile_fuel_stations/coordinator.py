@@ -1065,6 +1065,20 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         raw_stations = stored.get(_STATION_CACHE_KEY)
         if not isinstance(raw_stations, list):
             return None
+        # Station availability, location and other live metadata have a
+        # shorter retention window than confirmed fuel prices. Treat the
+        # complete Nakordoni station snapshot as live data and never restore
+        # it after 24 hours, even when prices are still within eight days.
+        if cache_provider == PROVIDER_NAKORDONI:
+            fetched_at = self.last_successful_update
+            current_time = datetime.now().astimezone()
+            if (
+                fetched_at is None
+                or fetched_at.tzinfo is None
+                or fetched_at > current_time
+                or current_time - fetched_at >= timedelta(hours=24)
+            ):
+                return None
         stations: list[Station] = []
         try:
             for raw in raw_stations:
@@ -1264,7 +1278,19 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if not getattr(self, "_has_valid_provider_result", False):
             return None
         now = datetime.now().astimezone()
-        if any(self._nakordoni_price_cache_expired(station, now) for station in self.stations):
+        fetched_at = getattr(self, "last_successful_update", None)
+        nakordoni_snapshot_expired = (
+            getattr(self, "_cache_provider", None) == PROVIDER_NAKORDONI
+            and (
+                fetched_at is None
+                or fetched_at.tzinfo is None
+                or fetched_at > now
+                or now - fetched_at >= timedelta(hours=24)
+            )
+        )
+        if nakordoni_snapshot_expired or any(
+            self._nakordoni_price_cache_expired(station, now) for station in self.stations
+        ):
             self._set_station_data([])
             self._has_valid_provider_result = False
             self._cache_provider = None
