@@ -972,6 +972,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             if cached is not None:
                 self._set_station_data(cached)
                 self._has_valid_provider_result = True
+                self._schedule_nakordoni_expiry()
                 # Automatic mode keeps a fresh restored cache usable until its
                 # configured interval expires. Manual mode never turns a
                 # successful cache stale merely because HA reloaded the entry.
@@ -1304,6 +1305,41 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         if cancel:
             cancel()
 
+    def _schedule_nakordoni_expiry(self) -> None:
+        """Invalidate Nakordoni live data on time, without an API request."""
+        cancel = getattr(self, "_nakordoni_expiry_unsub", None)
+        self._nakordoni_expiry_unsub = None
+        if cancel:
+            cancel()
+        if getattr(self, "_cache_provider", None) != PROVIDER_NAKORDONI:
+            return
+        fetched_at = getattr(self, "last_successful_update", None)
+        if fetched_at is None or fetched_at.tzinfo is None:
+            return
+        expiry = fetched_at + timedelta(hours=24)
+        price_expiries = [
+            (station.price_confirmed_at or station.price_updated_at) + timedelta(days=8)
+            for station in self.stations
+            if station.provider == PROVIDER_NAKORDONI
+            and (station.price_confirmed_at or station.price_updated_at) is not None
+            and (station.price_confirmed_at or station.price_updated_at).tzinfo is not None
+        ]
+        if price_expiries:
+            expiry = min(expiry, *price_expiries)
+        delay = max(0, (expiry - datetime.now().astimezone()).total_seconds())
+
+        @callback
+        def _expire(_now: datetime) -> None:
+            self._nakordoni_expiry_unsub = None
+            if getattr(self, "_shutdown_started", False):
+                return
+            if self._previous_result() is None:
+                self.async_set_updated_data(None)
+            else:
+                self._schedule_nakordoni_expiry()
+
+        self._nakordoni_expiry_unsub = async_call_later(self.hass, delay, _expire)
+
     def _cancel_startup_refresh_timer(self) -> None:
         cancel = getattr(self, "_startup_refresh_timer_unsub", None)
         self._startup_refresh_timer_unsub = None
@@ -1449,6 +1485,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._cancel_recovery_timer()
         self._cancel_provider_cooldown_timer()
         self._cancel_startup_refresh_timer()
+        cancel_expiry = getattr(self, "_nakordoni_expiry_unsub", None)
+        self._nakordoni_expiry_unsub = None
+        if cancel_expiry:
+            cancel_expiry()
         startup_task = getattr(self, "_startup_refresh_task", None)
         self._startup_refresh_task = None
         if startup_task and not startup_task.done():
@@ -2598,6 +2638,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.stations = sorted_stations
         self._has_valid_provider_result = True
         self.last_successful_update = now
+        self._schedule_nakordoni_expiry()
         self.reference_position = position
         recovered = self.data_stale
         self.data_stale = False
