@@ -1072,20 +1072,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                 if station is None:
                     return None
                 if station.provider == PROVIDER_NAKORDONI:
-                    # The provider's fuel-price cache window starts at the
-                    # original confirmation time, not at our fetch time.
-                    # Fall back to updated_at only when confirmation is absent.
-                    # Missing or expired timestamps must fail closed.
-                    price_time = station.price_confirmed_at or station.price_updated_at
-                    now = datetime.now().astimezone()
-                    if (
-                        price_time is None
-                        or price_time.tzinfo is None
-                        or price_time > now
-                        or now - price_time >= timedelta(days=8)
-                    ):
-                        # Do not restore expired provider data from disk.
-                        # A fresh search can repopulate this cache.
+                    if self._nakordoni_price_cache_expired(station, datetime.now().astimezone()):
                         return None
                 stations.append(station)
         except (TypeError, ValueError, OverflowError):
@@ -1259,18 +1246,31 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.fuel_types[0] if self.fuel_types else DEFAULT_SORT_FUEL
         )
 
+    @staticmethod
+    def _nakordoni_price_cache_expired(station: Station, now: datetime) -> bool:
+        """Fail closed for Nakordoni price records past their original TTL."""
+        if station.provider != PROVIDER_NAKORDONI:
+            return False
+        price_time = station.price_confirmed_at or station.price_updated_at
+        return (
+            price_time is None
+            or price_time.tzinfo is None
+            or price_time > now
+            or now - price_time >= timedelta(days=8)
+        )
+
     def _previous_result(self) -> list[Station] | None:
-        """Return only a result proven valid for the current query context.
-
-        ``last_successful_update`` and ``last_request`` are historical
-        timestamps.  They can survive a provider/config change that rejects
-        the station cache, so neither may manufacture an empty result during
-        the resulting cooldown window.
-        """
-
-        if getattr(self, "_has_valid_provider_result", False):
-            return self.stations
-        return None
+        """Return only a valid, unexpired result for the current query context."""
+        if not getattr(self, "_has_valid_provider_result", False):
+            return None
+        now = datetime.now().astimezone()
+        if any(self._nakordoni_price_cache_expired(station, now) for station in self.stations):
+            self._set_station_data([])
+            self._has_valid_provider_result = False
+            self._cache_provider = None
+            self.data_stale = True
+            return None
+        return self.stations
 
     def _cancel_provider_cooldown_timer(self) -> None:
         cancel = getattr(self, "_cooldown_timer_unsub", None)
@@ -2066,6 +2066,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             and getattr(self, "_has_valid_provider_result", False)
             and self.reference_position is not None
             and self.last_successful_update is not None
+            and self._previous_result() is not None
         ):
             stationary_position = _valid_position(
                 self.hass, self.options[CONF_LOCATION_ENTITY]
