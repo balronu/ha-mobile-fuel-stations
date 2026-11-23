@@ -30,6 +30,7 @@ def test_expired_runtime_result_is_removed():
     coordinator._has_valid_provider_result = True
     coordinator.stations = [station(now, age_days=9)]
     coordinator._cache_provider = "nakordoni"
+    coordinator.last_successful_update = now
     coordinator.data_stale = False
     coordinator._set_station_data = lambda stations: setattr(coordinator, "stations", stations)
     assert coordinator._previous_result() is None
@@ -37,3 +38,17 @@ def test_expired_runtime_result_is_removed():
     assert coordinator._has_valid_provider_result is False
     assert coordinator._cache_provider is None
     assert coordinator.data_stale is True
+
+
+def test_expired_live_snapshot_is_removed_even_with_fresh_price():
+    now = datetime.now(timezone.utc)
+    coordinator = object.__new__(MobileFuelStationsCoordinator)
+    coordinator._has_valid_provider_result = True
+    coordinator.stations = [station(now, age_days=1)]
+    coordinator._cache_provider = "nakordoni"
+    coordinator.last_successful_update = now - timedelta(hours=25)
+    coordinator.data_stale = False
+    coordinator._set_station_data = lambda stations: setattr(coordinator, "stations", stations)
+    assert coordinator._previous_result() is None
+    assert coordinator.stations == []
+    assert coordinator._has_valid_provider_result is False
