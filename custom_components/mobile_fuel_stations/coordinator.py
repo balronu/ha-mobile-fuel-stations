@@ -2321,7 +2321,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         active_provider_mode = provider_mode
         self.recovery_provider_in_flight = True
         try:
-            for request_mode, request_provider, requested_fuel, effective_fuel in requests:
+            for request_index, (request_mode, request_provider, requested_fuel, effective_fuel) in enumerate(requests):
                 attempted_modes = {request_mode}
                 skipped_modes: set[str] = set()
                 while True:
@@ -2340,7 +2340,18 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                                     if "fuel" in (shared_usage.quotas or {})
                                     else shared_usage.cheap
                                 )
-                                if shared_quota.remaining == 0:
+                                # Reserve enough credits for this entry's remaining
+                                # Nakordoni fuel requests while holding the
+                                # shared credential lock. Other entries cannot
+                                # race this preflight against a concurrent call.
+                                pending_nakordoni = sum(
+                                    mode == PROVIDER_NAKORDONI
+                                    for mode, *_ in requests[request_index:]
+                                )
+                                if (
+                                    shared_quota.remaining is not None
+                                    and shared_quota.remaining < pending_nakordoni
+                                ):
                                     blocked = ProviderDailyBudgetError("quota_exceeded")
                                     blocked.diagnostics = ProviderRequestDiagnostics(
                                         PROVIDER_NAKORDONI,
@@ -2348,7 +2359,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                                         "quota_exceeded",
                                         None,
                                         shared_quota.limit,
-                                        0,
+                                        shared_quota.remaining,
                                         False,
                                         False,
                                         shared_quota.reset_at,
