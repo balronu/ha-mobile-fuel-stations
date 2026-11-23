@@ -972,6 +972,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             if cached is not None:
                 self._set_station_data(cached)
                 self._has_valid_provider_result = True
+                self._schedule_nakordoni_expiry()
                 # Automatic mode keeps a fresh restored cache usable until its
                 # configured interval expires. Manual mode never turns a
                 # successful cache stale merely because HA reloaded the entry.
@@ -1065,26 +1066,29 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         raw_stations = stored.get(_STATION_CACHE_KEY)
         if not isinstance(raw_stations, list):
             return None
+        # Station availability, location and other live metadata have a
+        # shorter retention window than confirmed fuel prices. Treat the
+        # complete Nakordoni station snapshot as live data and never restore
+        # it after 24 hours, even when prices are still within eight days.
+        if cache_provider == PROVIDER_NAKORDONI:
+            fetched_at = self.last_successful_update
+            current_time = datetime.now().astimezone()
+            if (
+                fetched_at is None
+                or fetched_at.tzinfo is None
+                or fetched_at > current_time
+                or current_time - fetched_at >= timedelta(hours=24)
+            ):
+                return None
         stations: list[Station] = []
         try:
             for raw in raw_stations:
                 station = self._station_from_store(raw)
                 if station is None:
                     return None
-                if (
-                    station.provider == PROVIDER_NAKORDONI
-                    and station.price_confirmed_at is not None
-                    and station.price_confirmed_at.tzinfo is not None
-                    and datetime.now().astimezone() - station.price_confirmed_at > timedelta(days=90)
-                ):
-                    station = replace(
-                        station,
-                        price=None,
-                        price_stale=True,
-                        fuel_prices={
-                            fuel: None for fuel in (station.fuel_prices or {})
-                        } or None,
-                    )
+                if station.provider == PROVIDER_NAKORDONI:
+                    if self._nakordoni_price_cache_expired(station, datetime.now().astimezone()):
+                        return None
                 stations.append(station)
         except (TypeError, ValueError, OverflowError):
             return None
@@ -1257,24 +1261,84 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             self.fuel_types[0] if self.fuel_types else DEFAULT_SORT_FUEL
         )
 
+    @staticmethod
+    def _nakordoni_price_cache_expired(station: Station, now: datetime) -> bool:
+        """Fail closed for Nakordoni price records past their original TTL."""
+        if getattr(station, "provider", None) != PROVIDER_NAKORDONI:
+            return False
+        price_time = station.price_confirmed_at or station.price_updated_at
+        return (
+            price_time is None
+            or price_time.tzinfo is None
+            or price_time > now
+            or now - price_time >= timedelta(days=8)
+        )
+
     def _previous_result(self) -> list[Station] | None:
-        """Return only a result proven valid for the current query context.
-
-        ``last_successful_update`` and ``last_request`` are historical
-        timestamps.  They can survive a provider/config change that rejects
-        the station cache, so neither may manufacture an empty result during
-        the resulting cooldown window.
-        """
-
-        if getattr(self, "_has_valid_provider_result", False):
-            return self.stations
-        return None
+        """Return only a valid, unexpired result for the current query context."""
+        if not getattr(self, "_has_valid_provider_result", False):
+            return None
+        now = datetime.now().astimezone()
+        fetched_at = getattr(self, "last_successful_update", None)
+        nakordoni_snapshot_expired = (
+            getattr(self, "_cache_provider", None) == PROVIDER_NAKORDONI
+            and (
+                fetched_at is None
+                or fetched_at.tzinfo is None
+                or fetched_at > now
+                or now - fetched_at >= timedelta(hours=24)
+            )
+        )
+        if nakordoni_snapshot_expired or any(
+            self._nakordoni_price_cache_expired(station, now) for station in self.stations
+        ):
+            self._set_station_data([])
+            self._has_valid_provider_result = False
+            self._cache_provider = None
+            self.data_stale = True
+            return None
+        return self.stations
 
     def _cancel_provider_cooldown_timer(self) -> None:
         cancel = getattr(self, "_cooldown_timer_unsub", None)
         self._cooldown_timer_unsub = None
         if cancel:
             cancel()
+
+    def _schedule_nakordoni_expiry(self) -> None:
+        """Invalidate Nakordoni live data on time, without an API request."""
+        cancel = getattr(self, "_nakordoni_expiry_unsub", None)
+        self._nakordoni_expiry_unsub = None
+        if cancel:
+            cancel()
+        if getattr(self, "_cache_provider", None) != PROVIDER_NAKORDONI:
+            return
+        fetched_at = getattr(self, "last_successful_update", None)
+        if fetched_at is None or fetched_at.tzinfo is None:
+            return
+        expiry = fetched_at + timedelta(hours=24)
+        price_expiries = [
+            (station.price_confirmed_at or station.price_updated_at) + timedelta(days=8)
+            for station in self.stations
+            if station.provider == PROVIDER_NAKORDONI
+            and (station.price_confirmed_at or station.price_updated_at) is not None
+            and (station.price_confirmed_at or station.price_updated_at).tzinfo is not None
+        ]
+        if price_expiries:
+            expiry = min(expiry, *price_expiries)
+        delay = max(1.0, (expiry - datetime.now().astimezone()).total_seconds() + 0.1)
+
+        @callback
+        def _expire(_now: datetime) -> None:
+            self._nakordoni_expiry_unsub = None
+            if getattr(self, "_shutdown_started", False):
+                return
+            if self._previous_result() is None:
+                self.async_set_updated_data(None)
+            else:
+                self._schedule_nakordoni_expiry()
+
+        self._nakordoni_expiry_unsub = async_call_later(self.hass, delay, _expire)
 
     def _cancel_startup_refresh_timer(self) -> None:
         cancel = getattr(self, "_startup_refresh_timer_unsub", None)
@@ -1421,6 +1485,10 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self._cancel_recovery_timer()
         self._cancel_provider_cooldown_timer()
         self._cancel_startup_refresh_timer()
+        cancel_expiry = getattr(self, "_nakordoni_expiry_unsub", None)
+        self._nakordoni_expiry_unsub = None
+        if cancel_expiry:
+            cancel_expiry()
         startup_task = getattr(self, "_startup_refresh_task", None)
         self._startup_refresh_task = None
         if startup_task and not startup_task.done():
@@ -2064,6 +2132,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
             and getattr(self, "_has_valid_provider_result", False)
             and self.reference_position is not None
             and self.last_successful_update is not None
+            and self._previous_result() is not None
         ):
             stationary_position = _valid_position(
                 self.hass, self.options[CONF_LOCATION_ENTITY]
@@ -2318,7 +2387,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         active_provider_mode = provider_mode
         self.recovery_provider_in_flight = True
         try:
-            for request_mode, request_provider, requested_fuel, effective_fuel in requests:
+            for request_index, (request_mode, request_provider, requested_fuel, effective_fuel) in enumerate(requests):
                 attempted_modes = {request_mode}
                 skipped_modes: set[str] = set()
                 while True:
@@ -2337,7 +2406,18 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                                     if "fuel" in (shared_usage.quotas or {})
                                     else shared_usage.cheap
                                 )
-                                if shared_quota.remaining == 0:
+                                # Reserve enough credits for this entry's remaining
+                                # Nakordoni fuel requests while holding the
+                                # shared credential lock. Other entries cannot
+                                # race this preflight against a concurrent call.
+                                pending_nakordoni = sum(
+                                    mode == PROVIDER_NAKORDONI
+                                    for mode, *_ in requests[request_index:]
+                                )
+                                if (
+                                    shared_quota.remaining is not None
+                                    and shared_quota.remaining < pending_nakordoni
+                                ):
                                     blocked = ProviderDailyBudgetError("quota_exceeded")
                                     blocked.diagnostics = ProviderRequestDiagnostics(
                                         PROVIDER_NAKORDONI,
@@ -2345,7 +2425,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
                                         "quota_exceeded",
                                         None,
                                         shared_quota.limit,
-                                        0,
+                                        shared_quota.remaining,
                                         False,
                                         False,
                                         shared_quota.reset_at,
@@ -2558,6 +2638,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
         self.stations = sorted_stations
         self._has_valid_provider_result = True
         self.last_successful_update = now
+        self._schedule_nakordoni_expiry()
         self.reference_position = position
         recovered = self.data_stale
         self.data_stale = False
