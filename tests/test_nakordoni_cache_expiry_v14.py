@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
-from custom_components.mobile_fuel_stations.coordinator import MobileFuelStationsCoordinator
+from mobile_fuel_stations.coordinator import MobileFuelStationsCoordinator
 
 
 def station(now, *, age_days=None, provider="nakordoni", updated_days=None):
