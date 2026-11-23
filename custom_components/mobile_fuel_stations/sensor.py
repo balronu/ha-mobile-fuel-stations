@@ -392,6 +392,9 @@ class StationSlotSensor(CoordinatorEntity[MobileFuelStationsCoordinator], Sensor
             for key, value in optional.items()
             if value is not None and (key != "fallback_used" or value)
         })
+        if station.provider == PROVIDER_NAKORDONI:
+            attributes["attribution"] = "Data by nakordoni.eu"
+            attributes["attribution_url"] = "https://nakordoni.eu"
         if getattr(self.coordinator, "data_stale", False):
             attributes["price_stale"] = True
             attributes["data_stale"] = True
