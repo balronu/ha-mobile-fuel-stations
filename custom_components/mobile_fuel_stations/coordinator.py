@@ -1264,7 +1264,7 @@ class MobileFuelStationsCoordinator(DataUpdateCoordinator[list[Station] | None])
     @staticmethod
     def _nakordoni_price_cache_expired(station: Station, now: datetime) -> bool:
         """Fail closed for Nakordoni price records past their original TTL."""
-        if station.provider != PROVIDER_NAKORDONI:
+        if getattr(station, "provider", None) != PROVIDER_NAKORDONI:
             return False
         price_time = station.price_confirmed_at or station.price_updated_at
         return (
